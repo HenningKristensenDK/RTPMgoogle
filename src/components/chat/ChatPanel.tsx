@@ -8,7 +8,8 @@ import {
   sendMessage,
   toggleReaction,
 } from "../../firebase/firestore";
-import { askRiskManager, buildRiskContext, type AgentMessage } from "../../firebase/agent";
+import { askRiskManager } from "../../services/geminiService";
+import { buildRiskContext, type AgentMessage } from "../../firebase/agent";
 import { toast } from "../../lib/toast";
 import ChatModeToggle from "./ChatModeToggle";
 import ChatMessages from "./ChatMessages";
@@ -60,7 +61,7 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
       content: text,
       authorUid: me.uid,
       authorName: me.name,
-      authorAvatar: me.avatar,
+      authorAvatar: me.avatar ?? "",
     });
 
     if (!isAgent) return; // team chat is just multi-user persistence

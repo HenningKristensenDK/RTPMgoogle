@@ -16,7 +16,7 @@ import {
   SEED_PROJECT,
   SEED_ROLES,
   SEED_RISKS,
-} from "../src/lib/seedData.js";
+} from "../src/lib/seedData.ts";
 
 const KEY_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS || "./serviceAccountKey.json";
 

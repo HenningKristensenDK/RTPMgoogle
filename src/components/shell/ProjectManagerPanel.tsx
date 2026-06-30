@@ -1,0 +1,168 @@
+import { useRef, useEffect, useState } from "react";
+import { Bot, Send } from "lucide-react";
+import { useRiskStore } from "../../store/riskStore";
+import { askRiskManager } from "../../services/geminiService";
+
+interface Msg {
+  role: "user" | "bot";
+  text: string;
+}
+
+const WELCOME: Msg = {
+  role: "bot",
+  text: "Hi! I'm your AI Project Manager. Ask me anything about project risks, mitigation status, or next steps.",
+};
+
+export default function ProjectManagerPanel() {
+  const risks = useRiskStore((s) => s.risks);
+  const roles = useRiskStore((s) => s.roles);
+
+  const [messages, setMessages] = useState<Msg[]>([WELCOME]);
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, typing]);
+
+  async function handleSend() {
+    const text = input.trim();
+    if (!text || typing) return;
+    setInput("");
+    const next: Msg[] = [...messages, { role: "user", text }];
+    setMessages(next);
+    setTyping(true);
+
+    try {
+      const history = next.map((m) => ({
+        role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+        content: m.text,
+      }));
+
+      const context: Record<string, unknown> = {
+        totalRisks: risks.length,
+        openRisks: risks.filter((r) => r.status !== "resolved").length,
+        criticalRisks: risks.filter((r) => r.priority === "critical").length,
+        risks: risks.map((r) => ({
+          id: r.riskId,
+          title: r.title,
+          status: r.status,
+          priority: r.priority,
+        })),
+        roles: roles.map((r) => ({
+          workstream: r.workstream,
+          org: r.organizationName,
+          person: r.person.name,
+          raci: r.type,
+        })),
+      };
+
+      const reply = await askRiskManager(history, context);
+      setMessages((prev) => [
+        ...prev,
+        { role: "bot", text: reply || "Unable to generate a response." },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: "bot", text: "AI unavailable right now. Please try again." },
+      ]);
+    } finally {
+      setTyping(false);
+    }
+  }
+
+  return (
+    <div
+      className="flex w-80 flex-shrink-0 flex-col border-l"
+      style={{ borderColor: "#e7e6fa", background: "#f8f8ff" }}
+    >
+      {/* Panel header */}
+      <div
+        className="flex flex-shrink-0 items-center gap-2 px-4 py-3"
+        style={{ background: "#0d08d2" }}
+      >
+        <Bot size={17} className="text-white" />
+        <span
+          className="text-base font-semibold tracking-wide text-white"
+          style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+        >
+          Project Manager AI
+        </span>
+        <span className="ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[10px] text-white/80">
+          {risks.length} risks
+        </span>
+      </div>
+
+      {/* Messages */}
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-3 py-3">
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+          >
+            {m.role === "bot" && (
+              <div
+                className="mr-2 mt-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full"
+                style={{ background: "#0d08d2" }}
+              >
+                <Bot size={12} className="text-white" />
+              </div>
+            )}
+            <div
+              className="max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed"
+              style={{
+                background: m.role === "user" ? "#0d08d2" : "#e7e6fa",
+                color: m.role === "user" ? "white" : "#111827",
+              }}
+            >
+              {m.text}
+            </div>
+          </div>
+        ))}
+        {typing && (
+          <div className="flex justify-start">
+            <div
+              className="mr-2 mt-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full"
+              style={{ background: "#0d08d2" }}
+            >
+              <Bot size={12} className="text-white" />
+            </div>
+            <div
+              className="rounded-lg px-3 py-2 text-sm"
+              style={{ background: "#e7e6fa", color: "#6b7280" }}
+            >
+              Thinking…
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div
+        className="flex flex-shrink-0 items-center gap-2 border-t p-3"
+        style={{ borderColor: "#e7e6fa" }}
+      >
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+          placeholder="Ask about the project…"
+          disabled={typing}
+          className="flex-1 rounded-md border px-3 py-1.5 text-sm outline-none focus:border-[#0d08d2] disabled:opacity-50"
+          style={{ borderColor: "#e7e6fa" }}
+        />
+        <button
+          onClick={handleSend}
+          disabled={typing || !input.trim()}
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-white transition disabled:opacity-40"
+          style={{ background: "#0d08d2" }}
+        >
+          <Send size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
