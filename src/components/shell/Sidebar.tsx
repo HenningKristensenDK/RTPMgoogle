@@ -1,6 +1,33 @@
 import { NavLink } from "react-router-dom";
-import { LayoutGrid, Users, ShieldAlert } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  ShieldAlert,
+  LayoutDashboard,
+  Clock,
+  FileText,
+  Mail,
+  ClipboardCheck,
+  AlertTriangle,
+  BadgeCheck,
+  GitPullRequest,
+  Wallet,
+  Users,
+} from "lucide-react";
 import { useShellStore } from "../../store/shellStore";
+
+const NAV: { to: string; end?: boolean; Icon: LucideIcon; label: string }[] = [
+  { to: "/",                  end: true, Icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/time-log",                     Icon: Clock,           label: "Time Log" },
+  { to: "/documents",                    Icon: FileText,        label: "Documents" },
+  { to: "/correspondence",               Icon: Mail,            label: "Correspondence" },
+  { to: "/site-inspection",              Icon: ClipboardCheck,  label: "Site Inspection" },
+  { to: "/ncr",                          Icon: AlertTriangle,   label: "Nonconformance (NCR)" },
+  { to: "/risks",                        Icon: ShieldAlert,     label: "Risk & Opportunities" },
+  { to: "/permit-compliance",            Icon: BadgeCheck,      label: "Permit & Compliance" },
+  { to: "/change-management",            Icon: GitPullRequest,  label: "Change Management" },
+  { to: "/project-economics",            Icon: Wallet,          label: "Project Economics" },
+  { to: "/roles",                        Icon: Users,           label: "Roles & Responsibility" },
+];
 
 export default function Sidebar() {
   const mode = useShellStore((s) => s.mode);
@@ -15,9 +42,11 @@ export default function Sidebar() {
         minHeight: 0,
       }}
     >
-      {/* Logo */}
+      {/* Brand mark */}
       <div
-        className={`flex items-center gap-2.5 px-3 py-4 ${collapsed ? "justify-center" : ""}`}
+        className={`flex flex-shrink-0 items-center gap-2.5 border-b border-white/10 px-3 py-3.5 ${
+          collapsed ? "justify-center" : ""
+        }`}
       >
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-white/15">
           <ShieldAlert size={16} className="text-white" />
@@ -28,27 +57,25 @@ export default function Sidebar() {
               className="text-sm font-bold leading-tight text-white"
               style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
             >
-              Risk Management Agent
+              Viking Project
             </div>
-            <div className="text-[10px] text-white/50">Construction risks</div>
+            <div className="text-[10px] text-white/50">RTPM Platform</div>
           </div>
         )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 px-2">
-        <SideLink
-          to="/"
-          end
-          icon={<LayoutGrid size={17} />}
-          label="Dashboard"
-          collapsed={collapsed}
-        />
-        <SideLink
-          to="/roles"
-          icon={<Users size={17} />}
-          label="Roles & Responsibility"
-          collapsed={collapsed}
-        />
+      {/* Navigation */}
+      <nav className="scroll-thin flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2">
+        {NAV.map(({ to, end, Icon, label }) => (
+          <SideLink
+            key={to}
+            to={to}
+            end={end}
+            icon={<Icon size={17} />}
+            label={label}
+            collapsed={collapsed}
+          />
+        ))}
       </nav>
     </aside>
   );
@@ -83,7 +110,7 @@ function SideLink({
       }
     >
       {icon}
-      {!collapsed && <span>{label}</span>}
+      {!collapsed && <span className="truncate">{label}</span>}
     </NavLink>
   );
 }
