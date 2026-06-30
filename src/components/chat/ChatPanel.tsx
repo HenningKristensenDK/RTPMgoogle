@@ -119,8 +119,8 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
       <div
         className="flex items-center justify-between border-b px-4 py-3"
         style={{
-          borderColor: "#E5E7EB",
-          borderTop: `3px solid ${isAgent ? "#F59E0B" : "#4F46E5"}`,
+          borderColor: "#e6e6f0",
+          borderTop: `3px solid ${isAgent ? "#ff8b00" : "#0d08d2"}`,
         }}
       >
         <div className="flex items-center gap-2">
@@ -131,7 +131,7 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
           )}
           <span
             className="text-sm font-bold"
-            style={{ color: isAgent ? "#B45309" : "#4F46E5" }}
+            style={{ color: isAgent ? "#cc5500" : "#0d08d2" }}
           >
             {isAgent ? "Risk Management Agent" : `${risk.riskId} Chat Log`}
           </span>

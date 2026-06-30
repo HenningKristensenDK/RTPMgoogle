@@ -1,14 +1,13 @@
 import { NavLink } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import {
-  ShieldAlert,
-  Plus,
   LayoutDashboard,
   Clock,
   FileText,
   Mail,
   ClipboardCheck,
   AlertTriangle,
+  ShieldAlert,
   BadgeCheck,
   GitPullRequest,
   Wallet,
@@ -49,21 +48,14 @@ export default function Sidebar() {
           collapsed ? "justify-center" : ""
         }`}
       >
-        <div
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center"
-          style={{
-            border: "2px solid rgba(255,255,255,0.85)",
-            borderRadius: 4,
-          }}
-        >
-          <Plus size={15} className="text-white" strokeWidth={2.5} />
-        </div>
+        <img
+          src="/rtpm-icon-white.svg"
+          alt="RTPM"
+          className="h-8 w-8 flex-shrink-0"
+        />
         {!collapsed && (
           <div>
-            <div
-              className="text-sm font-bold leading-tight text-white"
-              style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-            >
+            <div className="text-sm font-semibold leading-tight text-white">
               Viking Project
             </div>
             <div className="text-[10px] text-white/50">RTPM Platform</div>
@@ -107,7 +99,7 @@ function SideLink({
       end={end}
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
-        `flex items-center gap-3 rounded py-2 text-sm font-medium transition-colors ${
+        `flex items-center gap-3 rounded-btn py-2 text-sm font-medium transition-colors ${
           collapsed ? "justify-center px-0" : "px-2"
         } ${
           isActive

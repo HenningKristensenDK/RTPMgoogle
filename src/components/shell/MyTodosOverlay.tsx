@@ -57,11 +57,8 @@ export default function MyTodosOverlay({ onClose }: Props) {
           style={{ background: "#0d08d2" }}
         >
           <div>
-            <span
-              className="text-xl font-bold tracking-wide text-white"
-              style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-            >
-              My Todos
+            <span className="text-xl font-semibold tracking-wide text-white">
+              My todos
             </span>
             <span className="ml-2 rounded-full bg-white/20 px-2 py-0.5 text-[11px] text-white/80">
               {open.length} open
@@ -106,20 +103,20 @@ export default function MyTodosOverlay({ onClose }: Props) {
         {/* Add */}
         <div
           className="flex flex-shrink-0 items-center gap-2 border-t p-4"
-          style={{ borderColor: "#e7e6fa" }}
+          style={{ borderColor: "#e6e6f0" }}
         >
           <input
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addTodo()}
             placeholder="Add a todo…"
-            className="flex-1 rounded-md border px-3 py-2 text-sm outline-none focus:border-[#0d08d2]"
-            style={{ borderColor: "#e7e6fa" }}
+            className="flex-1 rounded-input border px-3 py-2 text-sm outline-none focus:border-indigo"
+            style={{ borderColor: "#e6e6f0" }}
           />
           <button
             onClick={addTodo}
             disabled={!newText.trim()}
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-white transition disabled:opacity-40"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-btn text-white transition disabled:opacity-40"
             style={{ background: "#0d08d2" }}
           >
             <Plus size={15} />
@@ -140,7 +137,7 @@ function TodoRow({
   onRemove: (id: number) => void;
 }) {
   return (
-    <div className="group flex items-start gap-3 rounded-lg px-2 py-2.5 hover:bg-gray-50">
+    <div className="group flex items-start gap-3 rounded-btn px-2 py-2.5 hover:bg-fog">
       <button
         onClick={() => onToggle(todo.id)}
         className="mt-0.5 flex-shrink-0 transition"

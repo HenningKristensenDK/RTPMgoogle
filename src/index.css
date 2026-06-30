@@ -4,7 +4,7 @@
 
 :root {
   font-family: "Inter", system-ui, sans-serif;
-  color: #111827;
+  color: #15162b;
 }
 
 html,
@@ -15,7 +15,7 @@ body,
 }
 
 body {
-  background: #f3f4f6;
+  background: #f7f7fb;
 }
 
 /* Thin, unobtrusive scrollbars for chat + drawers */

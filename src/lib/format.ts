@@ -68,7 +68,7 @@ export const STATUS_LABEL: Record<RiskStatus, string> = {
 export function orgAccent(org: OrgType | string): string {
   switch (org) {
     case "Owner":
-      return "#4F46E5"; // indigo
+      return "#0d08d2"; // brand indigo
     case "Main Contractor":
     case "Subcontractor":
       return "#F59E0B"; // orange/amber

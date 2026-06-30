@@ -32,7 +32,7 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                       className="h-[2px] w-full"
                       style={{
                         background:
-                          idx <= currentIdx ? "#10B981" : "transparent",
+                          idx <= currentIdx ? "#28a745" : "transparent",
                         borderTop:
                           idx <= currentIdx
                             ? "none"
@@ -51,7 +51,7 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                     !isDone ? "cursor-pointer hover:scale-110" : "cursor-default"
                   }`}
                   style={{
-                    background: isDone ? "#10B981" : "#FFFFFF",
+                    background: isDone ? "#28a745" : "#FFFFFF",
                     border: isDone ? "none" : "2px solid #D1D5DB",
                   }}
                 >
@@ -68,7 +68,7 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                     <div
                       className="h-[2px] w-full"
                       style={{
-                        background: lineSolid ? "#10B981" : "transparent",
+                        background: lineSolid ? "#28a745" : "transparent",
                         borderTop: lineSolid
                           ? "none"
                           : "2px dashed #D1D5DB",
@@ -80,7 +80,7 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
 
               <span
                 className="mt-2 text-[11px] font-semibold uppercase tracking-[0.05em]"
-                style={{ color: isDone ? "#10B981" : "#9CA3AF" }}
+                style={{ color: isDone ? "#28a745" : "#9CA3AF" }}
               >
                 {STATUS_LABEL[status]}
               </span>

@@ -60,7 +60,7 @@ export default function RiskPanel({
                   : "border border-bordergray bg-white text-gray-600 hover:bg-gray-50"
               }`}
             >
-              <ClipboardList size={15} /> Task Details
+              <ClipboardList size={15} /> Task details
             </button>
             <button
               onClick={() => setTab("attachments")}

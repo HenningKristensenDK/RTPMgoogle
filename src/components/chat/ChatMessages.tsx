@@ -86,13 +86,13 @@ export default function ChatMessages({
                   style={
                     isAgent
                       ? {
-                          background: "#FFFBEB",
-                          color: "#1F2937",
-                          borderLeft: "3px solid #F59E0B",
+                          background: "#fff8f0",
+                          color: "#15162b",
+                          borderLeft: "3px solid #ff8b00",
                         }
                       : isMine
-                      ? { background: "#4F46E5", color: "#fff" }
-                      : { background: "#F3F4F6", color: "#1F2937" }
+                      ? { background: "#0d08d2", color: "#fff" }
+                      : { background: "#f7f7fb", color: "#15162b" }
                   }
                 >
                   {isAgent ? (

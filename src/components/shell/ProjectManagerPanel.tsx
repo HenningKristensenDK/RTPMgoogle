@@ -91,7 +91,7 @@ export default function ProjectManagerPanel() {
   return (
     <div
       className="flex w-80 flex-shrink-0 flex-col border-l"
-      style={{ borderColor: "#e7e6fa", background: "#f8f8ff" }}
+      style={{ borderColor: "#e6e6f0", background: "#f7f7fb" }}
     >
       {/* Panel header */}
       <div
@@ -99,10 +99,7 @@ export default function ProjectManagerPanel() {
         style={{ background: "#0d08d2" }}
       >
         <Bot size={17} className="text-white" />
-        <span
-          className="text-base font-semibold tracking-wide text-white"
-          style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-        >
+        <span className="text-sm font-semibold tracking-wide text-white">
           Project Manager Agent
         </span>
         <span className="ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[10px] text-white/80">
@@ -129,7 +126,7 @@ export default function ProjectManagerPanel() {
               className="max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed"
               style={{
                 background: m.role === "user" ? "#0d08d2" : "#e7e6fa",
-                color: m.role === "user" ? "white" : "#111827",
+                color: m.role === "user" ? "white" : "#15162b",
               }}
             >
               {m.role === "bot" ? (
@@ -150,7 +147,7 @@ export default function ProjectManagerPanel() {
             </div>
             <div
               className="rounded-lg px-3 py-2 text-sm"
-              style={{ background: "#e7e6fa", color: "#6b7280" }}
+              style={{ background: "#e7e6fa", color: "#595b78" }}
             >
               Thinking…
             </div>
@@ -161,8 +158,8 @@ export default function ProjectManagerPanel() {
 
       {/* Input */}
       <div
-        className="flex flex-shrink-0 items-center gap-2 border-t p-3"
-        style={{ borderColor: "#e7e6fa" }}
+        className="flex flex-shrink-0 items-end gap-2 border-t p-3"
+        style={{ borderColor: "#e6e6f0" }}
       >
         <textarea
           ref={inputRef}
@@ -177,13 +174,13 @@ export default function ProjectManagerPanel() {
           placeholder="Ask about the project…"
           disabled={typing}
           rows={2}
-          className="scroll-thin flex-1 resize-none rounded-md border px-3 py-1.5 text-sm outline-none focus:border-[#0d08d2] disabled:opacity-50"
-          style={{ borderColor: "#e7e6fa", minHeight: "2.5rem", maxHeight: "9rem" }}
+          className="scroll-thin flex-1 resize-none rounded-input border px-3 py-1.5 text-sm outline-none focus:border-indigo disabled:opacity-50"
+          style={{ borderColor: "#e6e6f0", minHeight: "2.5rem", maxHeight: "9rem" }}
         />
         <button
           onClick={handleSend}
           disabled={typing || !input.trim()}
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-white transition disabled:opacity-40"
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-btn text-white transition disabled:opacity-40"
           style={{ background: "#0d08d2" }}
         >
           <Send size={14} />

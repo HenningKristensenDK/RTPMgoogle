@@ -6,7 +6,7 @@ interface Props {
   isCorrespondence?: boolean;
 }
 
-const KPI_LABELS = ["Total", "Open", "My Items", "Overdue"];
+const KPI_LABELS = ["Total", "Open", "My items", "Overdue"];
 
 const CORRESPONDENCE_TYPES = [
   "RFI",
@@ -30,13 +30,10 @@ export default function ModulePlaceholder({ moduleName, icon: Icon, isCorrespond
           <Icon size={20} style={{ color: "#0d08d2" }} />
         </div>
         <div>
-          <h1
-            className="text-lg font-bold leading-tight text-ink"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-          >
+          <h1 className="text-base font-semibold leading-tight text-ink">
             {moduleName}
           </h1>
-          <p className="text-xs text-gray-400">Module overview</p>
+          <p className="text-xs" style={{ color: "#8a8ca6" }}>Module overview</p>
         </div>
       </div>
 
@@ -44,14 +41,15 @@ export default function ModulePlaceholder({ moduleName, icon: Icon, isCorrespond
       <div className="border-b border-bordergray bg-white px-6 py-5">
         {isCorrespondence && (
           <div className="mb-4">
-            <p className="mb-3 text-xs leading-relaxed text-gray-500">
+            <p className="mb-3 text-xs leading-relaxed" style={{ color: "#595b78" }}>
               Correspondence is a cross-cutting view of all communication threads across modules, filtered by type.
             </p>
             <div className="flex flex-wrap gap-2">
               {CORRESPONDENCE_TYPES.map((type) => (
                 <span
                   key={type}
-                  className="rounded-full border border-bordergray bg-fog px-3 py-1 text-xs font-medium text-gray-500"
+                  className="rounded-full border border-bordergray bg-fog px-3 py-1 text-xs font-medium"
+                  style={{ color: "#595b78" }}
                 >
                   {type}
                 </span>
@@ -65,13 +63,10 @@ export default function ModulePlaceholder({ moduleName, icon: Icon, isCorrespond
               key={label}
               className="rounded-card border border-bordergray bg-fog p-4 shadow-card"
             >
-              <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+              <p className="mb-1 text-[11px] font-medium uppercase tracking-wide" style={{ color: "#8a8ca6" }}>
                 {label}
               </p>
-              <p
-                className="text-2xl font-bold"
-                style={{ fontFamily: "'Barlow Condensed', sans-serif", color: "#0d08d2" }}
-              >
+              <p className="text-2xl font-bold tabular-nums" style={{ color: "#0d08d2" }}>
                 —
               </p>
             </div>
@@ -88,16 +83,10 @@ export default function ModulePlaceholder({ moduleName, icon: Icon, isCorrespond
           >
             <Icon size={30} style={{ color: "#0d08d2" }} />
           </div>
-          <h2
-            className="mb-2 text-xl font-bold"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif", color: "#0d08d2" }}
-          >
-            {moduleName} module — coming soon
+          <h2 className="mb-2 text-lg font-semibold" style={{ color: "#0d08d2" }}>
+            {moduleName} — coming soon
           </h2>
-          <p
-            className="text-sm text-gray-400"
-            style={{ fontFamily: "'Montserrat', sans-serif" }}
-          >
+          <p className="text-sm" style={{ color: "#8a8ca6" }}>
             Same layout pattern as Risk: KPIs on top, filterable list below.
           </p>
         </div>

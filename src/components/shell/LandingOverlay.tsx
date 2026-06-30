@@ -36,16 +36,13 @@ export default function LandingOverlay() {
         <h1
           className="mb-1 text-3xl font-bold tracking-wide"
           style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
+            fontFamily: "'Barlow Semi Condensed', sans-serif",
             color: "#070474",
           }}
         >
           Project Manager Agent
         </h1>
-        <p
-          className="mb-2 text-sm font-medium tracking-wide"
-          style={{ color: "#0d08d2", fontFamily: "'Montserrat', sans-serif" }}
-        >
+        <p className="mb-2 text-sm font-medium tracking-wide" style={{ color: "#0d08d2" }}>
           Construction Risk Management
         </p>
         <p className="mb-8 text-center text-sm leading-relaxed text-gray-500">
@@ -64,10 +61,7 @@ export default function LandingOverlay() {
             { label: "RACI Matrix", desc: "Roles clarity" },
           ].map((item) => (
             <div key={item.label} className="flex flex-1 flex-col items-center px-2">
-              <span
-                className="text-sm font-bold"
-                style={{ color: "#0d08d2", fontFamily: "'Barlow Condensed', sans-serif" }}
-              >
+              <span className="text-sm font-semibold" style={{ color: "#0d08d2" }}>
                 {item.label}
               </span>
               <span className="text-[11px] text-gray-500">{item.desc}</span>
@@ -78,12 +72,9 @@ export default function LandingOverlay() {
         <button
           onClick={enter}
           className="flex items-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 active:scale-95"
-          style={{
-            background: "#0d08d2",
-            fontFamily: "'Montserrat', sans-serif",
-          }}
+          style={{ background: "#0d08d2" }}
         >
-          Open Dashboard <ArrowRight size={17} />
+          Open dashboard <ArrowRight size={17} />
         </button>
 
         <p className="mt-5 text-[11px] text-gray-400">

@@ -28,8 +28,7 @@ export default function RiskHeader({ risk, onTitleChange }: Props) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => title !== risk.title && onTitleChange(title)}
-          className="min-w-0 flex-1 border-b border-transparent bg-transparent text-[22px] font-bold text-ink outline-none focus:border-[#0d08d2]"
-          style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+          className="min-w-0 flex-1 border-b border-transparent bg-transparent text-[22px] font-semibold text-ink outline-none focus:border-indigo"
         />
         <span
           className="mt-1 shrink-0 rounded-full px-2.5 py-0.5 text-[12px] font-bold"
@@ -41,7 +40,7 @@ export default function RiskHeader({ risk, onTitleChange }: Props) {
 
       {/* Audit line + Next Step Owner */}
       <div className="mt-1.5 flex items-center justify-between gap-4">
-        <div className="text-[12px] text-gray-500">
+        <div className="text-[12px]" style={{ color: "#595b78" }}>
           Created {formatDateYMD(risk.createdAt)} · Last edited{" "}
           {formatDateYMD(risk.updatedAt)}
         </div>

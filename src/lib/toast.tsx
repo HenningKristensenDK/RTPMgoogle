@@ -39,9 +39,9 @@ const ICONS = {
 };
 
 const ACCENT = {
-  success: "#10B981",
-  error: "#EF4444",
-  info: "#4F46E5",
+  success: "#28a745",
+  error: "#e63946",
+  info: "#0d08d2",
 };
 
 export function ToastHost() {

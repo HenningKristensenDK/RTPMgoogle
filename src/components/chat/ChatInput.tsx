@@ -54,7 +54,7 @@ export default function ChatInput({ mode, disabled, members, onSend }: Props) {
     setMentionOpen(false);
   }
 
-  const accent = mode === "agent" ? "#F59E0B" : "#4F46E5";
+  const accent = mode === "agent" ? "#ff8b00" : "#0d08d2";
 
   return (
     <div className="relative border-t border-bordergray p-3">

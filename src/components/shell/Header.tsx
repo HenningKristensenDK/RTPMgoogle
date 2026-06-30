@@ -1,4 +1,4 @@
-import { Plus, CheckSquare, Maximize2, Minimize2, LogOut } from "lucide-react";
+import { CheckSquare, Maximize2, Minimize2, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useShellStore } from "../../store/shellStore";
 import { useAuthStore, currentIdentity } from "../../store/authStore";
@@ -17,32 +17,22 @@ export default function Header({ onTodosOpen }: Props) {
 
   return (
     <header
-      className="flex h-12 flex-shrink-0 items-center justify-between px-4"
-      style={{ background: "#090693" }}
+      className="flex h-12 flex-shrink-0 items-center justify-between border-b px-4"
+      style={{ background: "#ffffff", borderColor: "#e6e6f0" }}
     >
-      <div className="flex items-center gap-2.5">
-        <div
-          className="flex h-7 w-7 flex-shrink-0 items-center justify-center"
-          style={{
-            border: "2px solid rgba(255,255,255,0.85)",
-            borderRadius: 4,
-          }}
-        >
-          <Plus size={13} className="text-white" strokeWidth={2.5} />
-        </div>
-        <span
-          className="text-base font-semibold tracking-wide text-white"
-          style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-        >
-          Viking Project
-        </span>
-      </div>
+      <span
+        className="text-sm font-semibold tracking-wide"
+        style={{ color: "#15162b" }}
+      >
+        Viking Project
+      </span>
 
       <div className="flex items-center gap-1">
         <button
           onClick={onTodosOpen}
           title="My Todos"
-          className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+          className="flex items-center gap-1.5 rounded-btn px-2.5 py-1.5 text-xs font-medium transition hover:bg-fog"
+          style={{ color: "#595b78" }}
         >
           <CheckSquare size={14} /> My Todos
         </button>
@@ -51,7 +41,8 @@ export default function Header({ onTodosOpen }: Props) {
           <button
             onClick={toggleFocus}
             title={mode === "focus" ? "Expand sidebar" : "Focus mode"}
-            className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+            className="flex items-center gap-1.5 rounded-btn px-2.5 py-1.5 text-xs font-medium transition hover:bg-fog"
+            style={{ color: "#595b78" }}
           >
             {mode === "focus" ? (
               <><Maximize2 size={14} /> Expand</>
@@ -61,18 +52,22 @@ export default function Header({ onTodosOpen }: Props) {
           </button>
         )}
 
-        <div className="ml-2 flex items-center gap-2 border-l border-white/20 pl-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-[11px] font-semibold text-white">
+        <div className="ml-2 flex items-center gap-2 border-l pl-3" style={{ borderColor: "#e6e6f0" }}>
+          <div
+            className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+            style={{ background: "#0d08d2" }}
+          >
             {initials(id.name)}
           </div>
-          <span className="text-xs text-white/70">{id.name}</span>
+          <span className="text-xs" style={{ color: "#595b78" }}>{id.name}</span>
           <button
             title="Sign out"
             onClick={async () => {
               await signOut();
               navigate("/");
             }}
-            className="text-white/50 transition hover:text-white"
+            className="transition hover:text-ink"
+            style={{ color: "#8a8ca6" }}
           >
             <LogOut size={14} />
           </button>
