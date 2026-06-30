@@ -13,7 +13,7 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
   const currentIdx = RISK_STATUSES.indexOf(risk.status);
 
   return (
-    <div className="mb-3 rounded-card bg-white px-6 pb-2 pt-4 shadow-card">
+    <div className="mb-3 rounded-card bg-white px-6 pb-12 pt-4 shadow-card">
       <div className="flex items-start">
         {RISK_STATUSES.map((status, idx) => {
           const isCompleted = idx < currentIdx;
@@ -47,7 +47,7 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                   disabled={isDone}
                   onClick={() => !isDone && setPending(status)}
                   title={isDone ? STATUS_LABEL[status] : `Set status to ${STATUS_LABEL[status]}`}
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-transform ${
+                  className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full transition-transform ${
                     !isDone ? "cursor-pointer hover:scale-110" : "cursor-default"
                   }`}
                   style={{
@@ -56,9 +56,9 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                   }}
                 >
                   {isDone ? (
-                    <Check size={15} strokeWidth={3} color="#fff" />
+                    <Check size={10} strokeWidth={3} color="#fff" />
                   ) : (
-                    <span className="h-2 w-2 rounded-full bg-gray-300" />
+                    <span className="h-1 w-1 rounded-full bg-gray-300" />
                   )}
                 </button>
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ClipboardList, Paperclip, MessageSquare } from "lucide-react";
+import { ClipboardList, Paperclip } from "lucide-react";
 import type { Risk, RiskStatus, RoleResponsibility } from "../../types";
 import { useChatStore } from "../../store/chatStore";
 import RiskHeader from "./RiskHeader";
@@ -29,13 +29,7 @@ export default function RiskPanel({
   onChangeStatus,
 }: Props) {
   const [tab, setTab] = useState<Tab>("details");
-  const { open, setOpen, toggleOpen } = useChatStore();
-
-  function assign(roleId: string) {
-    if (!risk.workstreamIds.includes(roleId)) {
-      onPatch({ workstreamIds: [...risk.workstreamIds, roleId] });
-    }
-  }
+  const { open, toggleOpen } = useChatStore();
 
   const tabBase =
     "flex items-center gap-2 rounded-btn px-3 py-1.5 text-sm font-medium transition-colors";
@@ -49,25 +43,10 @@ export default function RiskPanel({
         }`}
       >
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
-          <div className="flex items-start gap-3">
-            <div className="flex-1">
-              <RiskHeader
-                risk={risk}
-                roles={roles}
-                onTitleChange={(title) => onPatch({ title })}
-                onAssign={assign}
-              />
-            </div>
-            {!open && (
-              <button
-                onClick={() => setOpen(true)}
-                title="Open chat"
-                className="mt-1 flex h-10 w-10 items-center justify-center rounded-card bg-white text-indigo shadow-card hover:bg-indigo/5"
-              >
-                <MessageSquare size={18} />
-              </button>
-            )}
-          </div>
+          <RiskHeader
+            risk={risk}
+            onTitleChange={(title) => onPatch({ title })}
+          />
 
           <RiskStatusBar risk={risk} onChangeStatus={onChangeStatus} />
 
@@ -81,7 +60,7 @@ export default function RiskPanel({
                   : "border border-bordergray bg-white text-gray-600 hover:bg-gray-50"
               }`}
             >
-              <ClipboardList size={15} /> Opgaveoplysninger
+              <ClipboardList size={15} /> Task Details
             </button>
             <button
               onClick={() => setTab("attachments")}
@@ -91,7 +70,7 @@ export default function RiskPanel({
                   : "border border-bordergray bg-white text-gray-600 hover:bg-gray-50"
               }`}
             >
-              <Paperclip size={15} /> Vedhæftede filer (
+              <Paperclip size={15} /> Attachments (
               {risk.attachments?.length || 0})
             </button>
           </div>

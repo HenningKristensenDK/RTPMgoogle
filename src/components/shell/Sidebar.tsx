@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import {
   ShieldAlert,
+  Plus,
   LayoutDashboard,
   Clock,
   FileText,
@@ -48,8 +49,14 @@ export default function Sidebar() {
           collapsed ? "justify-center" : ""
         }`}
       >
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-white/15">
-          <ShieldAlert size={16} className="text-white" />
+        <div
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center"
+          style={{
+            border: "2px solid rgba(255,255,255,0.85)",
+            borderRadius: 4,
+          }}
+        >
+          <Plus size={15} className="text-white" strokeWidth={2.5} />
         </div>
         {!collapsed && (
           <div>

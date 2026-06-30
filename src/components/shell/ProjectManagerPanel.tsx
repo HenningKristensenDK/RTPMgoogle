@@ -22,6 +22,20 @@ export default function ProjectManagerPanel() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  function resizeInput() {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 144)}px`;
+  }
+
+  useEffect(() => {
+    if (!input && inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
+  }, [input]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -150,14 +164,21 @@ export default function ProjectManagerPanel() {
         className="flex flex-shrink-0 items-center gap-2 border-t p-3"
         style={{ borderColor: "#e7e6fa" }}
       >
-        <input
+        <textarea
+          ref={inputRef}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+          onChange={(e) => { setInput(e.target.value); resizeInput(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
           placeholder="Ask about the project…"
           disabled={typing}
-          className="flex-1 rounded-md border px-3 py-1.5 text-sm outline-none focus:border-[#0d08d2] disabled:opacity-50"
-          style={{ borderColor: "#e7e6fa" }}
+          rows={2}
+          className="scroll-thin flex-1 resize-none rounded-md border px-3 py-1.5 text-sm outline-none focus:border-[#0d08d2] disabled:opacity-50"
+          style={{ borderColor: "#e7e6fa", minHeight: "2.5rem", maxHeight: "9rem" }}
         />
         <button
           onClick={handleSend}

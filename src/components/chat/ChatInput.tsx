@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
 import type { ChatMode, RoleResponsibility } from "../../types";
 
@@ -12,6 +12,20 @@ interface Props {
 export default function ChatInput({ mode, disabled, members, onSend }: Props) {
   const [text, setText] = useState("");
   const [mentionOpen, setMentionOpen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  function resize() {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 144)}px`;
+  }
+
+  useEffect(() => {
+    if (!text && textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  }, [text]);
 
   // Distinct mention candidates by person name.
   const mentionNames = [...new Set(members.map((m) => m.person.name))];
@@ -59,9 +73,10 @@ export default function ChatInput({ mode, disabled, members, onSend }: Props) {
       )}
       <div className="flex items-end gap-2">
         <textarea
+          ref={textareaRef}
           value={text}
           disabled={disabled}
-          onChange={(e) => handleChange(e.target.value)}
+          onChange={(e) => { handleChange(e.target.value); resize(); }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -70,11 +85,12 @@ export default function ChatInput({ mode, disabled, members, onSend }: Props) {
           }}
           placeholder={
             mode === "agent"
-              ? "Ask Risk Manager…"
+              ? "Ask Risk Management Agent…"
               : "Message the team…  (@ to mention)"
           }
-          rows={1}
-          className="scroll-thin max-h-28 flex-1 resize-none rounded-input border border-bordergray px-3 py-2 text-sm outline-none focus:border-indigo focus:ring-1 focus:ring-indigo disabled:bg-gray-50"
+          rows={2}
+          className="scroll-thin flex-1 resize-none rounded-input border border-bordergray px-3 py-2 text-sm outline-none focus:border-indigo focus:ring-1 focus:ring-indigo disabled:bg-gray-50"
+          style={{ minHeight: "2.5rem", maxHeight: "9rem" }}
         />
         <button
           onClick={submit}

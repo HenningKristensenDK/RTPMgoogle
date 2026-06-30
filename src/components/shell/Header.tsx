@@ -1,4 +1,4 @@
-import { ShieldAlert, CheckSquare, Maximize2, Minimize2, LogOut } from "lucide-react";
+import { Plus, CheckSquare, Maximize2, Minimize2, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useShellStore } from "../../store/shellStore";
 import { useAuthStore, currentIdentity } from "../../store/authStore";
@@ -21,7 +21,15 @@ export default function Header({ onTodosOpen }: Props) {
       style={{ background: "#090693" }}
     >
       <div className="flex items-center gap-2.5">
-        <ShieldAlert size={20} className="text-white opacity-90" />
+        <div
+          className="flex h-7 w-7 flex-shrink-0 items-center justify-center"
+          style={{
+            border: "2px solid rgba(255,255,255,0.85)",
+            borderRadius: 4,
+          }}
+        >
+          <Plus size={13} className="text-white" strokeWidth={2.5} />
+        </div>
         <span
           className="text-base font-semibold tracking-wide text-white"
           style={{ fontFamily: "'Barlow Condensed', sans-serif" }}

@@ -21,6 +21,15 @@ export function formatDateInput(ts: Timestamp | null | undefined): string {
   return d.toISOString().slice(0, 10);
 }
 
+export function formatDateYMD(ts: Timestamp | null | undefined): string {
+  const d = tsToDate(ts);
+  if (!d) return "—";
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const dy = String(d.getDate()).padStart(2, "0");
+  return `${y}.${mo}.${dy}`;
+}
+
 export function formatEdited(ts: Timestamp | null | undefined): string {
   const d = tsToDate(ts);
   if (!d) return "just now";
