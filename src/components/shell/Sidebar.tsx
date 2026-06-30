@@ -28,7 +28,7 @@ export default function Sidebar() {
               className="text-sm font-bold leading-tight text-white"
               style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
             >
-              Risk Manager
+              Risk Management Agent
             </div>
             <div className="text-[10px] text-white/50">Construction risks</div>
           </div>

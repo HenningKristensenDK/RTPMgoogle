@@ -3,7 +3,7 @@
 
 export const SEED_PROJECT = {
   id: "datacenter-vejle-phase-1",
-  name: "DataCenter Vejle — Phase 1",
+  name: "Viking Project",
   description:
     "Greenfield hyperscale data center build in Vejle, Denmark. Phase 1 covers civil works, MEP infrastructure and IT/data fit-out.",
 };
@@ -29,7 +29,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "rr-001",
     workstream: "Civil Works",
     organization: "Main Contractor",
-    organizationName: "MT Højgaard",
+    organizationName: "MT Hï¿½jgaard",
     role: "Site Manager",
     person: { name: "Jens Larsen", email: "jens.larsen@mth.dk" },
     type: "responsible",
@@ -38,7 +38,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "rr-002",
     workstream: "MEP Infrastructure",
     organization: "Main Contractor",
-    organizationName: "MT Højgaard",
+    organizationName: "MT Hï¿½jgaard",
     role: "MEP Lead",
     person: { name: "Peter Koch", email: "peter.koch@mth.dk" },
     type: "responsible",
@@ -67,7 +67,7 @@ export const SEED_ROLES: SeedRole[] = [
     organization: "Authority",
     organizationName: "Energinet",
     role: "Grid Connection Officer",
-    person: { name: "Mette Sørensen", email: "mette.sorensen@energinet.dk" },
+    person: { name: "Mette Sï¿½rensen", email: "mette.sorensen@energinet.dk" },
     type: "informed",
   },
 ];
@@ -131,7 +131,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-004",
-    title: "HV Transformer delivery — 110 week lead time",
+    title: "HV Transformer delivery ï¿½ 110 week lead time",
     status: "assessed",
     priority: "critical",
     recurrence: "weekly",
@@ -146,12 +146,12 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-005",
-    title: "MV Switchgear FAT failure — NCR raised",
+    title: "MV Switchgear FAT failure ï¿½ NCR raised",
     status: "mitigated",
     priority: "high",
     recurrence: "weekly",
     workstreamIds: ["rr-002"],
-    notes: "Protection relay injection test failed on first witness. NCR raised. Cure period active — 18 days remaining before contractor installation window opens.",
+    notes: "Protection relay injection test failed on first witness. NCR raised. Cure period active ï¿½ 18 days remaining before contractor installation window opens.",
     checklist: [
       { id: "c1", text: "NCR resolution plan accepted by vendor", completed: true },
       { id: "c2", text: "Re-test scheduled with QM witness", completed: false },
@@ -175,7 +175,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-007",
-    title: "MEP / OFCI interface scope gap — HV cable termination",
+    title: "MEP / OFCI interface scope gap ï¿½ HV cable termination",
     status: "identified",
     priority: "medium",
     recurrence: "none",
@@ -189,7 +189,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-008",
-    title: "Generator set delivery — port congestion Hamburg",
+    title: "Generator set delivery ï¿½ port congestion Hamburg",
     status: "assessed",
     priority: "medium",
     recurrence: "weekly",
@@ -203,7 +203,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-009",
-    title: "Level 4 commissioning sequence conflict — UPS delay",
+    title: "Level 4 commissioning sequence conflict ï¿½ UPS delay",
     status: "resolved",
     priority: "high",
     recurrence: "none",
@@ -231,7 +231,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-011",
-    title: "Building permit amendment required — data hall height increase",
+    title: "Building permit amendment required ï¿½ data hall height increase",
     status: "assessed",
     priority: "high",
     recurrence: "none",
@@ -245,7 +245,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-012",
-    title: "Chilled water plant delivery delay — custom manifolds",
+    title: "Chilled water plant delivery delay ï¿½ custom manifolds",
     status: "identified",
     priority: "high",
     recurrence: "weekly",
@@ -259,7 +259,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-013",
-    title: "IT infrastructure scope change — liquid cooling upgrade",
+    title: "IT infrastructure scope change ï¿½ liquid cooling upgrade",
     status: "assessed",
     priority: "medium",
     recurrence: "none",
@@ -288,7 +288,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-015",
-    title: "Crane access route — weight restriction on local road",
+    title: "Crane access route ï¿½ weight restriction on local road",
     status: "mitigated",
     priority: "low",
     recurrence: "none",
@@ -302,7 +302,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-016",
-    title: "BMS integration scope — contractor interface not defined",
+    title: "BMS integration scope ï¿½ contractor interface not defined",
     status: "identified",
     priority: "high",
     recurrence: "weekly",
@@ -316,12 +316,12 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-017",
-    title: "Concrete pour quality — cold weather risk",
+    title: "Concrete pour quality ï¿½ cold weather risk",
     status: "mitigated",
     priority: "medium",
     recurrence: "none",
     workstreamIds: ["rr-001", "rr-003"],
-    notes: "Foundation slab pour scheduled for January. Risk of concrete quality issues if temperature drops below -5°C. Cold weather concreting plan prepared and approved.",
+    notes: "Foundation slab pour scheduled for January. Risk of concrete quality issues if temperature drops below -5ï¿½C. Cold weather concreting plan prepared and approved.",
     checklist: [
       { id: "c1", text: "Cold weather concreting plan approved", completed: true },
       { id: "c2", text: "Heated enclosure procurement confirmed", completed: true },
@@ -331,7 +331,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-018",
-    title: "Substation land title — boundary dispute with adjacent owner",
+    title: "Substation land title ï¿½ boundary dispute with adjacent owner",
     status: "assessed",
     priority: "high",
     recurrence: "none",
@@ -346,12 +346,12 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-019",
-    title: "EIA environmental monitoring — protected species survey",
+    title: "EIA environmental monitoring ï¿½ protected species survey",
     status: "resolved",
     priority: "medium",
     recurrence: "none",
     workstreamIds: ["rr-001", "rr-004"],
-    notes: "Environmental Impact Assessment required protected species survey before ground clearance. Survey completed — no protected species found. Clearance to proceed issued.",
+    notes: "Environmental Impact Assessment required protected species survey before ground clearance. Survey completed ï¿½ no protected species found. Clearance to proceed issued.",
     checklist: [
       { id: "c1", text: "Protected species survey completed", completed: true },
       { id: "c2", text: "Environmental clearance issued", completed: true },
@@ -360,7 +360,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-020",
-    title: "Workforce HSE — contractor safety culture audit failed",
+    title: "Workforce HSE ï¿½ contractor safety culture audit failed",
     status: "assessed",
     priority: "high",
     recurrence: "weekly",

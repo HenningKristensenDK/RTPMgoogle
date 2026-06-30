@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 import { Bot, SmilePlus } from "lucide-react";
 import type { ChatMode, RiskMessage } from "../../types";
 import { formatTime, initials } from "../../lib/format";
@@ -31,7 +32,7 @@ export default function ChatMessages({
       {messages.length === 0 && !typing && (
         <div className="mt-8 text-center text-xs text-gray-400">
           {mode === "agent"
-            ? "Ask Risk Manager to analyze this risk, suggest mitigations, or score probability and impact."
+            ? "Ask Risk Management Agent to analyze this risk, suggest mitigations, or score probability and impact."
             : "No messages yet. Start the conversation with your team."}
         </div>
       )}
@@ -74,14 +75,14 @@ export default function ChatMessages({
                   }`}
                 >
                   <span className="text-[11px] font-semibold text-gray-700">
-                    {isAgent ? "Risk Manager" : m.authorName}
+                    {isAgent ? "Risk Management Agent" : m.authorName}
                   </span>
                   <span className="text-[10px] text-gray-400">
                     {formatTime(m.timestamp)}
                   </span>
                 </div>
                 <div
-                  className="mt-0.5 whitespace-pre-wrap rounded-lg px-3 py-2 text-[13px] leading-relaxed"
+                  className={`mt-0.5 rounded-lg px-3 py-2 text-[13px] leading-relaxed${!isAgent ? " whitespace-pre-wrap" : ""}`}
                   style={
                     isAgent
                       ? {
@@ -94,7 +95,11 @@ export default function ChatMessages({
                       : { background: "#F3F4F6", color: "#1F2937" }
                   }
                 >
-                  {m.content}
+                  {isAgent ? (
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                    </div>
+                  ) : m.content}
                 </div>
 
                 {/* Reactions (team chat only) */}

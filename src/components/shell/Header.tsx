@@ -1,4 +1,4 @@
-import { Bot, CheckSquare, Maximize2, Minimize2, LogOut } from "lucide-react";
+import { ShieldAlert, CheckSquare, Maximize2, Minimize2, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useShellStore } from "../../store/shellStore";
 import { useAuthStore, currentIdentity } from "../../store/authStore";
@@ -21,12 +21,12 @@ export default function Header({ onTodosOpen }: Props) {
       style={{ background: "#090693" }}
     >
       <div className="flex items-center gap-2.5">
-        <Bot size={20} className="text-white opacity-90" />
+        <ShieldAlert size={20} className="text-white opacity-90" />
         <span
           className="text-base font-semibold tracking-wide text-white"
           style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
         >
-          Risk &amp; Project Manager
+          Viking Project
         </span>
       </div>
 

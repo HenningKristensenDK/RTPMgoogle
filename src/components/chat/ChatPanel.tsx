@@ -46,7 +46,7 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
       riskId: risk.id,
       mode: next,
       role: "system",
-      content: `Switched to ${next === "agent" ? "Risk Manager (AI)" : "Risk Resolve Chat"}`,
+      content: `Switched to ${next === "agent" ? "Risk Management Agent" : "Team Chat"}`,
       authorUid: me.uid,
       authorName: me.name,
     });
@@ -96,13 +96,13 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
         riskId: risk.id,
         mode: "agent",
         role: "assistant",
-        content: reply || "Risk Manager could not generate a response.",
+        content: reply || "Risk Management Agent could not generate a response.",
         authorUid: "risk-manager-agent",
-        authorName: "Risk Manager",
+        authorName: "Risk Management Agent",
       });
     } catch (err) {
       console.error(err);
-      toast.error("Risk Manager is unavailable right now.");
+      toast.error("Risk Management Agent is unavailable right now.");
     } finally {
       setTyping(false);
     }
@@ -133,7 +133,7 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
             className="text-sm font-bold"
             style={{ color: isAgent ? "#B45309" : "#4F46E5" }}
           >
-            {isAgent ? "Risk Manager" : "Risk Resolve Chat"}
+            {isAgent ? "Risk Management Agent" : `${risk.riskId} Chat Log`}
           </span>
         </div>
         <div className="flex items-center gap-1">

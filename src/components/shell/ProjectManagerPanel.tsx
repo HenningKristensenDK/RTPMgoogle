@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Bot, Send } from "lucide-react";
 import { useRiskStore } from "../../store/riskStore";
 import { askRiskManager } from "../../services/geminiService";
@@ -10,7 +11,7 @@ interface Msg {
 
 const WELCOME: Msg = {
   role: "bot",
-  text: "Hi! I'm your AI Project Manager. Ask me anything about project risks, mitigation status, or next steps.",
+  text: "Hi! I'm your Project Manager Agent. Ask me anything about project risks, mitigation status, or next steps.",
 };
 
 export default function ProjectManagerPanel() {
@@ -88,7 +89,7 @@ export default function ProjectManagerPanel() {
           className="text-base font-semibold tracking-wide text-white"
           style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
         >
-          Project Manager AI
+          Project Manager Agent
         </span>
         <span className="ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[10px] text-white/80">
           {risks.length} risks
@@ -117,7 +118,11 @@ export default function ProjectManagerPanel() {
                 color: m.role === "user" ? "white" : "#111827",
               }}
             >
-              {m.text}
+              {m.role === "bot" ? (
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{m.text}</ReactMarkdown>
+                </div>
+              ) : m.text}
             </div>
           </div>
         ))}

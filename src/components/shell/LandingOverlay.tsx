@@ -40,7 +40,7 @@ export default function LandingOverlay() {
             color: "#070474",
           }}
         >
-          Project Manager AI
+          Project Manager Agent
         </h1>
         <p
           className="mb-2 text-sm font-medium tracking-wide"

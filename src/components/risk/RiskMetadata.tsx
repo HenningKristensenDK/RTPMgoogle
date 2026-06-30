@@ -5,7 +5,6 @@ import type {
   Risk,
   RiskPriority,
   RiskStatus,
-  Recurrence,
   RoleResponsibility,
 } from "../../types";
 import { RISK_STATUSES } from "../../types";
@@ -23,7 +22,6 @@ const fieldCls =
   "w-full rounded-input border border-bordergray bg-white px-2.5 py-2 text-sm text-ink outline-none focus:border-indigo focus:ring-1 focus:ring-indigo";
 
 const PRIORITIES: RiskPriority[] = ["low", "medium", "high", "critical"];
-const RECURRENCES: Recurrence[] = ["none", "daily", "weekly", "monthly"];
 
 export default function RiskMetadata({ risk, roles, onPatch }: Props) {
   const [lookupOpen, setLookupOpen] = useState(false);
@@ -107,24 +105,6 @@ export default function RiskMetadata({ risk, roles, onPatch }: Props) {
             value={formatDateInput(risk.dueDate)}
             onChange={(e) => onPatch({ dueDate: dateToTs(e.target.value) })}
           />
-        </div>
-
-        {/* Recurrence */}
-        <div>
-          <label className={labelCls}>Recurrence</label>
-          <select
-            className={fieldCls}
-            value={risk.recurrence}
-            onChange={(e) =>
-              onPatch({ recurrence: e.target.value as Recurrence })
-            }
-          >
-            {RECURRENCES.map((r) => (
-              <option key={r} value={r}>
-                {r.charAt(0).toUpperCase() + r.slice(1)}
-              </option>
-            ))}
-          </select>
         </div>
 
         {/* Risk collection */}
