@@ -3,6 +3,13 @@ import { Check } from "lucide-react";
 import { RISK_STATUSES, type Risk, type RiskStatus } from "../../types";
 import { STATUS_LABEL } from "../../lib/format";
 
+const STEP_OWNER: Record<RiskStatus, string> = {
+  identified: "Package PM",
+  assessed: "Lead Scheduler",
+  mitigated: "Quality Manager",
+  resolved: "Commissioning Authority",
+};
+
 interface Props {
   risk: Risk;
   onChangeStatus: (to: RiskStatus) => void;
@@ -14,29 +21,47 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
 
   return (
     <div className="mb-3 rounded-card bg-white px-6 pb-12 pt-4 shadow-card">
-      <div className="flex items-start">
+      <div className="flex items-end">
         {RISK_STATUSES.map((status, idx) => {
           const isCompleted = idx < currentIdx;
           const isCurrent = idx === currentIdx;
-          const isDone = isCompleted || isCurrent;
           const isLast = idx === RISK_STATUSES.length - 1;
-          // Line that sits to the RIGHT of this node.
-          const lineSolid = idx < currentIdx; // solid up to current
+          const lineSolid = idx < currentIdx;
+
           return (
             <div key={status} className="flex flex-1 flex-col items-center">
+              {/* Owner name */}
+              <div
+                className="mb-0.5 text-center text-[11px] font-medium leading-snug"
+                style={{ color: "#8a8ca6" }}
+              >
+                {STEP_OWNER[status]}
+              </div>
+
+              {/* Status label */}
+              <div
+                className="mb-2 text-center text-[10px] font-semibold uppercase tracking-[0.05em]"
+                style={{
+                  color: isCompleted
+                    ? "#28a745"
+                    : isCurrent
+                    ? "#0d08d2"
+                    : "#9CA3AF",
+                }}
+              >
+                {STATUS_LABEL[status]}
+              </div>
+
+              {/* Circle row with connecting lines */}
               <div className="flex w-full items-center">
-                {/* spacer-left to center the node */}
+                {/* left line */}
                 <div className="flex-1">
                   {idx > 0 && (
                     <div
                       className="h-[2px] w-full"
                       style={{
-                        background:
-                          idx <= currentIdx ? "#28a745" : "transparent",
-                        borderTop:
-                          idx <= currentIdx
-                            ? "none"
-                            : "2px dashed #D1D5DB",
+                        background: idx <= currentIdx ? "#28a745" : "transparent",
+                        borderTop: idx <= currentIdx ? "none" : "2px dashed #D1D5DB",
                       }}
                     />
                   )}
@@ -44,46 +69,47 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
 
                 {/* Node */}
                 <button
-                  disabled={isDone}
-                  onClick={() => !isDone && setPending(status)}
-                  title={isDone ? STATUS_LABEL[status] : `Set status to ${STATUS_LABEL[status]}`}
+                  disabled={isCompleted || isCurrent}
+                  onClick={() => !(isCompleted || isCurrent) && setPending(status)}
+                  title={
+                    isCompleted || isCurrent
+                      ? STATUS_LABEL[status]
+                      : `Set status to ${STATUS_LABEL[status]}`
+                  }
                   className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full transition-transform ${
-                    !isDone ? "cursor-pointer hover:scale-110" : "cursor-default"
+                    !(isCompleted || isCurrent)
+                      ? "cursor-pointer hover:scale-110"
+                      : "cursor-default"
                   }`}
                   style={{
-                    background: isDone ? "#28a745" : "#FFFFFF",
-                    border: isDone ? "none" : "2px solid #D1D5DB",
+                    background: isCompleted
+                      ? "#28a745"
+                      : isCurrent
+                      ? "#0d08d2"
+                      : "#FFFFFF",
+                    border: isCompleted || isCurrent ? "none" : "2px solid #D1D5DB",
                   }}
                 >
-                  {isDone ? (
+                  {isCompleted ? (
                     <Check size={10} strokeWidth={3} color="#fff" />
-                  ) : (
-                    <span className="h-1 w-1 rounded-full bg-gray-300" />
-                  )}
+                  ) : isCurrent ? (
+                    <span className="h-2 w-2 rounded-full bg-white" />
+                  ) : null}
                 </button>
 
-                {/* spacer-right */}
+                {/* right line */}
                 <div className="flex-1">
                   {!isLast && (
                     <div
                       className="h-[2px] w-full"
                       style={{
                         background: lineSolid ? "#28a745" : "transparent",
-                        borderTop: lineSolid
-                          ? "none"
-                          : "2px dashed #D1D5DB",
+                        borderTop: lineSolid ? "none" : "2px dashed #D1D5DB",
                       }}
                     />
                   )}
                 </div>
               </div>
-
-              <span
-                className="mt-2 text-[11px] font-semibold uppercase tracking-[0.05em]"
-                style={{ color: isDone ? "#28a745" : "#9CA3AF" }}
-              >
-                {STATUS_LABEL[status]}
-              </span>
             </div>
           );
         })}

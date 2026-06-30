@@ -1,13 +1,6 @@
 import { useState } from "react";
-import type { Risk, RiskStatus } from "../../types";
+import type { Risk } from "../../types";
 import { formatDateYMD } from "../../lib/format";
-
-const NEXT_STEP_OWNER: Record<RiskStatus, string> = {
-  identified: "Package PM",
-  assessed: "Lead Scheduler",
-  mitigated: "Quality Manager",
-  resolved: "Commissioning Authority (CxA)",
-};
 
 interface Props {
   risk: Risk;
@@ -38,18 +31,10 @@ export default function RiskHeader({ risk, onTitleChange }: Props) {
         </span>
       </div>
 
-      {/* Audit line + Next Step Owner */}
-      <div className="mt-1.5 flex items-center justify-between gap-4">
-        <div className="text-[12px]" style={{ color: "#595b78" }}>
-          Created {formatDateYMD(risk.createdAt)} · Last edited{" "}
-          {formatDateYMD(risk.updatedAt)}
-        </div>
-        <div
-          className="shrink-0 text-[12px] font-semibold"
-          style={{ color: "#0d08d2" }}
-        >
-          Next step: {NEXT_STEP_OWNER[risk.status]}
-        </div>
+      {/* Audit line */}
+      <div className="mt-1.5 text-[12px]" style={{ color: "#595b78" }}>
+        Created {formatDateYMD(risk.createdAt)} · Last edited{" "}
+        {formatDateYMD(risk.updatedAt)}
       </div>
     </div>
   );

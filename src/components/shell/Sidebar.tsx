@@ -49,9 +49,9 @@ export default function Sidebar() {
         }`}
       >
         <img
-          src="/rtpm-icon-white.svg"
+          src="/RTPM icon white.png"
           alt="RTPM"
-          className="h-8 w-8 flex-shrink-0"
+          style={{ height: "32px", width: "auto", flexShrink: 0 }}
         />
         {!collapsed && (
           <div>
