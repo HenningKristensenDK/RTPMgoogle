@@ -9,6 +9,7 @@ import { useAuthStore, currentIdentity } from "../store/authStore";
 import { STATUS_LABEL } from "../lib/format";
 import { toast } from "../lib/toast";
 import RiskPanel from "../components/risk/RiskPanel";
+import SendUpdateModal from "../components/risk/SendUpdateModal";
 
 export default function RiskDetail() {
   const { riskId } = useParams<{ riskId: string }>();
@@ -21,6 +22,7 @@ export default function RiskDetail() {
 
   const [risk, setRisk] = useState<Risk | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [sendUpdateOpen, setSendUpdateOpen] = useState(false);
 
   useEffect(() => {
     if (!riskId) return;
@@ -75,9 +77,9 @@ export default function RiskDetail() {
             <MessageSquare size={16} />
           </button>
           <button
-            onClick={() => {}}
+            onClick={() => setSendUpdateOpen(true)}
             className="rounded-btn px-4 py-1.5 text-sm font-semibold"
-            style={{ background: "#ffcc00", color: "#111827" }}
+            style={{ background: "#ffcc00", color: "#070474" }}
           >
             Send Update
           </button>
@@ -92,6 +94,14 @@ export default function RiskDetail() {
           onChangeStatus={handleChangeStatus}
         />
       </div>
+
+      {sendUpdateOpen && (
+        <SendUpdateModal
+          risk={risk}
+          roles={roles}
+          onClose={() => setSendUpdateOpen(false)}
+        />
+      )}
     </div>
   );
 }

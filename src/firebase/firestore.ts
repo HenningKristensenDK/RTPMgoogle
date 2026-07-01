@@ -176,6 +176,26 @@ export async function changeRiskStatus(
 }
 
 // ---------------------------------------------------------------------------
+// Risk update emails (Send Update modal)
+// ---------------------------------------------------------------------------
+export async function sendRiskUpdate(payload: {
+  riskId: string;
+  projectId: string;
+  sender: string;
+  senderId: string;
+  subject: string;
+  message: string;
+  recipients: string[];
+  cc: string[];
+}): Promise<void> {
+  await addDoc(messagesCol, {
+    ...payload,
+    timestamp: serverTimestamp(),
+    type: "update",
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Risk messages (chat + agent)
 // ---------------------------------------------------------------------------
 export function watchMessages(
