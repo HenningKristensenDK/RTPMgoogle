@@ -27,27 +27,40 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
   }
 
   return (
-    <div className="mb-3 rounded-card bg-white px-6 pb-12 pt-4 shadow-card">
+    // CHANGE 1: compact padding — py-4 = 16px top and bottom
+    <div className="mb-3 rounded-card bg-white px-6 py-4 shadow-card">
       <div className="flex items-start">
         {RISK_STATUSES.map((status, idx) => {
           const isCompleted = idx < currentIdx;
           const isCurrent = idx === currentIdx;
           const isLast = idx === RISK_STATUSES.length - 1;
           const lineSolid = idx < currentIdx;
-          const date = isCompleted ? stepDate(status) : null;
+
+          // CHANGE 2 item 4: date logic
+          // For resolved: show completion date (gray) or fallback to dueDate (orange)
+          // For all other completed steps: show completion date (gray) if it exists
+          let displayDate: string | null = null;
+          let displayDateColor = "#8a8ca6";
+
+          if (status === "resolved") {
+            const completion = stepDate("resolved");
+            if (completion) {
+              displayDate = completion;
+            } else {
+              const due = risk.dueDate ? formatDateYMD(risk.dueDate) : null;
+              if (due && due !== "—") {
+                displayDate = due;
+                displayDateColor = "#ff8b00";
+              }
+            }
+          } else if (isCompleted) {
+            displayDate = stepDate(status);
+          }
 
           return (
             <div key={status} className="flex flex-1 flex-col items-center">
 
-              {/* 1 — Owner name */}
-              <div
-                className="mb-2 text-center text-[11px] font-medium leading-snug"
-                style={{ color: "#8a8ca6" }}
-              >
-                {STEP_OWNER[status]}
-              </div>
-
-              {/* 2 — Circle row with connecting lines */}
+              {/* 1 — Circle row with connecting lines */}
               <div className="flex w-full items-center">
                 {/* left connector */}
                 <div className="flex-1">
@@ -62,7 +75,6 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                   )}
                 </div>
 
-                {/* circle */}
                 <button
                   onClick={() => setPending(status)}
                   title={`Set status to ${STATUS_LABEL[status]}`}
@@ -76,9 +88,7 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                       : "2px solid #D1D5DB",
                   }}
                 >
-                  {isCompleted && (
-                    <Check size={10} strokeWidth={3} color="#fff" />
-                  )}
+                  {isCompleted && <Check size={10} strokeWidth={3} color="#fff" />}
                 </button>
 
                 {/* right connector */}
@@ -95,9 +105,9 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                 </div>
               </div>
 
-              {/* 3 — Status label */}
+              {/* 2 — Status label */}
               <div
-                className="mt-2 text-center text-[10px] font-semibold uppercase tracking-[0.05em]"
+                className="mt-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.05em]"
                 style={{
                   color: isCompleted ? "#28a745" : isCurrent ? "#0d08d2" : "#8a8ca6",
                 }}
@@ -105,27 +115,37 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                 {STATUS_LABEL[status]}
               </div>
 
-              {/* 4 — Date (completed steps only, if history entry exists) */}
-              {isCompleted && date && (
+              {/* 3 — Owner name */}
+              <div
+                className="mt-0.5 text-center text-[11px] font-medium leading-snug"
+                style={{ color: "#8a8ca6" }}
+              >
+                {STEP_OWNER[status]}
+              </div>
+
+              {/* 4 — Date */}
+              {displayDate && (
                 <div
                   className="mt-0.5 text-center text-[10px]"
-                  style={{ color: "#8a8ca6" }}
+                  style={{ color: displayDateColor }}
                 >
-                  {date}
+                  {displayDate}
                 </div>
               )}
+
             </div>
           );
         })}
       </div>
 
-      {/* Confirmation modal */}
+      {/* CHANGE 3 — Confirmation modal (all steps clickable) */}
       {pending && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30">
           <div className="w-[300px] rounded-card bg-white p-5 shadow-panel">
             <p className="text-sm font-semibold text-ink">Change status?</p>
             <p className="mt-1 text-sm text-gray-500">
-              Set this risk to <span className="font-medium text-ink">{STATUS_LABEL[pending]}</span>?
+              Set this risk to{" "}
+              <span className="font-medium text-ink">{STATUS_LABEL[pending]}</span>?
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
