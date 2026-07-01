@@ -42,27 +42,6 @@ export default function Sidebar() {
         minHeight: 0,
       }}
     >
-      {/* Brand mark */}
-      <div
-        className={`flex flex-shrink-0 items-center gap-2.5 border-b border-white/10 px-3 py-3.5 ${
-          collapsed ? "justify-center" : ""
-        }`}
-      >
-        <img
-          src="/RTPM icon white.png"
-          alt="RTPM"
-          style={{ height: "32px", width: "auto", flexShrink: 0 }}
-        />
-        {!collapsed && (
-          <div>
-            <div className="text-sm font-semibold leading-tight text-white">
-              Viking Project
-            </div>
-            <div className="text-[10px] text-white/50">RTPM Platform</div>
-          </div>
-        )}
-      </div>
-
       {/* Navigation */}
       <nav className="scroll-thin flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2">
         {NAV.map(({ to, end, Icon, label }) => (
