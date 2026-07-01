@@ -5,9 +5,9 @@ import { STATUS_LABEL, formatDateYMD } from "../../lib/format";
 
 const STEP_OWNER: Record<RiskStatus, string> = {
   identified: "Package PM",
-  assessed: "Lead Scheduler",
-  mitigated: "Quality Manager",
-  resolved: "Commissioning Authority",
+  assessed:   "Lead Scheduler",
+  mitigated:  "Quality Manager",
+  resolved:   "Commissioning Authority",
 };
 
 interface Props {
@@ -26,22 +26,23 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
     return formatDateYMD(entry.changedAt);
   }
 
+  function stepChangedBy(status: RiskStatus): string | null {
+    const entry = history.find((h) => h.to === status);
+    return entry?.changedBy || null;
+  }
+
   return (
-    // CHANGE 1: compact padding — py-4 = 16px top and bottom
     <div className="mb-3 rounded-card bg-white px-6 py-4 shadow-card">
       <div className="flex items-start">
         {RISK_STATUSES.map((status, idx) => {
           const isCompleted = idx < currentIdx;
           const isCurrent = idx === currentIdx;
           const isLast = idx === RISK_STATUSES.length - 1;
-          const lineSolid = idx < currentIdx;
+          const lineSolid = isCompleted;
 
-          // CHANGE 2 item 4: date logic
-          // For resolved: show completion date (gray) or fallback to dueDate (orange)
-          // For all other completed steps: show completion date (gray) if it exists
+          // Date logic — resolved special-cased to always show something
           let displayDate: string | null = null;
           let displayDateColor = "#8a8ca6";
-
           if (status === "resolved") {
             const completion = stepDate("resolved");
             if (completion) {
@@ -57,12 +58,24 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
             displayDate = stepDate(status);
           }
 
+          // Show changedBy display name for completed steps; fall back to role title
+          const ownerLabel = (isCompleted ? stepChangedBy(status) : null) ?? STEP_OWNER[status];
+
           return (
             <div key={status} className="flex flex-1 flex-col items-center">
 
-              {/* 1 — Circle row with connecting lines */}
-              <div className="flex w-full items-center">
-                {/* left connector */}
+              {/* 1 — Status label */}
+              <div
+                className="text-center text-[10px] font-semibold uppercase tracking-[0.05em]"
+                style={{
+                  color: isCompleted ? "#28a745" : isCurrent ? "#0d08d2" : "#8a8ca6",
+                }}
+              >
+                {STATUS_LABEL[status]}
+              </div>
+
+              {/* 2 — Circle row with connecting lines */}
+              <div className="mt-1.5 flex w-full items-center">
                 <div className="flex-1">
                   {idx > 0 && (
                     <div
@@ -91,7 +104,6 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                   {isCompleted && <Check size={10} strokeWidth={3} color="#fff" />}
                 </button>
 
-                {/* right connector */}
                 <div className="flex-1">
                   {!isLast && (
                     <div
@@ -105,25 +117,15 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                 </div>
               </div>
 
-              {/* 2 — Status label */}
-              <div
-                className="mt-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.05em]"
-                style={{
-                  color: isCompleted ? "#28a745" : isCurrent ? "#0d08d2" : "#8a8ca6",
-                }}
-              >
-                {STATUS_LABEL[status]}
-              </div>
-
-              {/* 3 — Owner name */}
+              {/* 3 — Role name or changedBy display name */}
               <div
                 className="mt-0.5 text-center text-[11px] font-medium leading-snug"
                 style={{ color: "#8a8ca6" }}
               >
-                {STEP_OWNER[status]}
+                {ownerLabel}
               </div>
 
-              {/* 4 — Date */}
+              {/* 4 — Date (completed steps only; resolved always shows something) */}
               {displayDate && (
                 <div
                   className="mt-0.5 text-center text-[10px]"
@@ -138,7 +140,7 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
         })}
       </div>
 
-      {/* CHANGE 3 — Confirmation modal (all steps clickable) */}
+      {/* Confirmation modal */}
       {pending && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30">
           <div className="w-[300px] rounded-card bg-white p-5 shadow-panel">
