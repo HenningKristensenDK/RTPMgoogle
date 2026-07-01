@@ -32,7 +32,7 @@ export default function AppShell() {
           <Outlet />
         </main>
 
-        {mode !== "landing" && <ProjectManagerPanel />}
+        {mode === "active" && <ProjectManagerPanel />}
       </div>
 
       {mode === "landing" && <LandingOverlay />}

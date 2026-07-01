@@ -37,9 +37,10 @@ export default function Sidebar() {
     <aside
       className="flex flex-shrink-0 flex-col transition-all duration-200"
       style={{
-        width: collapsed ? 60 : 220,
+        width: collapsed ? 0 : 220,
         background: "#070474",
         minHeight: 0,
+        overflow: "hidden",
       }}
     >
       {/* Navigation */}

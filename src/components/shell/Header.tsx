@@ -41,12 +41,16 @@ export default function Header({ onTodosOpen }: Props) {
         {mode !== "landing" && (
           <button
             onClick={toggleFocus}
-            title={mode === "focus" ? "Expand sidebar" : "Focus mode"}
-            className="flex items-center gap-1.5 rounded-btn px-2.5 py-1.5 text-xs font-medium transition hover:bg-fog"
-            style={{ color: "#595b78" }}
+            title={mode === "focus" ? "Exit focus mode" : "Focus mode"}
+            className="flex items-center gap-1.5 rounded-btn px-2.5 py-1.5 text-xs font-medium transition"
+            style={
+              mode === "focus"
+                ? { background: "#e7e6fa", color: "#0d08d2" }
+                : { color: "#595b78" }
+            }
           >
             {mode === "focus" ? (
-              <><Maximize2 size={14} /> Expand</>
+              <><Maximize2 size={14} /> Focus</>
             ) : (
               <><Minimize2 size={14} /> Focus</>
             )}
