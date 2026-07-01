@@ -35,10 +35,15 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
     <div className="mb-3 rounded-card bg-white px-6 py-4 shadow-card">
       <div className="flex items-start">
         {RISK_STATUSES.map((status, idx) => {
-          const isCompleted = idx < currentIdx;
-          const isCurrent = idx === currentIdx;
+          // Green ✓ if risk is AT or PAST this step
+          const isGreen = idx <= currentIdx;
+          // Indigo outline if this is the immediate next step
+          const isNext = idx === currentIdx + 1;
           const isLast = idx === RISK_STATUSES.length - 1;
-          const lineSolid = isCompleted;
+          // Left connector solid when this step itself is green;
+          // right connector solid only when the following step is also green
+          const leftLineSolid = isGreen;
+          const rightLineSolid = idx < currentIdx;
 
           // Date logic — resolved special-cased to always show something
           let displayDate: string | null = null;
@@ -54,12 +59,12 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                 displayDateColor = "#ff8b00";
               }
             }
-          } else if (isCompleted) {
+          } else if (isGreen) {
             displayDate = stepDate(status);
           }
 
-          // Show changedBy display name for completed steps; fall back to role title
-          const ownerLabel = (isCompleted ? stepChangedBy(status) : null) ?? STEP_OWNER[status];
+          // Show changedBy display name for green steps; fall back to role title
+          const ownerLabel = (isGreen ? stepChangedBy(status) : null) ?? STEP_OWNER[status];
 
           return (
             <div key={status} className="flex flex-1 flex-col items-center">
@@ -68,7 +73,7 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
               <div
                 className="text-center text-[10px] font-semibold uppercase tracking-[0.05em]"
                 style={{
-                  color: isCompleted ? "#28a745" : isCurrent ? "#0d08d2" : "#8a8ca6",
+                  color: isGreen ? "#28a745" : isNext ? "#0d08d2" : "#8a8ca6",
                 }}
               >
                 {STATUS_LABEL[status]}
@@ -81,8 +86,8 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                     <div
                       className="h-[2px] w-full"
                       style={{
-                        background: lineSolid ? "#28a745" : "transparent",
-                        borderTop: lineSolid ? "none" : "2px dashed #D1D5DB",
+                        background: leftLineSolid ? "#28a745" : "transparent",
+                        borderTop: leftLineSolid ? "none" : "2px dashed #D1D5DB",
                       }}
                     />
                   )}
@@ -93,15 +98,15 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                   title={`Set status to ${STATUS_LABEL[status]}`}
                   className="flex h-[18px] w-[18px] shrink-0 cursor-pointer items-center justify-center rounded-full transition-transform hover:scale-110"
                   style={{
-                    background: isCompleted ? "#28a745" : "transparent",
-                    border: isCompleted
+                    background: isGreen ? "#28a745" : "transparent",
+                    border: isGreen
                       ? "none"
-                      : isCurrent
+                      : isNext
                       ? "2px solid #0d08d2"
                       : "2px solid #D1D5DB",
                   }}
                 >
-                  {isCompleted && <Check size={10} strokeWidth={3} color="#fff" />}
+                  {isGreen && <Check size={10} strokeWidth={3} color="#fff" />}
                 </button>
 
                 <div className="flex-1">
@@ -109,8 +114,8 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                     <div
                       className="h-[2px] w-full"
                       style={{
-                        background: lineSolid ? "#28a745" : "transparent",
-                        borderTop: lineSolid ? "none" : "2px dashed #D1D5DB",
+                        background: rightLineSolid ? "#28a745" : "transparent",
+                        borderTop: rightLineSolid ? "none" : "2px dashed #D1D5DB",
                       }}
                     />
                   )}
@@ -125,7 +130,7 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
                 {ownerLabel}
               </div>
 
-              {/* 4 — Date (completed steps only; resolved always shows something) */}
+              {/* 4 — Date (green steps only; resolved always shows something) */}
               {displayDate && (
                 <div
                   className="mt-0.5 text-center text-[10px]"
