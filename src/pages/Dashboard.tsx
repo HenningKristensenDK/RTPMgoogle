@@ -65,8 +65,9 @@ export default function Dashboard() {
     return Object.entries(counts).sort(([, a], [, b]) => b - a);
   }, [openRisks]);
 
-  // Recent activity — last 5 status changes across all risks
+  // Recent activity — deduplicated (latest entry per risk+status), max 8
   const recentActivity = useMemo((): ActivityEntry[] => {
+    // Collect all entries with a timestamp
     const all: ActivityEntry[] = [];
     risks.forEach((r) => {
       (r.statusHistory || []).forEach((h) => {
@@ -75,7 +76,19 @@ export default function Dashboard() {
         }
       });
     });
-    return all.sort((a, b) => b.changedAt.toMillis() - a.changedAt.toMillis()).slice(0, 5);
+    // Sort newest-first so the first occurrence of each riskId+status is the most recent
+    all.sort((a, b) => b.changedAt.toMillis() - a.changedAt.toMillis());
+    // Keep only the first (most recent) entry per riskId+status combination
+    const seen = new Set<string>();
+    const deduped: ActivityEntry[] = [];
+    for (const entry of all) {
+      const key = `${entry.riskId}::${entry.to}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(entry);
+      }
+    }
+    return deduped.slice(0, 8);
   }, [risks]);
 
   if (loading) {
@@ -88,24 +101,6 @@ export default function Dashboard() {
 
   return (
     <div className="scroll-thin h-full overflow-auto">
-
-      {/* Section 1 — Project header bar */}
-      <div className="flex items-center gap-6 px-6 py-3" style={{ background: "#070474" }}>
-        <span className="text-[15px] font-semibold text-white">Viking Project</span>
-        {(
-          [
-            ["Phase", "Construction"],
-            ["Contract", "NEC4 Option C"],
-            ["NTP", "2026.03.01"],
-            ["Target COD", "2027.09.30"],
-          ] as [string, string][]
-        ).map(([label, value]) => (
-          <span key={label} className="flex items-center gap-1.5 text-[13px]">
-            <span style={{ color: "rgba(255,255,255,0.5)" }}>{label}</span>
-            <span className="font-medium text-white">{value}</span>
-          </span>
-        ))}
-      </div>
 
       <div className="flex flex-col gap-5 p-6">
 
@@ -273,14 +268,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Section 5 — Recent activity */}
+        {/* Section 5 — Recent Activity */}
         <div className="overflow-hidden rounded-card bg-white shadow-card">
           <div className="border-b border-bordergray px-6 py-4">
             <h2
               className="text-[11px] font-semibold uppercase tracking-wider"
               style={{ color: "#8a8ca6" }}
             >
-              Recent activity
+              Recent Activity
             </h2>
           </div>
           {recentActivity.length === 0 ? (
@@ -289,8 +284,9 @@ export default function Dashboard() {
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-400">
                 <tr>
+                  <th className="px-6 py-2.5">Type</th>
                   <th className="px-6 py-2.5">Risk ID</th>
-                  <th className="px-6 py-2.5">Risk</th>
+                  <th className="px-6 py-2.5">Title</th>
                   <th className="px-6 py-2.5">Moved to</th>
                   <th className="px-6 py-2.5">Date</th>
                 </tr>
@@ -302,16 +298,24 @@ export default function Dashboard() {
                     className="border-t border-bordergray"
                     style={{ background: i % 2 === 0 ? "#ffffff" : "#f7f7fb" }}
                   >
-                    <td className="px-6 py-2.5 font-mono text-[12px] text-gray-500">
-                      {act.riskId}
-                    </td>
-                    <td className="px-6 py-2.5 text-[13px] font-medium text-ink">
-                      {act.title}
-                    </td>
                     <td className="px-6 py-2.5">
                       <span
                         className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
                         style={{ background: "#e7e6fa", color: "#0d08d2" }}
+                      >
+                        Risk
+                      </span>
+                    </td>
+                    <td className="px-6 py-2.5 font-mono text-[12px] text-gray-500">
+                      {act.riskId}
+                    </td>
+                    <td className="px-6 py-2.5 text-[13px] font-medium text-ink">
+                      {act.title.replace(/◆/g, " - ")}
+                    </td>
+                    <td className="px-6 py-2.5">
+                      <span
+                        className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                        style={{ background: "#f0f0f8", color: "#595b78" }}
                       >
                         {STATUS_LABEL[act.to as RiskStatus] ?? act.to}
                       </span>
