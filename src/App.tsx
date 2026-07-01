@@ -17,6 +17,7 @@ import { seedIfEmpty } from "./lib/seed";
 import { SEED_PROJECT } from "./lib/seedData";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import RiskBoard from "./pages/RiskBoard";
 import RiskDetail from "./pages/RiskDetail";
 import RolesResponsibility from "./pages/RolesResponsibility";
 import ModulePlaceholder from "./pages/ModulePlaceholder";
@@ -81,8 +82,7 @@ export default function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route path="/" element={<Dashboard />} />
-        {/* Risk & Opportunities — shares the Dashboard/risk-board component */}
-        <Route path="/risks" element={<Dashboard />} />
+        <Route path="/risks" element={<RiskBoard />} />
         <Route path="/risks/:riskId" element={<RiskDetail />} />
         <Route path="/roles" element={<RolesResponsibility />} />
         {PLACEHOLDERS.map(({ path, moduleName, Icon, isCorrespondence }) => (

@@ -1,287 +1,365 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { LayoutGrid, Table2, Plus } from "lucide-react";
-import { RISK_STATUSES, type RiskPriority, type RiskStatus } from "../types";
+import { useMemo } from "react";
+import { Check } from "lucide-react";
+import type { Timestamp } from "firebase/firestore";
 import { useRiskStore } from "../store/riskStore";
-import { useAuthStore, currentIdentity } from "../store/authStore";
-import { createRisk } from "../firebase/firestore";
-import {
-  PRIORITY_META,
-  STATUS_LABEL,
-  formatDate,
-  initials,
-} from "../lib/format";
-import { toast } from "../lib/toast";
-import RiskCard from "../components/risk/RiskCard";
+import { STATUS_LABEL } from "../lib/format";
+import type { RiskStatus } from "../types";
 
-type View = "board" | "table";
+const MILESTONES = [
+  { label: "NTP",                  date: "2026.03.01", iso: "2026-03-01" },
+  { label: "Design Freeze",        date: "2026.06.15", iso: "2026-06-15" },
+  { label: "MEP Procurement",      date: "2026.09.01", iso: "2026-09-01" },
+  { label: "Civil Complete",       date: "2026.12.01", iso: "2026-12-01" },
+  { label: "Commissioning Start",  date: "2027.03.01", iso: "2027-03-01" },
+  { label: "COD",                  date: "2027.09.30", iso: "2027-09-30" },
+];
+
+const COD_DATE = new Date("2027-09-30");
+
+const NEXT_STEP_OWNER: Record<string, string> = {
+  identified: "Package PM",
+  assessed:   "Lead Scheduler",
+  mitigated:  "Quality Manager",
+};
+
+type ActivityEntry = {
+  riskId: string;
+  title: string;
+  to: string;
+  changedAt: Timestamp;
+};
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-  const { risks, roles, projectId, loading } = useRiskStore();
-  const user = useAuthStore((s) => s.user);
-  const me = currentIdentity(user);
+  const { risks, roles, loading } = useRiskStore();
 
-  const [view, setView] = useState<View>("board");
-  const [fWorkstream, setFWorkstream] = useState("");
-  const [fOrg, setFOrg] = useState("");
-  const [fPriority, setFPriority] = useState("");
-  const [fStatus, setFStatus] = useState("");
+  const today = new Date();
+  const openRisks = useMemo(() => risks.filter((r) => r.status !== "resolved"), [risks]);
+  const criticalCount = useMemo(() => risks.filter((r) => r.priority === "critical").length, [risks]);
+  const daysToCod = Math.ceil((COD_DATE.getTime() - today.getTime()) / 86400000);
 
-  const workstreams = [...new Set(roles.map((r) => r.workstream))];
-  const orgs = [...new Set(roles.map((r) => r.organizationName))];
+  // Milestone state: index of first upcoming milestone (-1 if all past)
+  const firstUpcomingIdx = MILESTONES.findIndex((m) => new Date(m.iso) > today);
+  const fu = firstUpcomingIdx === -1 ? MILESTONES.length : firstUpcomingIdx;
 
-  const filtered = useMemo(() => {
-    return risks.filter((risk) => {
-      const riskRoles = roles.filter((r) => risk.workstreamIds.includes(r.id));
-      if (fWorkstream && !riskRoles.some((r) => r.workstream === fWorkstream))
-        return false;
-      if (fOrg && !riskRoles.some((r) => r.organizationName === fOrg))
-        return false;
-      if (fPriority && risk.priority !== fPriority) return false;
-      if (fStatus && risk.status !== fStatus) return false;
-      return true;
+  // Workstream bar chart
+  const workstreamData = useMemo(() => {
+    const wsMap: Record<string, number> = {};
+    openRisks.forEach((r) => {
+      const ws = [...new Set(
+        roles.filter((role) => r.workstreamIds.includes(role.id)).map((role) => role.workstream)
+      )];
+      ws.forEach((w) => { wsMap[w] = (wsMap[w] || 0) + 1; });
     });
-  }, [risks, roles, fWorkstream, fOrg, fPriority, fStatus]);
+    return Object.entries(wsMap).sort(([, a], [, b]) => b - a);
+  }, [openRisks, roles]);
 
-  async function handleNewRisk() {
-    if (!projectId) return;
-    try {
-      const id = await createRisk(projectId, me.uid, { title: "New risk" });
-      navigate(`/risks/${id}`);
-    } catch {
-      toast.error("Could not create risk");
-    }
+  const maxWsCount = workstreamData[0]?.[1] || 1;
+
+  // Ball in court
+  const ballData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    openRisks.forEach((r) => {
+      const owner = NEXT_STEP_OWNER[r.status];
+      if (owner) counts[owner] = (counts[owner] || 0) + 1;
+    });
+    return Object.entries(counts).sort(([, a], [, b]) => b - a);
+  }, [openRisks]);
+
+  // Recent activity — last 5 status changes across all risks
+  const recentActivity = useMemo((): ActivityEntry[] => {
+    const all: ActivityEntry[] = [];
+    risks.forEach((r) => {
+      (r.statusHistory || []).forEach((h) => {
+        if (h.changedAt) {
+          all.push({ riskId: r.riskId, title: r.title, to: h.to, changedAt: h.changedAt });
+        }
+      });
+    });
+    return all.sort((a, b) => b.changedAt.toMillis() - a.changedAt.toMillis()).slice(0, 5);
+  }, [risks]);
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-gray-400">
+        Loading…
+      </div>
+    );
   }
 
-  const selectCls =
-    "rounded-input border border-bordergray bg-white px-2.5 py-1.5 text-xs text-gray-600 outline-none focus:border-indigo";
-
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-bordergray bg-white px-6 py-4">
-        <div>
-          <h1 className="text-lg font-bold text-ink">Risk Board</h1>
-          <p className="text-xs text-gray-400">
-            {filtered.length} of {risks.length} risks
-          </p>
+    <div className="scroll-thin h-full overflow-auto">
+
+      {/* Section 1 — Project header bar */}
+      <div className="flex items-center gap-6 px-6 py-3" style={{ background: "#070474" }}>
+        <span className="text-[15px] font-semibold text-white">Viking Project</span>
+        {(
+          [
+            ["Phase", "Construction"],
+            ["Contract", "NEC4 Option C"],
+            ["NTP", "2026.03.01"],
+            ["Target COD", "2027.09.30"],
+          ] as [string, string][]
+        ).map(([label, value]) => (
+          <span key={label} className="flex items-center gap-1.5 text-[13px]">
+            <span style={{ color: "rgba(255,255,255,0.5)" }}>{label}</span>
+            <span className="font-medium text-white">{value}</span>
+          </span>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-5 p-6">
+
+        {/* Section 2 — KPI cards */}
+        <div className="grid grid-cols-5 gap-4">
+          <KpiCard label="Open Risks" value={openRisks.length} />
+          <KpiCard
+            label="Critical Risks"
+            value={criticalCount}
+            valueColor={criticalCount > 0 ? "#e63946" : undefined}
+          />
+          <KpiCard label="Open Early Warnings" value={4} />
+          <KpiCard label="Pending Changes" value={2} />
+          <KpiCard label="Days to COD" value={daysToCod} />
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex overflow-hidden rounded-btn border border-bordergray">
-            <button
-              onClick={() => setView("board")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${
-                view === "board"
-                  ? "bg-indigo text-white"
-                  : "bg-white text-gray-500 hover:bg-gray-50"
-              }`}
-            >
-              <LayoutGrid size={15} /> Board
-            </button>
-            <button
-              onClick={() => setView("table")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${
-                view === "table"
-                  ? "bg-indigo text-white"
-                  : "bg-white text-gray-500 hover:bg-gray-50"
-              }`}
-            >
-              <Table2 size={15} /> Table
-            </button>
-          </div>
-          <button
-            onClick={handleNewRisk}
-            className="flex items-center gap-1.5 rounded-btn bg-indigo px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo/90"
+
+        {/* Section 3 — Milestone timeline */}
+        <div className="rounded-card bg-white px-6 py-5 shadow-card">
+          <h2
+            className="mb-4 text-[11px] font-semibold uppercase tracking-wider"
+            style={{ color: "#8a8ca6" }}
           >
-            <Plus size={16} /> New Risk
-          </button>
-        </div>
-      </div>
+            Milestone timeline
+          </h2>
+          <div className="flex items-start">
+            {MILESTONES.map((ms, idx) => {
+              const isDone = idx < fu;
+              const isCurrent = idx === firstUpcomingIdx;
+              const isLast = idx === MILESTONES.length - 1;
+              const lineSolid = isDone;
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-bordergray bg-white px-6 py-2.5">
-        <select
-          className={selectCls}
-          value={fWorkstream}
-          onChange={(e) => setFWorkstream(e.target.value)}
-        >
-          <option value="">All workstreams</option>
-          {workstreams.map((w) => (
-            <option key={w}>{w}</option>
-          ))}
-        </select>
-        <select
-          className={selectCls}
-          value={fOrg}
-          onChange={(e) => setFOrg(e.target.value)}
-        >
-          <option value="">All organizations</option>
-          {orgs.map((o) => (
-            <option key={o}>{o}</option>
-          ))}
-        </select>
-        <select
-          className={selectCls}
-          value={fPriority}
-          onChange={(e) => setFPriority(e.target.value)}
-        >
-          <option value="">All priorities</option>
-          {(["low", "medium", "high", "critical"] as RiskPriority[]).map((p) => (
-            <option key={p} value={p}>
-              {PRIORITY_META[p].label}
-            </option>
-          ))}
-        </select>
-        <select
-          className={selectCls}
-          value={fStatus}
-          onChange={(e) => setFStatus(e.target.value)}
-        >
-          <option value="">All statuses</option>
-          {RISK_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABEL[s]}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Content */}
-      <div className="scroll-thin flex-1 overflow-auto p-6">
-        {loading ? (
-          <div className="text-sm text-gray-400">Loading risks…</div>
-        ) : view === "board" ? (
-          <div className="grid grid-cols-4 gap-4">
-            {RISK_STATUSES.map((status) => {
-              const col = filtered.filter((r) => r.status === status);
               return (
-                <div key={status} className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[12px] font-semibold uppercase tracking-wide text-gray-500">
-                      {STATUS_LABEL[status]}
-                    </span>
-                    <span className="rounded-full bg-gray-200 px-2 text-[11px] text-gray-600">
-                      {col.length}
-                    </span>
+                <div key={ms.label} className="flex flex-1 flex-col items-center">
+                  {/* Circle row with connectors */}
+                  <div className="flex w-full items-center">
+                    <div className="flex-1">
+                      {idx > 0 && (
+                        <div
+                          className="h-[2px] w-full"
+                          style={{
+                            background: lineSolid ? "#28a745" : "transparent",
+                            borderTop: lineSolid ? "none" : "2px dashed #D1D5DB",
+                          }}
+                        />
+                      )}
+                    </div>
+                    <div
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                      style={{
+                        background: isDone ? "#28a745" : "transparent",
+                        border: isDone
+                          ? "none"
+                          : isCurrent
+                          ? "2px solid #0d08d2"
+                          : "2px solid #D1D5DB",
+                      }}
+                    >
+                      {isDone && <Check size={11} strokeWidth={3} color="#fff" />}
+                    </div>
+                    <div className="flex-1">
+                      {!isLast && (
+                        <div
+                          className="h-[2px] w-full"
+                          style={{
+                            background: lineSolid ? "#28a745" : "transparent",
+                            borderTop: lineSolid ? "none" : "2px dashed #D1D5DB",
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {col.map((risk) => (
-                      <RiskCard key={risk.id} risk={risk} roles={roles} />
-                    ))}
-                    {col.length === 0 && (
-                      <div className="rounded-card border border-dashed border-bordergray py-6 text-center text-[11px] text-gray-300">
-                        No risks
-                      </div>
-                    )}
+                  {/* Label */}
+                  <div
+                    className="mt-2 text-center text-[11px] font-semibold"
+                    style={{
+                      color: isDone ? "#28a745" : isCurrent ? "#0d08d2" : "#8a8ca6",
+                    }}
+                  >
+                    {ms.label}
+                  </div>
+                  {/* Date */}
+                  <div className="mt-0.5 text-center text-[10px]" style={{ color: "#8a8ca6" }}>
+                    {ms.date}
                   </div>
                 </div>
               );
             })}
           </div>
-        ) : (
-          <TableView risks={filtered} roles={roles} onOpen={(id) => navigate(`/risks/${id}`)} />
-        )}
+        </div>
+
+        {/* Section 4 — Workstream bars + Ball in court */}
+        <div className="grid grid-cols-3 gap-4">
+
+          {/* Left 2/3: Open risks by workstream */}
+          <div className="col-span-2 rounded-card bg-white px-6 py-5 shadow-card">
+            <h2
+              className="mb-4 text-[11px] font-semibold uppercase tracking-wider"
+              style={{ color: "#8a8ca6" }}
+            >
+              Open risks by workstream
+            </h2>
+            {workstreamData.length === 0 ? (
+              <p className="text-sm text-gray-400">No open risks.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {workstreamData.map(([ws, count]) => (
+                  <div key={ws} className="flex items-center gap-3">
+                    <span
+                      className="w-40 shrink-0 truncate text-[12px] font-medium"
+                      style={{ color: "#595b78" }}
+                    >
+                      {ws}
+                    </span>
+                    <div
+                      className="flex-1 overflow-hidden rounded-full"
+                      style={{ background: "#f0f0f8", height: "8px" }}
+                    >
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${(count / maxWsCount) * 100}%`,
+                          background: "#0d08d2",
+                        }}
+                      />
+                    </div>
+                    <span
+                      className="w-6 shrink-0 text-right text-[12px] font-semibold"
+                      style={{ color: "#0d08d2" }}
+                    >
+                      {count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right 1/3: Ball in court */}
+          <div className="rounded-card bg-white px-6 py-5 shadow-card">
+            <h2
+              className="mb-4 text-[11px] font-semibold uppercase tracking-wider"
+              style={{ color: "#8a8ca6" }}
+            >
+              Ball in court
+            </h2>
+            {ballData.length === 0 ? (
+              <p className="text-sm text-gray-400">No open risks.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {ballData.map(([owner, count]) => (
+                  <div key={owner} className="flex items-center justify-between">
+                    <span className="text-[13px]" style={{ color: "#15162b" }}>
+                      {owner}
+                    </span>
+                    <span
+                      className="flex h-6 min-w-[24px] items-center justify-center rounded-full px-2 text-[12px] font-semibold text-white"
+                      style={{ background: "#0d08d2" }}
+                    >
+                      {count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Section 5 — Recent activity */}
+        <div className="overflow-hidden rounded-card bg-white shadow-card">
+          <div className="border-b border-bordergray px-6 py-4">
+            <h2
+              className="text-[11px] font-semibold uppercase tracking-wider"
+              style={{ color: "#8a8ca6" }}
+            >
+              Recent activity
+            </h2>
+          </div>
+          {recentActivity.length === 0 ? (
+            <p className="px-6 py-4 text-sm text-gray-400">No status changes recorded yet.</p>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-400">
+                <tr>
+                  <th className="px-6 py-2.5">Risk ID</th>
+                  <th className="px-6 py-2.5">Risk</th>
+                  <th className="px-6 py-2.5">Moved to</th>
+                  <th className="px-6 py-2.5">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentActivity.map((act, i) => (
+                  <tr
+                    key={i}
+                    className="border-t border-bordergray"
+                    style={{ background: i % 2 === 0 ? "#ffffff" : "#f7f7fb" }}
+                  >
+                    <td className="px-6 py-2.5 font-mono text-[12px] text-gray-500">
+                      {act.riskId}
+                    </td>
+                    <td className="px-6 py-2.5 text-[13px] font-medium text-ink">
+                      {act.title}
+                    </td>
+                    <td className="px-6 py-2.5">
+                      <span
+                        className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                        style={{ background: "#e7e6fa", color: "#0d08d2" }}
+                      >
+                        {STATUS_LABEL[act.to as RiskStatus] ?? act.to}
+                      </span>
+                    </td>
+                    <td className="px-6 py-2.5 text-[12px] text-gray-500">
+                      {act.changedAt
+                        .toDate()
+                        .toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
       </div>
     </div>
   );
 }
 
-function TableView({
-  risks,
-  roles,
-  onOpen,
+function KpiCard({
+  label,
+  value,
+  valueColor,
 }: {
-  risks: ReturnType<typeof useRiskStore.getState>["risks"];
-  roles: ReturnType<typeof useRiskStore.getState>["roles"];
-  onOpen: (id: string) => void;
+  label: string;
+  value: number;
+  valueColor?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-card border border-bordergray bg-white shadow-card">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-400">
-          <tr>
-            <th className="px-4 py-2.5">ID</th>
-            <th className="px-4 py-2.5">Title</th>
-            <th className="px-4 py-2.5">Status</th>
-            <th className="px-4 py-2.5">Priority</th>
-            <th className="px-4 py-2.5">Workstream</th>
-            <th className="px-4 py-2.5">Due</th>
-            <th className="px-4 py-2.5">Responsible</th>
-          </tr>
-        </thead>
-        <tbody>
-          {risks.map((risk) => {
-            const prio = PRIORITY_META[risk.priority];
-            const responsible = roles.find(
-              (r) => risk.workstreamIds.includes(r.id) && r.type === "responsible"
-            );
-            const workstreams = [
-              ...new Set(
-                roles
-                  .filter((r) => risk.workstreamIds.includes(r.id))
-                  .map((r) => r.workstream)
-              ),
-            ];
-            return (
-              <tr
-                key={risk.id}
-                onClick={() => onOpen(risk.id)}
-                className="cursor-pointer border-t border-bordergray hover:bg-gray-50"
-              >
-                <td className="px-4 py-2.5 font-mono text-[12px] text-gray-500">
-                  {risk.riskId}
-                </td>
-                <td className="px-4 py-2.5 font-medium text-ink">
-                  {risk.title}
-                </td>
-                <td className="px-4 py-2.5 text-gray-600">
-                  {STATUS_LABEL[risk.status as RiskStatus]}
-                </td>
-                <td className="px-4 py-2.5">
-                  <span
-                    className="inline-flex items-center gap-1.5"
-                    style={{ color: prio.text }}
-                  >
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ background: prio.dot }}
-                    />
-                    {prio.label}
-                  </span>
-                </td>
-                <td className="px-4 py-2.5 text-gray-500">
-                  {workstreams.join(", ") || "—"}
-                </td>
-                <td className="px-4 py-2.5 text-gray-500">
-                  {formatDate(risk.dueDate)}
-                </td>
-                <td className="px-4 py-2.5">
-                  {responsible ? (
-                    <span className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo/15 text-[9px] font-semibold text-indigo">
-                        {initials(responsible.person.name)}
-                      </span>
-                      <span className="text-xs text-gray-600">
-                        {responsible.person.name}
-                      </span>
-                    </span>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-          {risks.length === 0 && (
-            <tr>
-              <td colSpan={7} className="px-4 py-8 text-center text-gray-300">
-                No risks match the current filters.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+    <div
+      className="rounded-card bg-white px-5 py-4 shadow-card"
+      style={{ border: "1px solid #e6e6f0" }}
+    >
+      <div
+        className="text-[28px] font-bold leading-none"
+        style={{ color: valueColor ?? "#070474" }}
+      >
+        {value}
+      </div>
+      <div className="mt-2 text-[12px]" style={{ color: "#595b78" }}>
+        {label}
+      </div>
     </div>
   );
 }
