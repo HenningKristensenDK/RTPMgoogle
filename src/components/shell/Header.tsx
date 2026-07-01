@@ -21,7 +21,7 @@ export default function Header({ onTodosOpen }: Props) {
       style={{ background: "#ffffff", borderColor: "#e6e6f0" }}
     >
       <div className="flex items-center gap-2.5">
-        <img src="/RTPM icon navy.png" style={{ height: "28px", width: "auto" }} alt="RTPM" />
+        <img src="/RTPM icon navy.png" style={{ height: "36px", width: "auto" }} alt="RTPM" />
         <div className="flex flex-col leading-tight">
           <span style={{ fontSize: "15px", fontWeight: 600, color: "#070474" }}>Viking Project</span>
           <span style={{ fontSize: "11px", fontWeight: 400, color: "#8a8ca6" }}>RTPM Platform</span>

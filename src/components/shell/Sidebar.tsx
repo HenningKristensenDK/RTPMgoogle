@@ -21,7 +21,7 @@ const NAV: { to: string; end?: boolean; Icon: LucideIcon; label: string }[] = [
   { to: "/documents",                    Icon: FileText,        label: "Documents" },
   { to: "/correspondence",               Icon: Mail,            label: "Correspondence" },
   { to: "/site-inspection",              Icon: ClipboardCheck,  label: "Site Inspection" },
-  { to: "/ncr",                          Icon: AlertTriangle,   label: "Nonconformance (NCR)" },
+  { to: "/ncr",                          Icon: AlertTriangle,   label: "Nonconformance" },
   { to: "/risks",                        Icon: ShieldAlert,     label: "Risk & Opportunities" },
   { to: "/permit-compliance",            Icon: BadgeCheck,      label: "Permit & Compliance" },
   { to: "/change-management",            Icon: GitPullRequest,  label: "Change Management" },
@@ -56,6 +56,13 @@ export default function Sidebar() {
           />
         ))}
       </nav>
+
+      {/* Footer */}
+      {!collapsed && (
+        <div style={{ padding: "0 0 16px 16px", fontSize: "11px", fontWeight: 400, color: "#8a8ca6" }}>
+          © 2026 RTPM · v0.1
+        </div>
+      )}
     </aside>
   );
 }
