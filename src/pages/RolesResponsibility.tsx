@@ -70,7 +70,9 @@ export default function RolesResponsibility() {
             {view === "orgchart" ? "OBS diagram" : "Roles & Responsibility"}
           </h1>
           <p className="text-xs text-gray-400">
-            Source of truth for workstream lookups and involved parties
+            {view === "orgchart"
+              ? "A real-time map of who does the work. Displays your organization in detail and structures all contractors by contract tiers—making responsibilities, boundaries, and hierarchy immediately visible."
+              : "Source of truth for workstream lookups and involved parties"}
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -23,7 +23,8 @@ interface DisciplineCard {
 }
 
 const FONT = "Inter, system-ui, sans-serif";
-const CANVAS_TINT = "#e7e6fa";
+const BAND_WHITE = "#ffffff";
+const BAND_TINT = "#e7e6fa";
 const DIVIDER = "#e6e6f0";
 const NESTED_BG = "#f7f7fb";
 
@@ -108,7 +109,7 @@ export default function OrgChart({ projectId, roles }: Props) {
   }
 
   return (
-    <div ref={containerRef} className="relative flex flex-col" style={{ background: CANVAS_TINT }}>
+    <div ref={containerRef} className="relative flex flex-col">
       <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
         {lines.map((l) => (
           <line
@@ -145,14 +146,27 @@ export default function OrgChart({ projectId, roles }: Props) {
       {tiers.map((tierOrgs, i) => (
         <div
           key={tierNumbers[i]}
-          className="relative z-10 flex items-center gap-4 px-10 py-8"
-          style={i < tiers.length - 1 ? { borderBottom: `1px solid ${DIVIDER}` } : undefined}
+          className="relative z-10 flex items-center gap-4 px-10"
+          style={{
+            background: i % 2 === 0 ? BAND_WHITE : BAND_TINT,
+            paddingTop: "24px",
+            paddingBottom: "24px",
+            borderBottom: i < tiers.length - 1 ? `1px solid ${DIVIDER}` : undefined,
+          }}
         >
-          <div
-            className="w-16 shrink-0 self-center text-right"
-            style={{ fontFamily: FONT, fontWeight: 500, fontSize: "11px", color: "#8a8ca6" }}
-          >
-            Tier {tierNumbers[i]}
+          <div className="flex w-16 shrink-0 justify-start self-center">
+            <span
+              className="whitespace-nowrap rounded-full bg-white px-2.5 py-1"
+              style={{
+                border: `1px solid ${DIVIDER}`,
+                fontFamily: FONT,
+                fontWeight: 600,
+                fontSize: "11px",
+                color: "#070474",
+              }}
+            >
+              Tier {tierNumbers[i]}
+            </span>
           </div>
           <div className="flex flex-1 flex-wrap gap-8">
             {tierOrgs.map((org) => {
