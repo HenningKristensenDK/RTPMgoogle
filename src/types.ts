@@ -32,21 +32,19 @@ export interface RoleResponsibility {
   consulted: Party;
   responsibleCustomer: Party | null;
   responsibleContractor: Party | null;
-  informedCustomer: Party | null;
-  informedContractor: Party | null;
+  informedCustomer: Party[];
+  informedContractor: Party[];
   description: string;
+  interactionSummary: string;
 }
-
-export type OrgTier = 1 | 2 | 3;
 
 export interface Organization {
   id: string;
   projectId: string;
   orgId: string;
   name: string;
-  tier: OrgTier;
+  tier: number;
   parentOrgId: string | null;
-  contractType: string | null;
   roleType: string;
 }
 

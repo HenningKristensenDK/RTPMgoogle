@@ -27,22 +27,28 @@ export function buildRiskContext(
   roles: RoleResponsibility[]
 ): Record<string, unknown> {
   const involved = roles.filter((r) => risk.workstreamIds.includes(r.id));
-  const slots: [string, "accountable" | "consulted" | "responsibleCustomer" | "responsibleContractor" | "informedCustomer" | "informedContractor"][] = [
-    ["Accountable", "accountable"],
-    ["Consulted", "consulted"],
-    ["Responsible (Customer)", "responsibleCustomer"],
-    ["Responsible (Contractor)", "responsibleContractor"],
-    ["Informed (Customer)", "informedCustomer"],
-    ["Informed (Contractor)", "informedContractor"],
-  ];
-  const involvedParties = involved.flatMap((r) =>
-    slots
-      .map(([raci, key]) => {
-        const party = r[key];
-        return party ? { workstream: r.workstream, organization: party.organization, role: party.role, person: party.name, raci } : null;
-      })
-      .filter((p): p is NonNullable<typeof p> => p !== null)
-  );
+  const involvedParties = involved.flatMap((r) => {
+    const entries: { workstream: string; organization: string; role: string; person: string; raci: string }[] = [];
+    const single: [string, typeof r.accountable | null][] = [
+      ["Accountable", r.accountable],
+      ["Consulted", r.consulted],
+      ["Responsible (Customer)", r.responsibleCustomer],
+      ["Responsible (Contractor)", r.responsibleContractor],
+    ];
+    for (const [raci, party] of single) {
+      if (party) entries.push({ workstream: r.workstream, organization: party.organization, role: party.role, person: party.name, raci });
+    }
+    const lists: [string, typeof r.informedCustomer][] = [
+      ["Informed (Customer)", r.informedCustomer],
+      ["Informed (Contractor)", r.informedContractor],
+    ];
+    for (const [raci, parties] of lists) {
+      for (const party of parties) {
+        entries.push({ workstream: r.workstream, organization: party.organization, role: party.role, person: party.name, raci });
+      }
+    }
+    return entries;
+  });
   return {
     riskId: risk.riskId,
     title: risk.title,

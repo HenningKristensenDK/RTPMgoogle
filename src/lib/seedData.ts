@@ -30,96 +30,109 @@ export interface SeedRole {
   consulted: SeedParty;
   responsibleCustomer: SeedParty | null;
   responsibleContractor: SeedParty | null;
-  informedCustomer: SeedParty | null;
-  informedContractor: SeedParty | null;
+  informedCustomer: SeedParty[];
+  informedContractor: SeedParty[];
   description: string;
+  interactionSummary: string;
 }
 
-const CLAUS = { name: "Claus Risum Korsgaard", organization: "Turner & Townsend", role: "Project Director" };
+const ACCOUNTABLE = { name: "Henning Kristensen", organization: "Customer PMO", role: "Project director" };
 
 export const SEED_ROLES: SeedRole[] = [
   {
     id: "civil-works",
     workstream: "Civil Works",
-    accountable: CLAUS,
-    consulted: { name: "Anna Nielsen", organization: "WSP Denmark", role: "Structural Advisor" },
+    accountable: ACCOUNTABLE,
+    consulted: { name: "Anna López", organization: "NT Advisor", role: "Structural advisor" },
     responsibleCustomer: null,
-    responsibleContractor: { name: "Jens Larsen", organization: "MT Højgaard", role: "Site Manager" },
-    informedCustomer: null,
-    informedContractor: null,
-    description: "Foundations, structural concrete and building envelope works for Phase 1.",
+    responsibleContractor: { name: "Jens Larsen", organization: "HD Contractor", role: "Site manager" },
+    informedCustomer: [],
+    informedContractor: [
+      { name: "Peter Koch", organization: "HD Contractor", role: "MEP lead" },
+      { name: "Bharat Khunti", organization: "HD Contractor", role: "QA/QC manager" },
+    ],
+    description: "Foundations, structural concrete and building envelope works.",
+    interactionSummary: "Contractor executes the works, Customer's advisor inspects before pour.",
   },
   {
     id: "mep-infrastructure",
     workstream: "MEP Infrastructure",
-    accountable: CLAUS,
-    consulted: { name: "Anna Nielsen", organization: "WSP Denmark", role: "Structural Advisor" },
+    accountable: ACCOUNTABLE,
+    consulted: { name: "Thomas Olsen", organization: "NT Advisor", role: "MEP advisor" },
     responsibleCustomer: null,
-    responsibleContractor: { name: "Peter Koch", organization: "MT Højgaard", role: "MEP Lead" },
-    informedCustomer: null,
-    informedContractor: null,
-    description: "Electrical, mechanical and utility infrastructure including grid connection and cooling.",
+    responsibleContractor: { name: "Peter Koch", organization: "HD Contractor", role: "MEP lead" },
+    informedCustomer: [{ name: "Sindhu K", organization: "Customer PMO", role: "PMO lead" }],
+    informedContractor: [],
+    description: "Electrical, mechanical and utility infrastructure.",
+    interactionSummary: "Contractor installs equipment, Customer's advisor witnesses factory acceptance tests.",
   },
   {
     id: "it-data-infrastructure",
     workstream: "IT/Data Infrastructure",
-    accountable: CLAUS,
-    consulted: { name: "Peter Koch", organization: "MT Højgaard", role: "MEP Lead" },
-    responsibleCustomer: null,
-    responsibleContractor: { name: "Mikkel Holm", organization: "Nordic Fit-Out Partners", role: "Fit-Out Coordinator" },
-    informedCustomer: null,
-    informedContractor: null,
-    description: "IT fit-out, data hall racking, liquid cooling and network infrastructure.",
+    accountable: ACCOUNTABLE,
+    consulted: { name: "Anna López", organization: "NT Advisor", role: "Structural advisor" },
+    responsibleCustomer: { name: "Sindhu K", organization: "Customer PMO", role: "PMO lead" },
+    responsibleContractor: { name: "Ming Zhang", organization: "FO Sub-Contractor", role: "IT infrastructure lead" },
+    informedCustomer: [],
+    informedContractor: [
+      { name: "Jens Larsen", organization: "HD Contractor", role: "Site manager" },
+      { name: "Peter Koch", organization: "HD Contractor", role: "MEP lead" },
+      { name: "Bharat Khunti", organization: "HD Contractor", role: "QA/QC manager" },
+    ],
+    description: "IT fit-out, data hall racking and liquid cooling.",
+    interactionSummary: "Sub-contractor fits out racks and cooling, main contractor coordinates site access.",
   },
   {
     id: "quality",
     workstream: "Quality",
-    accountable: CLAUS,
-    consulted: { name: "Anna Nielsen", organization: "WSP Denmark", role: "Structural Advisor" },
-    responsibleCustomer: { name: "Sofie Bruun", organization: "Turner & Townsend", role: "Quality Manager" },
-    responsibleContractor: { name: "Jens Larsen", organization: "MT Højgaard", role: "Site Manager" },
-    informedCustomer: null,
-    informedContractor: null,
-    description: "Quality assurance, inspection and NCR management across all workstreams.",
+    accountable: ACCOUNTABLE,
+    consulted: { name: "Thomas Olsen", organization: "NT Advisor", role: "MEP advisor" },
+    responsibleCustomer: null,
+    responsibleContractor: { name: "Bharat Khunti", organization: "HD Contractor", role: "QA/QC manager" },
+    informedCustomer: [{ name: "Sindhu K", organization: "Customer PMO", role: "PMO lead" }],
+    informedContractor: [],
+    description: "Quality assurance, inspection and NCR management.",
+    interactionSummary: "Contractor's QA/QC manager closes non-conformances, Customer's advisor reviews evidence before sign-off.",
   },
   {
     id: "hse",
     workstream: "HSE",
-    accountable: CLAUS,
-    consulted: { name: "Anna Nielsen", organization: "WSP Denmark", role: "HSE Advisor" },
-    responsibleCustomer: null,
-    responsibleContractor: { name: "Rasmus Vig", organization: "MT Højgaard", role: "HSE Manager" },
-    informedCustomer: null,
-    informedContractor: null,
-    description: "Health, safety and environmental management across all site works.",
+    accountable: ACCOUNTABLE,
+    consulted: { name: "Thomas Olsen", organization: "NT Advisor", role: "HSE advisor" },
+    responsibleCustomer: { name: "Sindhu K", organization: "Customer PMO", role: "PMO lead" },
+    responsibleContractor: { name: "Jens Lorenzen", organization: "HD Contractor", role: "HSE coordinator" },
+    informedCustomer: [],
+    informedContractor: [],
+    description: "Health, safety and environmental compliance.",
+    interactionSummary: "Contractor's HSE coordinator manages daily compliance, Customer's advisor audits monthly.",
   },
   {
     id: "permit-and-authorities",
     workstream: "Permit and Authorities",
-    accountable: CLAUS,
-    consulted: { name: "Anna Nielsen", organization: "WSP Denmark", role: "Planning Advisor" },
-    responsibleCustomer: { name: "Ida Kristoffersen", organization: "Turner & Townsend", role: "Permits & Compliance Lead" },
+    accountable: ACCOUNTABLE,
+    consulted: { name: "Rohan Sameer", organization: "NT Advisor", role: "Permitting advisor" },
+    responsibleCustomer: { name: "Sindhu K", organization: "Customer PMO", role: "PMO lead" },
     responsibleContractor: null,
-    informedCustomer: null,
-    informedContractor: { name: "Mette Sørensen", organization: "Energinet", role: "Grid Connection Officer" },
-    description: "Building permits, grid connection approvals and regulatory authority liaison.",
+    informedCustomer: [],
+    informedContractor: [{ name: "Ming Zhang", organization: "FO Sub-Contractor", role: "IT infrastructure lead" }],
+    description: "Building permits, grid connection approvals and regulatory compliance.",
+    interactionSummary: "Customer's PMO lead manages authority submissions, advisor supports technical justification.",
   },
 ];
 
 export interface SeedOrganization {
   orgId: string;
   name: string;
-  tier: 1 | 2 | 3;
+  tier: number;
   parentOrgId: string | null;
-  contractType: string | null;
   roleType: string;
 }
 
 export const SEED_ORGANIZATIONS: SeedOrganization[] = [
-  { orgId: "customer", name: "Customer", tier: 1, parentOrgId: null, contractType: null, roleType: "Home organization" },
-  { orgId: "mt-hojgaard", name: "MT Højgaard", tier: 2, parentOrgId: "customer", contractType: "NEC4 Option C", roleType: "Main contractor" },
-  { orgId: "wsp-denmark", name: "WSP Denmark", tier: 2, parentOrgId: "customer", contractType: "Advisory agreement", roleType: "Advisor" },
-  { orgId: "nordic-fitout", name: "Nordic Fit-Out Partners", tier: 3, parentOrgId: "mt-hojgaard", contractType: "Subcontract", roleType: "Subcontractor" },
+  { orgId: "customer", name: "Customer", tier: 0, parentOrgId: null, roleType: "Home organization" },
+  { orgId: "mt-hojgaard", name: "HD Contractor", tier: 1, parentOrgId: "customer", roleType: "Main contractor" },
+  { orgId: "wsp-denmark", name: "NT Advisor", tier: 1, parentOrgId: "customer", roleType: "Advisor" },
+  { orgId: "nordic-fitout", name: "FO Sub-Contractor", tier: 2, parentOrgId: "mt-hojgaard", roleType: "Sub-contractor" },
 ];
 
 export interface SeedRisk {

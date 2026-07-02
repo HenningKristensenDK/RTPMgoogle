@@ -36,8 +36,8 @@ export default function ChatInput({ mode, disabled, members, onSend }: Props) {
           m.consulted,
           m.responsibleCustomer,
           m.responsibleContractor,
-          m.informedCustomer,
-          m.informedContractor,
+          ...m.informedCustomer,
+          ...m.informedContractor,
         ]
           .filter((p): p is NonNullable<typeof p> => p !== null)
           .map((p) => p.name)

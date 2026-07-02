@@ -53,6 +53,7 @@ async function run(createdBy: string): Promise<void> {
       informedCustomer: role.informedCustomer,
       informedContractor: role.informedContractor,
       description: role.description,
+      interactionSummary: role.interactionSummary,
     });
   }
 
@@ -64,7 +65,6 @@ async function run(createdBy: string): Promise<void> {
       name: org.name,
       tier: org.tier,
       parentOrgId: org.parentOrgId,
-      contractType: org.contractType,
       roleType: org.roleType,
     });
   }

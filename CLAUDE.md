@@ -31,9 +31,9 @@ Collections: projects, risks, roles_and_responsibilities, risk_messages, organiz
 Indexes: risk_messages (mode+riskId+timestamp), risks (projectId+createdAt)
 Note: existing risk docs still hold old "DataCenter Vejle [diamond] Phase 1" string in Risk collection field - will be fixed on next re-seed, not yet done.
 
-`roles_and_responsibilities` is one doc per workstream (id = slug, e.g. `civil-works`), not a flat RACI-row list. Fields: `workstream`, `accountable`/`consulted` (`{name, organization, role}`, always present), `responsibleCustomer`/`responsibleContractor`/`informedCustomer`/`informedContractor` (`{name, organization, role} | null`), `description`. "Owner/Employer" was renamed to "Customer" everywhere (2026-07-02) — the old flat schema (`organization`/`organizationName`/`person`/`type` fields) no longer exists.
+`roles_and_responsibilities` is one doc per workstream (id = slug, e.g. `civil-works`), not a flat RACI-row list. Fields: `workstream`, `description`, `interactionSummary`, `accountable`/`consulted` (`{name, organization, role}`, always present), `responsibleCustomer`/`responsibleContractor` (`{name, organization, role} | null`), `informedCustomer`/`informedContractor` (`{name, organization, role}[]`, arrays — can hold multiple people). "Owner/Employer" was renamed to "Customer" everywhere (2026-07-02) — the old flat schema (`organization`/`organizationName`/`person`/`type` fields) no longer exists.
 
-`organizations` is the Org Chart data source: `{orgId, name, tier (1/2/3), parentOrgId, contractType, roleType}`, seeded with 4 orgs (customer / mt-hojgaard / wsp-denmark / nordic-fitout). Rendered by `src/components/roles/OrgChart.tsx`, toggled via Table/Org Chart switch on the Roles & Responsibility page (default Table).
+`organizations` is the Org Chart data source: `{orgId, name, tier, parentOrgId, roleType}` (no `contractType` — removed 2026-07-02), seeded with 4 orgs: customer (tier 0, "Customer"), mt-hojgaard (tier 1, "HD Contractor"), wsp-denmark (tier 1, "NT Advisor"), nordic-fitout (tier 2, "FO Sub-Contractor"). Org names were genericized from real company names on 2026-07-02 — see the leak note above. Rendered by `src/components/roles/OrgChart.tsx`, toggled via Table/Org Chart switch on the Roles & Responsibility page (default Table). Table view has a further Table/RACI sub-toggle: collapsed 3-column view (Workstream/Customer/Contractor) vs full RACI matrix with side-drawer editing.
 
 ## Shell architecture (3 states)
 landing / active / focus - in src/store/shellStore.ts
@@ -56,9 +56,11 @@ Built: Dashboard, Risk Management, Roles & Responsibility
 Not built: Documents, Correspondence, NCR, RFI, Change Management, Interface Management, Technical Query, Time Log, Site Inspection, Permit & Compliance, Project Economics
 
 ## Demo context
-Client: Claus Risum Korsgaard, Project Director, Turner & Townsend
+Client: Henning Kristensen, Project director, Customer PMO
 Demo target: August 2026
 Mandate: Google-only tooling
+
+Note (2026-07-02): all seed/demo data uses genericized names (Customer PMO / HD Contractor / NT Advisor / FO Sub-Contractor) after a real client name and firm name were found leaked into seed data and purged from Firestore, seed scripts and this file. Do not reintroduce real client/firm names into seed data.
 
 ## Open items / next priorities
 1. GROUP B - left menu as main nav with all modules in frequency order (Dashboard, Time Log, Documents, Correspondence, Site Inspection, NCR, Risk, Permit, Change, Project Economics, Roles last). Correspondence is a cross-cutting view with type filter (RFI/TQ/Meeting Minutes/Variation/Site Instruction/EOT/Inspection Request) - not separate modules.

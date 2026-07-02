@@ -23,8 +23,8 @@ function roleOrganizations(r: ReturnType<typeof useRiskStore.getState>["roles"][
     r.consulted,
     r.responsibleCustomer,
     r.responsibleContractor,
-    r.informedCustomer,
-    r.informedContractor,
+    ...r.informedCustomer,
+    ...r.informedContractor,
   ]
     .filter((p): p is NonNullable<typeof p> => p !== null)
     .map((p) => p.organization);

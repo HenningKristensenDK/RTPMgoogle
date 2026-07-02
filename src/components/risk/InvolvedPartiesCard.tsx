@@ -56,11 +56,11 @@ export default function InvolvedPartiesCard({ roles, selectedIds }: Props) {
     if (r.responsibleContractor) {
       responsible.push({ workstream: r.workstream, slot: "Contractor", party: r.responsibleContractor });
     }
-    if (r.informedCustomer) {
-      informed.push({ workstream: r.workstream, slot: "Customer", party: r.informedCustomer });
+    for (const party of r.informedCustomer) {
+      informed.push({ workstream: r.workstream, slot: "Customer", party });
     }
-    if (r.informedContractor) {
-      informed.push({ workstream: r.workstream, slot: "Contractor", party: r.informedContractor });
+    for (const party of r.informedContractor) {
+      informed.push({ workstream: r.workstream, slot: "Contractor", party });
     }
   }
 

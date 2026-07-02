@@ -12,8 +12,6 @@ interface Line {
   y1: number;
   x2: number;
   y2: number;
-  labelX: number;
-  labelY: number;
 }
 
 const FONT = "Inter, system-ui, sans-serif";
@@ -29,9 +27,10 @@ export default function OrgChart({ projectId }: Props) {
     return watchOrganizations(projectId, setOrgs);
   }, [projectId]);
 
-  const tiers = [1, 2, 3]
-    .map((t) => orgs.filter((o) => o.tier === t))
-    .filter((group) => group.length > 0);
+  // Derive the tier rows from whatever tier values actually exist in the
+  // data (sorted ascending) — no hardcoded tier count, so a new tier just works.
+  const tierNumbers = [...new Set(orgs.map((o) => o.tier))].sort((a, b) => a - b);
+  const tiers = tierNumbers.map((t) => orgs.filter((o) => o.tier === t));
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -47,27 +46,12 @@ export default function OrgChart({ projectId }: Props) {
         if (!childEl || !parentEl) continue;
         const childRect = childEl.getBoundingClientRect();
         const parentRect = parentEl.getBoundingClientRect();
-        const x1 = parentRect.left + parentRect.width / 2 - containerRect.left;
-        const y1 = parentRect.bottom - containerRect.top;
-        const x2 = childRect.left + childRect.width / 2 - containerRect.left;
-        const y2 = childRect.top - containerRect.top;
-
-        // Offset the contract-type label perpendicular to the line so it
-        // never sits on top of the stroke, whatever angle the line is at.
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const len = Math.hypot(dx, dy) || 1;
-        const nx = -dy / len;
-        const ny = dx / len;
-
         next.push({
           orgId: org.orgId,
-          x1,
-          y1,
-          x2,
-          y2,
-          labelX: (x1 + x2) / 2 + nx * 14,
-          labelY: (y1 + y2) / 2 + ny * 14,
+          x1: parentRect.left + parentRect.width / 2 - containerRect.left,
+          y1: parentRect.bottom - containerRect.top,
+          x2: childRect.left + childRect.width / 2 - containerRect.left,
+          y2: childRect.top - containerRect.top,
         });
       }
       setLines(next);
@@ -83,7 +67,7 @@ export default function OrgChart({ projectId }: Props) {
   }
 
   return (
-    <div ref={containerRef} className="relative flex flex-col items-center gap-20 px-10 py-10">
+    <div ref={containerRef} className="relative flex flex-col gap-20 px-10 py-10">
       <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
         <defs>
           <marker
@@ -111,65 +95,49 @@ export default function OrgChart({ projectId }: Props) {
         ))}
       </svg>
 
-      {lines.map((l) => {
-        const org = orgs.find((o) => o.orgId === l.orgId);
-        if (!org?.contractType) return null;
-        return (
-          <span
-            key={`label-${l.orgId}`}
-            className="pointer-events-none absolute whitespace-nowrap"
-            style={{
-              left: l.labelX,
-              top: l.labelY,
-              transform: "translate(-50%, -50%)",
-              fontFamily: FONT,
-              fontWeight: 400,
-              fontSize: "11px",
-              color: "#8a8ca6",
-              background: "#fff",
-              padding: "0 4px",
-            }}
-          >
-            {org.contractType}
-          </span>
-        );
-      })}
-
       {tiers.map((tier, i) => (
-        <div key={i} className="relative z-10 flex flex-wrap justify-center gap-16">
-          {tier.map((org) => (
-            <div
-              key={org.orgId}
-              ref={(el) => {
-                if (el) nodeRefs.current.set(org.orgId, el);
-                else nodeRefs.current.delete(org.orgId);
-              }}
-              className="flex w-[180px] flex-col items-center bg-white px-4 py-3 text-center"
-              style={{ border: "1px solid #e6e6f0", borderRadius: "12px" }}
-            >
-              <span
-                style={{
-                  fontFamily: FONT,
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  color: "#070474",
+        <div key={tierNumbers[i]} className="relative z-10 flex items-center gap-4">
+          <div
+            className="w-16 shrink-0 text-right"
+            style={{ fontFamily: FONT, fontWeight: 500, fontSize: "11px", color: "#8a8ca6" }}
+          >
+            Tier {tierNumbers[i]}
+          </div>
+          <div className="flex flex-1 flex-wrap justify-center gap-16">
+            {tier.map((org) => (
+              <div
+                key={org.orgId}
+                ref={(el) => {
+                  if (el) nodeRefs.current.set(org.orgId, el);
+                  else nodeRefs.current.delete(org.orgId);
                 }}
+                className="flex w-[180px] flex-col items-center bg-white px-4 py-3 text-center"
+                style={{ border: "1px solid #e6e6f0", borderRadius: "12px" }}
               >
-                {org.name}
-              </span>
-              <span
-                style={{
-                  fontFamily: FONT,
-                  fontWeight: 400,
-                  fontSize: "12px",
-                  color: "#8a8ca6",
-                  marginTop: "2px",
-                }}
-              >
-                {org.roleType}
-              </span>
-            </div>
-          ))}
+                <span
+                  style={{
+                    fontFamily: FONT,
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    color: "#070474",
+                  }}
+                >
+                  {org.name}
+                </span>
+                <span
+                  style={{
+                    fontFamily: FONT,
+                    fontWeight: 400,
+                    fontSize: "12px",
+                    color: "#8a8ca6",
+                    marginTop: "2px",
+                  }}
+                >
+                  {org.roleType}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       ))}
     </div>

@@ -1,43 +1,65 @@
 import { useState } from "react";
-import { Plus, Table2, Network } from "lucide-react";
+import { Plus, Table2, Network, ListTree, Pencil } from "lucide-react";
 import type { Party, RoleResponsibility } from "../types";
 import { useRiskStore } from "../store/riskStore";
 import { upsertRole } from "../firebase/firestore";
 import { toast } from "../lib/toast";
 import OrgChart from "../components/roles/OrgChart";
+import RoleDrawer from "../components/roles/RoleDrawer";
 
 type View = "table" | "orgchart";
 
-const EMPTY_PARTY: Party = { name: "", organization: "", role: "" };
+const CUSTOMER_ZONE = "#e7e6fa";
+const CONTRACTOR_ZONE = "#f7f7fb";
+
+function PartyStack({ party }: { party: Party | null }) {
+  if (!party || !party.name) return <span className="text-gray-300">—</span>;
+  return (
+    <div>
+      <div className="text-[13px] font-medium text-ink">{party.name}</div>
+      <div className="text-[11px] text-gray-400">{party.organization}</div>
+    </div>
+  );
+}
+
+function PartyListStack({ people }: { people: Party[] }) {
+  if (people.length === 0) return <span className="text-gray-300">—</span>;
+  return (
+    <div className="flex flex-col gap-1.5">
+      {people.map((p, i) => (
+        <div key={i}>
+          <div className="text-[12px] font-medium text-ink">{p.name}</div>
+          <div className="text-[11px] text-gray-400">{p.organization}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function RolesResponsibility() {
   const { roles, projectId } = useRiskStore();
   const [view, setView] = useState<View>("table");
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [raci, setRaci] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<RoleResponsibility | null>(null);
 
-  async function save(role: Partial<RoleResponsibility>) {
-    setSavingId(role.id || "new");
+  function openCreateDrawer() {
+    setEditingRole(null);
+    setDrawerOpen(true);
+  }
+
+  function openEditDrawer(role: RoleResponsibility) {
+    setEditingRole(role);
+    setDrawerOpen(true);
+  }
+
+  async function handleSaveDrawer(patch: Partial<RoleResponsibility>) {
     try {
-      await upsertRole({ ...role, projectId });
+      await upsertRole({ ...patch, projectId });
       toast.success("Saved");
     } catch {
       toast.error("Save failed");
-    } finally {
-      setSavingId(null);
     }
-  }
-
-  async function addRow() {
-    await save({
-      workstream: "New Workstream",
-      accountable: EMPTY_PARTY,
-      consulted: EMPTY_PARTY,
-      responsibleCustomer: null,
-      responsibleContractor: null,
-      informedCustomer: null,
-      informedContractor: null,
-      description: "",
-    });
   }
 
   return (
@@ -76,7 +98,19 @@ export default function RolesResponsibility() {
           </div>
           {view === "table" && (
             <button
-              onClick={addRow}
+              onClick={() => setRaci((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-btn border px-3 py-1.5 text-sm ${
+                raci
+                  ? "border-indigo bg-indigo text-white"
+                  : "border-bordergray bg-white text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              <ListTree size={15} /> RACI
+            </button>
+          )}
+          {view === "table" && (
+            <button
+              onClick={openCreateDrawer}
               className="flex items-center gap-1.5 rounded-btn bg-indigo px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo/90"
             >
               <Plus size={16} /> Add workstream
@@ -88,32 +122,11 @@ export default function RolesResponsibility() {
       <div className="scroll-thin flex-1 overflow-auto p-6">
         {view === "table" ? (
           <div className="overflow-x-auto rounded-card border border-bordergray bg-white shadow-card">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-400">
-                <tr>
-                  <th className="px-3 py-2.5">Workstream</th>
-                  <th className="px-3 py-2.5">Accountable</th>
-                  <th className="px-3 py-2.5">Consulted</th>
-                  <th className="px-3 py-2.5">Responsible – Customer</th>
-                  <th className="px-3 py-2.5">Responsible – Contractor</th>
-                  <th className="px-3 py-2.5">Informed – Customer</th>
-                  <th className="px-3 py-2.5">Informed – Contractor</th>
-                  <th className="px-3 py-2.5">Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roles.map((r) => (
-                  <Row key={r.id} role={r} onSave={save} saving={savingId === r.id} />
-                ))}
-                {roles.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-gray-300">
-                      No workstreams yet. Add the first one.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            {raci ? (
+              <RaciTable roles={roles} onEdit={openEditDrawer} />
+            ) : (
+              <CollapsedTable roles={roles} />
+            )}
           </div>
         ) : (
           <div className="rounded-card border border-bordergray bg-white shadow-card">
@@ -121,148 +134,120 @@ export default function RolesResponsibility() {
           </div>
         )}
       </div>
+
+      <RoleDrawer
+        role={editingRole}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSave={handleSaveDrawer}
+      />
     </div>
   );
 }
 
-function PartyCell({
-  party,
-  nullable,
-  onChange,
-}: {
-  party: Party | null;
-  nullable: boolean;
-  onChange: (next: Party | null) => void;
-}) {
-  const inputCls =
-    "w-full min-w-[130px] bg-transparent px-1 py-0.5 text-[12px] outline-none focus:rounded focus:bg-indigo/5";
-
-  if (party === null) {
-    return (
-      <button
-        onClick={() => onChange({ ...EMPTY_PARTY })}
-        className="px-2 py-1 text-[11px] text-gray-300 hover:text-indigo"
-      >
-        + Add
-      </button>
-    );
-  }
-
+function CollapsedTable({ roles }: { roles: RoleResponsibility[] }) {
   return (
-    <div className="flex flex-col gap-0.5 py-1">
-      <input
-        className={`${inputCls} font-medium text-ink`}
-        placeholder="Name"
-        value={party.name}
-        onChange={(e) => onChange({ ...party, name: e.target.value })}
-      />
-      <input
-        className={`${inputCls} text-gray-500`}
-        placeholder="Organization"
-        value={party.organization}
-        onChange={(e) => onChange({ ...party, organization: e.target.value })}
-      />
-      <div className="flex items-center gap-1">
-        <input
-          className={`${inputCls} text-gray-400`}
-          placeholder="Role"
-          value={party.role}
-          onChange={(e) => onChange({ ...party, role: e.target.value })}
-        />
-        {nullable && (
-          <button
-            onClick={() => onChange(null)}
-            title="Clear"
-            className="shrink-0 px-1 text-gray-300 hover:text-critical"
-          >
-            ×
-          </button>
+    <table className="w-full text-left text-sm">
+      <thead className="bg-gray-50 text-[11px] tracking-wide text-gray-400">
+        <tr>
+          <th className="px-4 py-2.5">Workstream</th>
+          <th className="px-4 py-2.5">Customer</th>
+          <th className="px-4 py-2.5">Contractor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {roles.map((r) => (
+          <tr key={r.id} className="border-t border-bordergray">
+            <td className="px-4 py-2.5 font-medium text-ink">{r.workstream}</td>
+            <td className="px-4 py-2.5">
+              <PartyStack party={r.responsibleCustomer} />
+            </td>
+            <td className="px-4 py-2.5">
+              <PartyStack party={r.responsibleContractor} />
+            </td>
+          </tr>
+        ))}
+        {roles.length === 0 && (
+          <tr>
+            <td colSpan={3} className="px-4 py-8 text-center text-gray-300">
+              No workstreams yet. Add the first one.
+            </td>
+          </tr>
         )}
-      </div>
-    </div>
+      </tbody>
+    </table>
   );
 }
 
-function Row({
-  role,
-  onSave,
-  saving,
+function RaciTable({
+  roles,
+  onEdit,
 }: {
-  role: RoleResponsibility;
-  onSave: (r: Partial<RoleResponsibility>) => void;
-  saving: boolean;
+  roles: RoleResponsibility[];
+  onEdit: (role: RoleResponsibility) => void;
 }) {
-  const [draft, setDraft] = useState(role);
-
-  function commit(next: RoleResponsibility) {
-    setDraft(next);
-    onSave(next);
-  }
-
-  const cell =
-    "w-full bg-transparent px-1 py-1 text-sm outline-none focus:rounded focus:bg-indigo/5";
+  const th = "px-3 py-2.5 align-top";
+  const td = "px-3 py-2.5 align-top";
 
   return (
-    <tr className={`border-t border-bordergray align-top ${saving ? "opacity-60" : ""}`}>
-      <td className="px-3 py-2">
-        <input
-          className={`${cell} font-medium`}
-          value={draft.workstream}
-          onChange={(e) => setDraft({ ...draft, workstream: e.target.value })}
-          onBlur={() => commit(draft)}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <PartyCell
-          party={draft.accountable}
-          nullable={false}
-          onChange={(p) => commit({ ...draft, accountable: p as Party })}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <PartyCell
-          party={draft.consulted}
-          nullable={false}
-          onChange={(p) => commit({ ...draft, consulted: p as Party })}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <PartyCell
-          party={draft.responsibleCustomer}
-          nullable
-          onChange={(p) => commit({ ...draft, responsibleCustomer: p })}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <PartyCell
-          party={draft.responsibleContractor}
-          nullable
-          onChange={(p) => commit({ ...draft, responsibleContractor: p })}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <PartyCell
-          party={draft.informedCustomer}
-          nullable
-          onChange={(p) => commit({ ...draft, informedCustomer: p })}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <PartyCell
-          party={draft.informedContractor}
-          nullable
-          onChange={(p) => commit({ ...draft, informedContractor: p })}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <textarea
-          className={`${cell} min-w-[180px] resize-none`}
-          rows={2}
-          value={draft.description}
-          onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-          onBlur={() => commit(draft)}
-        />
-      </td>
-    </tr>
+    <table className="w-full text-left text-sm">
+      <thead className="text-[11px] tracking-wide text-gray-500">
+        <tr>
+          <th className={`${th} bg-gray-50`}>Workstream</th>
+          <th className={`${th} bg-gray-50`}>Description</th>
+          <th className={th} style={{ background: CUSTOMER_ZONE }}>Accountable</th>
+          <th className={th} style={{ background: CUSTOMER_ZONE }}>Consulted</th>
+          <th className={th} style={{ background: CUSTOMER_ZONE }}>Customer (responsible)</th>
+          <th className={th} style={{ background: CONTRACTOR_ZONE }}>Contractor (responsible)</th>
+          <th className={`${th} bg-gray-50`}>Interaction summary</th>
+          <th className={th} style={{ background: CUSTOMER_ZONE }}>Informed – customer</th>
+          <th className={th} style={{ background: CONTRACTOR_ZONE }}>Informed – contractor</th>
+          <th className={`${th} bg-gray-50`} />
+        </tr>
+      </thead>
+      <tbody>
+        {roles.map((r) => (
+          <tr key={r.id} className="border-t border-bordergray">
+            <td className={`${td} font-medium text-ink`}>{r.workstream}</td>
+            <td className={`${td} max-w-[220px] text-gray-500`}>{r.description}</td>
+            <td className={td} style={{ background: CUSTOMER_ZONE }}>
+              <PartyStack party={r.accountable} />
+            </td>
+            <td className={td} style={{ background: CUSTOMER_ZONE }}>
+              <PartyStack party={r.consulted} />
+            </td>
+            <td className={td} style={{ background: CUSTOMER_ZONE }}>
+              <PartyStack party={r.responsibleCustomer} />
+            </td>
+            <td className={td} style={{ background: CONTRACTOR_ZONE }}>
+              <PartyStack party={r.responsibleContractor} />
+            </td>
+            <td className={`${td} max-w-[220px] text-gray-500`}>{r.interactionSummary}</td>
+            <td className={td} style={{ background: CUSTOMER_ZONE }}>
+              <PartyListStack people={r.informedCustomer} />
+            </td>
+            <td className={td} style={{ background: CONTRACTOR_ZONE }}>
+              <PartyListStack people={r.informedContractor} />
+            </td>
+            <td className={td}>
+              <button
+                onClick={() => onEdit(r)}
+                className="text-gray-400 hover:text-indigo"
+                title="Edit"
+              >
+                <Pencil size={15} />
+              </button>
+            </td>
+          </tr>
+        ))}
+        {roles.length === 0 && (
+          <tr>
+            <td colSpan={10} className="px-4 py-8 text-center text-gray-300">
+              No workstreams yet. Add the first one.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
   );
 }

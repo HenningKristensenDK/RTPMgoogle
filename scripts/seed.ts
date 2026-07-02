@@ -53,6 +53,7 @@ async function main() {
       informedCustomer: role.informedCustomer,
       informedContractor: role.informedContractor,
       description: role.description,
+      interactionSummary: role.interactionSummary,
     });
   }
   console.log(`  ${SEED_ROLES.length} R&R entries written`);
@@ -65,7 +66,6 @@ async function main() {
       name: org.name,
       tier: org.tier,
       parentOrgId: org.parentOrgId,
-      contractType: org.contractType,
       roleType: org.roleType,
     });
   }

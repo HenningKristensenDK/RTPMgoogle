@@ -31,10 +31,12 @@ export default function SendUpdateModal({ risk, roles, onClose }: Props) {
       responsible.push({ key: `${r.id}-rc`, workstream: r.workstream, slot: "Customer", party: r.responsibleCustomer });
     if (r.responsibleContractor)
       responsible.push({ key: `${r.id}-rk`, workstream: r.workstream, slot: "Contractor", party: r.responsibleContractor });
-    if (r.informedCustomer)
-      informed.push({ key: `${r.id}-ic`, workstream: r.workstream, slot: "Customer", party: r.informedCustomer });
-    if (r.informedContractor)
-      informed.push({ key: `${r.id}-ik`, workstream: r.workstream, slot: "Contractor", party: r.informedContractor });
+    r.informedCustomer.forEach((party, i) =>
+      informed.push({ key: `${r.id}-ic${i}`, workstream: r.workstream, slot: "Customer", party })
+    );
+    r.informedContractor.forEach((party, i) =>
+      informed.push({ key: `${r.id}-ik${i}`, workstream: r.workstream, slot: "Contractor", party })
+    );
   }
 
   const [toIds, setToIds] = useState<Set<string>>(

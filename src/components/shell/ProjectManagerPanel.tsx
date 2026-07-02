@@ -65,25 +65,28 @@ export default function ProjectManagerPanel() {
           status: r.status,
           priority: r.priority,
         })),
-        roles: roles.flatMap((r) =>
-          (
-            [
-              ["Accountable", r.accountable],
-              ["Consulted", r.consulted],
-              ["Responsible (Customer)", r.responsibleCustomer],
-              ["Responsible (Contractor)", r.responsibleContractor],
-              ["Informed (Customer)", r.informedCustomer],
-              ["Informed (Contractor)", r.informedContractor],
-            ] as const
-          )
-            .filter(([, party]) => party !== null)
-            .map(([raci, party]) => ({
-              workstream: r.workstream,
-              org: party!.organization,
-              person: party!.name,
-              raci,
-            }))
-        ),
+        roles: roles.flatMap((r) => {
+          const entries: { workstream: string; org: string; person: string; raci: string }[] = [];
+          const single: [string, typeof r.accountable | null][] = [
+            ["Accountable", r.accountable],
+            ["Consulted", r.consulted],
+            ["Responsible (Customer)", r.responsibleCustomer],
+            ["Responsible (Contractor)", r.responsibleContractor],
+          ];
+          for (const [raci, party] of single) {
+            if (party) entries.push({ workstream: r.workstream, org: party.organization, person: party.name, raci });
+          }
+          const lists: [string, typeof r.informedCustomer][] = [
+            ["Informed (Customer)", r.informedCustomer],
+            ["Informed (Contractor)", r.informedContractor],
+          ];
+          for (const [raci, parties] of lists) {
+            for (const party of parties) {
+              entries.push({ workstream: r.workstream, org: party.organization, person: party.name, raci });
+            }
+          }
+          return entries;
+        }),
       };
 
       const reply = await askRiskManager(history, context);
