@@ -129,7 +129,7 @@ export interface SeedOrganization {
 }
 
 export const SEED_ORGANIZATIONS: SeedOrganization[] = [
-  { orgId: "customer", name: "Customer", tier: 0, parentOrgId: null, roleType: "Home organization" },
+  { orgId: "customer", name: "Customer PMO", tier: 0, parentOrgId: null, roleType: "Home organization" },
   { orgId: "mt-hojgaard", name: "HD Contractor", tier: 1, parentOrgId: "customer", roleType: "Main contractor" },
   { orgId: "wsp-denmark", name: "NT Advisor", tier: 1, parentOrgId: "customer", roleType: "Advisor" },
   { orgId: "nordic-fitout", name: "FO Sub-Contractor", tier: 2, parentOrgId: "mt-hojgaard", roleType: "Sub-contractor" },
