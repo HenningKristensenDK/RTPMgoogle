@@ -71,7 +71,7 @@ export default function RolesResponsibility() {
           </h1>
           <p className="text-xs text-gray-400">
             {view === "orgchart"
-              ? "A real-time map of who does the work. Displays your organization in detail and structures all contractors by contract tiers—making responsibilities, boundaries, and hierarchy immediately visible."
+              ? "A real-time map of who does the work. Displays the project organization in detail and structures all contractors by contract tiers—making responsibilities, boundaries, and hierarchy immediately visible."
               : "Source of truth for workstream lookups and involved parties"}
           </p>
         </div>

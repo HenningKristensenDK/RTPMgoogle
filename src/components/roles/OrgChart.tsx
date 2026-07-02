@@ -60,6 +60,7 @@ export default function OrgChart({ projectId, roles }: Props) {
   const [lines, setLines] = useState<Line[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const bandRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   useEffect(() => {
     if (!projectId) return;
@@ -70,6 +71,7 @@ export default function OrgChart({ projectId, roles }: Props) {
   // data (sorted ascending) — no hardcoded tier count, so a new tier just works.
   const tierNumbers = [...new Set(orgs.map((o) => o.tier))].sort((a, b) => a - b);
   const tiers = tierNumbers.map((t) => orgs.filter((o) => o.tier === t));
+  const orgTier = new Map(orgs.map((o) => [o.orgId, o.tier]));
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -89,7 +91,27 @@ export default function OrgChart({ projectId, roles }: Props) {
         const y1 = parentRect.bottom - containerRect.top;
         const x2 = childRect.left + childRect.width / 2 - containerRect.left;
         const y2 = childRect.top - containerRect.top;
-        next.push({ orgId: org.orgId, x1, y1, x2, y2, midX: (x1 + x2) / 2, midY: (y1 + y2) / 2 });
+
+        // The "Contract" pill sits at the vertical midpoint of the gap
+        // between the parent's tier band and the child's tier band (not
+        // the true geometric line midpoint) so pills stay level with each
+        // other and spread out horizontally instead of clustering.
+        const parentTier = orgTier.get(org.parentOrgId);
+        const childTier = orgTier.get(org.orgId);
+        const parentBandEl = parentTier !== undefined ? bandRefs.current.get(parentTier) : undefined;
+        const childBandEl = childTier !== undefined ? bandRefs.current.get(childTier) : undefined;
+        let midX = (x1 + x2) / 2;
+        let midY = (y1 + y2) / 2;
+        if (parentBandEl && childBandEl) {
+          const parentBandRect = parentBandEl.getBoundingClientRect();
+          const childBandRect = childBandEl.getBoundingClientRect();
+          const gapY = (parentBandRect.bottom + childBandRect.top) / 2 - containerRect.top;
+          const t = y2 === y1 ? 0.5 : (gapY - y1) / (y2 - y1);
+          midX = x1 + t * (x2 - x1);
+          midY = gapY;
+        }
+
+        next.push({ orgId: org.orgId, x1, y1, x2, y2, midX, midY });
       }
       setLines(next);
     }
@@ -110,7 +132,12 @@ export default function OrgChart({ projectId, roles }: Props) {
 
   return (
     <div ref={containerRef} className="relative flex flex-col">
-      <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
+      {/* Stacking order bottom to top: tier band backgrounds (unpositioned,
+          normal flow) -> connector lines -> org boxes -> contract pills. */}
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+        style={{ zIndex: 1 }}
+      >
         {lines.map((l) => (
           <line
             key={l.orgId}
@@ -131,6 +158,7 @@ export default function OrgChart({ projectId, roles }: Props) {
           style={{
             left: l.midX,
             top: l.midY,
+            zIndex: 3,
             transform: "translate(-50%, -50%)",
             border: `1px solid ${DIVIDER}`,
             fontFamily: FONT,
@@ -146,7 +174,11 @@ export default function OrgChart({ projectId, roles }: Props) {
       {tiers.map((tierOrgs, i) => (
         <div
           key={tierNumbers[i]}
-          className="relative z-10 flex items-center gap-4 px-10"
+          ref={(el) => {
+            if (el) bandRefs.current.set(tierNumbers[i], el);
+            else bandRefs.current.delete(tierNumbers[i]);
+          }}
+          className="flex items-center gap-4 px-10"
           style={{
             background: i % 2 === 0 ? BAND_WHITE : BAND_TINT,
             paddingTop: "24px",
@@ -178,8 +210,8 @@ export default function OrgChart({ projectId, roles }: Props) {
                     if (el) nodeRefs.current.set(org.orgId, el);
                     else nodeRefs.current.delete(org.orgId);
                   }}
-                  className="flex min-w-[220px] flex-col bg-white p-3"
-                  style={{ border: `1px solid ${DIVIDER}`, borderRadius: "12px" }}
+                  className="relative flex min-w-[220px] flex-col bg-white p-3"
+                  style={{ border: `1px solid ${DIVIDER}`, borderRadius: "12px", zIndex: 2 }}
                 >
                   <div className="mb-2.5">
                     <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: "14px", color: "#070474" }}>
