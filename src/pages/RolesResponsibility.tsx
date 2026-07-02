@@ -67,7 +67,7 @@ export default function RolesResponsibility() {
       <div className="flex items-center justify-between border-b border-bordergray bg-white px-6 py-4">
         <div>
           <h1 className="text-lg font-bold text-ink">
-            Roles &amp; Responsibility
+            {view === "orgchart" ? "OBS diagram" : "Roles & Responsibility"}
           </h1>
           <p className="text-xs text-gray-400">
             Source of truth for workstream lookups and involved parties
@@ -93,7 +93,7 @@ export default function RolesResponsibility() {
                   : "bg-white text-gray-500 hover:bg-gray-50"
               }`}
             >
-              <Network size={15} /> Org Chart
+              <Network size={15} /> OBS diagram
             </button>
           </div>
           {view === "table" && (
@@ -129,8 +129,8 @@ export default function RolesResponsibility() {
             )}
           </div>
         ) : (
-          <div className="rounded-card border border-bordergray bg-white shadow-card">
-            <OrgChart projectId={projectId} />
+          <div className="overflow-hidden rounded-card border border-bordergray shadow-card">
+            <OrgChart projectId={projectId} roles={roles} />
           </div>
         )}
       </div>

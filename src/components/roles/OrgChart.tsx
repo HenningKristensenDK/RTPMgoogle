@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { Organization } from "../../types";
+import type { Organization, Party, RoleResponsibility } from "../../types";
 import { watchOrganizations } from "../../firebase/firestore";
 
 interface Props {
   projectId: string;
+  roles: RoleResponsibility[];
 }
 
 interface Line {
@@ -12,11 +13,48 @@ interface Line {
   y1: number;
   x2: number;
   y2: number;
+  midX: number;
+  midY: number;
+}
+
+interface DisciplineCard {
+  role: string;
+  names: string[];
 }
 
 const FONT = "Inter, system-ui, sans-serif";
+const CANVAS_TINT = "#e7e6fa";
+const DIVIDER = "#e6e6f0";
+const NESTED_BG = "#f7f7fb";
 
-export default function OrgChart({ projectId }: Props) {
+/** For an org, find every distinct person (by name) at that org across all
+ * workstream RACI slots, then group those people by their role label. */
+function disciplineCards(orgName: string, roles: RoleResponsibility[]): DisciplineCard[] {
+  const byName = new Map<string, Party>();
+  for (const r of roles) {
+    const candidates: (Party | null)[] = [
+      r.accountable,
+      r.consulted,
+      r.responsibleCustomer,
+      r.responsibleContractor,
+      ...r.informedCustomer,
+      ...r.informedContractor,
+    ];
+    for (const p of candidates) {
+      if (p && p.name && p.organization === orgName && !byName.has(p.name)) {
+        byName.set(p.name, p);
+      }
+    }
+  }
+  const byRole = new Map<string, string[]>();
+  for (const p of byName.values()) {
+    if (!byRole.has(p.role)) byRole.set(p.role, []);
+    byRole.get(p.role)!.push(p.name);
+  }
+  return [...byRole.entries()].map(([role, names]) => ({ role, names }));
+}
+
+export default function OrgChart({ projectId, roles }: Props) {
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,41 +84,32 @@ export default function OrgChart({ projectId }: Props) {
         if (!childEl || !parentEl) continue;
         const childRect = childEl.getBoundingClientRect();
         const parentRect = parentEl.getBoundingClientRect();
-        next.push({
-          orgId: org.orgId,
-          x1: parentRect.left + parentRect.width / 2 - containerRect.left,
-          y1: parentRect.bottom - containerRect.top,
-          x2: childRect.left + childRect.width / 2 - containerRect.left,
-          y2: childRect.top - containerRect.top,
-        });
+        const x1 = parentRect.left + parentRect.width / 2 - containerRect.left;
+        const y1 = parentRect.bottom - containerRect.top;
+        const x2 = childRect.left + childRect.width / 2 - containerRect.left;
+        const y2 = childRect.top - containerRect.top;
+        next.push({ orgId: org.orgId, x1, y1, x2, y2, midX: (x1 + x2) / 2, midY: (y1 + y2) / 2 });
       }
       setLines(next);
     }
 
     recompute();
+    const observer = new ResizeObserver(recompute);
+    observer.observe(container);
     window.addEventListener("resize", recompute);
-    return () => window.removeEventListener("resize", recompute);
-  }, [orgs]);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", recompute);
+    };
+  }, [orgs, roles]);
 
   if (orgs.length === 0) {
     return <p className="p-6 text-sm text-gray-400">No organizations defined yet.</p>;
   }
 
   return (
-    <div ref={containerRef} className="relative flex flex-col gap-20 px-10 py-10">
+    <div ref={containerRef} className="relative flex flex-col" style={{ background: CANVAS_TINT }}>
       <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
-        <defs>
-          <marker
-            id="orgchart-arrow"
-            markerWidth="8"
-            markerHeight="8"
-            refX="4"
-            refY="4"
-            orient="auto"
-          >
-            <path d="M0,0 L8,4 L0,8 Z" fill="#c9c9d6" />
-          </marker>
-        </defs>
         {lines.map((l) => (
           <line
             key={l.orgId}
@@ -90,53 +119,92 @@ export default function OrgChart({ projectId }: Props) {
             y2={l.y2}
             stroke="#c9c9d6"
             strokeWidth={1.5}
-            markerEnd="url(#orgchart-arrow)"
           />
         ))}
       </svg>
 
-      {tiers.map((tier, i) => (
-        <div key={tierNumbers[i]} className="relative z-10 flex items-center gap-4">
+      {lines.map((l) => (
+        <div
+          key={`label-${l.orgId}`}
+          className="pointer-events-none absolute whitespace-nowrap rounded-full bg-white px-2.5 py-0.5"
+          style={{
+            left: l.midX,
+            top: l.midY,
+            transform: "translate(-50%, -50%)",
+            border: `1px solid ${DIVIDER}`,
+            fontFamily: FONT,
+            fontWeight: 500,
+            fontSize: "11px",
+            color: "#595b78",
+          }}
+        >
+          Contract
+        </div>
+      ))}
+
+      {tiers.map((tierOrgs, i) => (
+        <div
+          key={tierNumbers[i]}
+          className="relative z-10 flex items-center gap-4 px-10 py-8"
+          style={i < tiers.length - 1 ? { borderBottom: `1px solid ${DIVIDER}` } : undefined}
+        >
           <div
-            className="w-16 shrink-0 text-right"
+            className="w-16 shrink-0 self-center text-right"
             style={{ fontFamily: FONT, fontWeight: 500, fontSize: "11px", color: "#8a8ca6" }}
           >
             Tier {tierNumbers[i]}
           </div>
-          <div className="flex flex-1 flex-wrap justify-center gap-16">
-            {tier.map((org) => (
-              <div
-                key={org.orgId}
-                ref={(el) => {
-                  if (el) nodeRefs.current.set(org.orgId, el);
-                  else nodeRefs.current.delete(org.orgId);
-                }}
-                className="flex w-[180px] flex-col items-center bg-white px-4 py-3 text-center"
-                style={{ border: "1px solid #e6e6f0", borderRadius: "12px" }}
-              >
-                <span
-                  style={{
-                    fontFamily: FONT,
-                    fontWeight: 600,
-                    fontSize: "14px",
-                    color: "#070474",
+          <div className="flex flex-1 flex-wrap gap-8">
+            {tierOrgs.map((org) => {
+              const cards = disciplineCards(org.name, roles);
+              return (
+                <div
+                  key={org.orgId}
+                  ref={(el) => {
+                    if (el) nodeRefs.current.set(org.orgId, el);
+                    else nodeRefs.current.delete(org.orgId);
                   }}
+                  className="flex min-w-[220px] flex-col bg-white p-3"
+                  style={{ border: `1px solid ${DIVIDER}`, borderRadius: "12px" }}
                 >
-                  {org.name}
-                </span>
-                <span
-                  style={{
-                    fontFamily: FONT,
-                    fontWeight: 400,
-                    fontSize: "12px",
-                    color: "#8a8ca6",
-                    marginTop: "2px",
-                  }}
-                >
-                  {org.roleType}
-                </span>
-              </div>
-            ))}
+                  <div className="mb-2.5">
+                    <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: "14px", color: "#070474" }}>
+                      {org.name}
+                    </div>
+                    <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: "11px", color: "#8a8ca6" }}>
+                      {org.roleType}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {cards.length === 0 ? (
+                      <div
+                        className="px-2.5 py-1.5"
+                        style={{ background: NESTED_BG, border: `1px solid ${DIVIDER}`, borderRadius: "8px" }}
+                      >
+                        <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: "12px", color: "#8a8ca6" }}>
+                          No roles assigned
+                        </span>
+                      </div>
+                    ) : (
+                      cards.map((c) => (
+                        <div
+                          key={c.role}
+                          className="min-w-[110px] px-2.5 py-1.5"
+                          style={{ background: NESTED_BG, border: `1px solid ${DIVIDER}`, borderRadius: "8px" }}
+                        >
+                          <div style={{ fontFamily: FONT, fontWeight: 500, fontSize: "12px", color: "#15162b" }}>
+                            {c.role}
+                          </div>
+                          <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: "12px", color: "#595b78" }}>
+                            {c.names.join(", ")}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}
