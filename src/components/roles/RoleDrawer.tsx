@@ -227,16 +227,6 @@ export default function RoleDrawer({ role, open, onClose, onSave }: Props) {
               onChange={(p) => setDraft({ ...draft, responsibleContractor: p })}
             />
 
-            <div>
-              <label className={labelCls}>Interaction summary</label>
-              <textarea
-                className={`${inputCls} resize-none`}
-                rows={2}
-                value={draft.interactionSummary}
-                onChange={(e) => setDraft({ ...draft, interactionSummary: e.target.value })}
-              />
-            </div>
-
             <PartyListEditor
               label="Informed – customer"
               people={draft.informedCustomer}

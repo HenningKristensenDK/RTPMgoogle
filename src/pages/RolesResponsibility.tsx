@@ -67,11 +67,13 @@ export default function RolesResponsibility() {
       <div className="flex items-center justify-between border-b border-bordergray bg-white px-6 py-4">
         <div>
           <h1 className="text-lg font-bold text-ink">
-            {view === "orgchart" ? "OBS diagram" : "Roles & Responsibility"}
+            {view === "orgchart" ? "OBS diagram" : raci ? "RACI" : "Roles & Responsibility"}
           </h1>
           <p className="text-xs text-gray-400">
             {view === "orgchart"
               ? "A real-time map of who does the work. Displays the project organization in detail and structures all contractors by contract tiers—making responsibilities, boundaries, and hierarchy immediately visible."
+              : raci
+              ? "Defines the project team and ownership across workstreams. Each workstream drives responsibility and automatically assigns all tasks, documents, and communication to the right people while informing stakeholders in real time."
               : "Source of truth for workstream lookups and involved parties"}
           </p>
         </div>
@@ -153,6 +155,7 @@ function CollapsedTable({ roles }: { roles: RoleResponsibility[] }) {
       <thead className="bg-gray-50 text-[11px] tracking-wide text-gray-400">
         <tr>
           <th className="px-4 py-2.5">Workstream</th>
+          <th className="px-4 py-2.5">Description</th>
           <th className="px-4 py-2.5">Customer</th>
           <th className="px-4 py-2.5">Contractor</th>
         </tr>
@@ -161,6 +164,7 @@ function CollapsedTable({ roles }: { roles: RoleResponsibility[] }) {
         {roles.map((r) => (
           <tr key={r.id} className="border-t border-bordergray">
             <td className="px-4 py-2.5 font-medium text-ink">{r.workstream}</td>
+            <td className="max-w-[280px] px-4 py-2.5 text-gray-500">{r.description}</td>
             <td className="px-4 py-2.5">
               <PartyStack party={r.responsibleCustomer} />
             </td>
@@ -171,7 +175,7 @@ function CollapsedTable({ roles }: { roles: RoleResponsibility[] }) {
         ))}
         {roles.length === 0 && (
           <tr>
-            <td colSpan={3} className="px-4 py-8 text-center text-gray-300">
+            <td colSpan={4} className="px-4 py-8 text-center text-gray-300">
               No workstreams yet. Add the first one.
             </td>
           </tr>
@@ -195,16 +199,23 @@ function RaciTable({
     <table className="w-full text-left text-sm">
       <thead className="text-[11px] tracking-wide text-gray-500">
         <tr>
-          <th className={`${th} bg-gray-50`}>Workstream</th>
-          <th className={`${th} bg-gray-50`}>Description</th>
-          <th className={th} style={{ background: CUSTOMER_ZONE }}>Accountable</th>
+          <th rowSpan={2} className={`${th} bg-gray-50 align-middle`}>Workstream</th>
+          <th rowSpan={2} className={`${th} bg-gray-50 align-middle`}>Description</th>
+          <th rowSpan={2} className={`${th} bg-gray-50 align-middle`}>Accountable</th>
+          <th colSpan={3} className="px-3 py-2 text-center" style={{ background: CUSTOMER_ZONE }}>
+            Customer
+          </th>
+          <th colSpan={2} className="px-3 py-2 text-center" style={{ background: CONTRACTOR_ZONE }}>
+            Contractor
+          </th>
+          <th rowSpan={2} className={`${th} bg-gray-50`} />
+        </tr>
+        <tr>
           <th className={th} style={{ background: CUSTOMER_ZONE }}>Consulted</th>
-          <th className={th} style={{ background: CUSTOMER_ZONE }}>Customer (responsible)</th>
-          <th className={th} style={{ background: CONTRACTOR_ZONE }}>Contractor (responsible)</th>
-          <th className={`${th} bg-gray-50`}>Interaction summary</th>
-          <th className={th} style={{ background: CUSTOMER_ZONE }}>Informed – customer</th>
-          <th className={th} style={{ background: CONTRACTOR_ZONE }}>Informed – contractor</th>
-          <th className={`${th} bg-gray-50`} />
+          <th className={th} style={{ background: CUSTOMER_ZONE }}>Responsible</th>
+          <th className={th} style={{ background: CUSTOMER_ZONE }}>Informed</th>
+          <th className={th} style={{ background: CONTRACTOR_ZONE }}>Responsible</th>
+          <th className={th} style={{ background: CONTRACTOR_ZONE }}>Informed</th>
         </tr>
       </thead>
       <tbody>
@@ -212,7 +223,7 @@ function RaciTable({
           <tr key={r.id} className="border-t border-bordergray">
             <td className={`${td} font-medium text-ink`}>{r.workstream}</td>
             <td className={`${td} max-w-[220px] text-gray-500`}>{r.description}</td>
-            <td className={td} style={{ background: CUSTOMER_ZONE }}>
+            <td className={td}>
               <PartyStack party={r.accountable} />
             </td>
             <td className={td} style={{ background: CUSTOMER_ZONE }}>
@@ -221,12 +232,11 @@ function RaciTable({
             <td className={td} style={{ background: CUSTOMER_ZONE }}>
               <PartyStack party={r.responsibleCustomer} />
             </td>
-            <td className={td} style={{ background: CONTRACTOR_ZONE }}>
-              <PartyStack party={r.responsibleContractor} />
-            </td>
-            <td className={`${td} max-w-[220px] text-gray-500`}>{r.interactionSummary}</td>
             <td className={td} style={{ background: CUSTOMER_ZONE }}>
               <PartyListStack people={r.informedCustomer} />
+            </td>
+            <td className={td} style={{ background: CONTRACTOR_ZONE }}>
+              <PartyStack party={r.responsibleContractor} />
             </td>
             <td className={td} style={{ background: CONTRACTOR_ZONE }}>
               <PartyListStack people={r.informedContractor} />
@@ -244,7 +254,7 @@ function RaciTable({
         ))}
         {roles.length === 0 && (
           <tr>
-            <td colSpan={10} className="px-4 py-8 text-center text-gray-300">
+            <td colSpan={9} className="px-4 py-8 text-center text-gray-300">
               No workstreams yet. Add the first one.
             </td>
           </tr>
