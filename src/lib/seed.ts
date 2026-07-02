@@ -12,6 +12,7 @@ import { isFirestoreEmpty } from "../firebase/firestore";
 import {
   SEED_PROJECT,
   SEED_ROLES,
+  SEED_ORGANIZATIONS,
   SEED_RISKS,
 } from "./seedData";
 
@@ -45,11 +46,26 @@ async function run(createdBy: string): Promise<void> {
     batch.set(doc(db, "roles_and_responsibilities", role.id), {
       projectId: SEED_PROJECT.id,
       workstream: role.workstream,
-      organization: role.organization,
-      organizationName: role.organizationName,
-      role: role.role,
-      person: role.person,
-      type: role.type,
+      accountable: role.accountable,
+      consulted: role.consulted,
+      responsibleCustomer: role.responsibleCustomer,
+      responsibleContractor: role.responsibleContractor,
+      informedCustomer: role.informedCustomer,
+      informedContractor: role.informedContractor,
+      description: role.description,
+    });
+  }
+
+  // Organizations (Org Chart)
+  for (const org of SEED_ORGANIZATIONS) {
+    batch.set(doc(db, "organizations", org.orgId), {
+      projectId: SEED_PROJECT.id,
+      orgId: org.orgId,
+      name: org.name,
+      tier: org.tier,
+      parentOrgId: org.parentOrgId,
+      contractType: org.contractType,
+      roleType: org.roleType,
     });
   }
 

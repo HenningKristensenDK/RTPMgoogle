@@ -9,7 +9,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "seed": "ts-node --esm scripts/seed.ts"
+    "seed": "ts-node --esm scripts/seed.ts",
+    "migrate:customer-rr": "ts-node --esm scripts/migrate-customer-rr.ts"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import type { Risk, RoleResponsibility } from "../../types";
-import { PRIORITY_META, formatDate, initials } from "../../lib/format";
+import { PRIORITY_META, formatDate, initials, pickResponsible } from "../../lib/format";
 
 interface Props {
   risk: Risk;
@@ -9,9 +9,10 @@ interface Props {
 
 export default function RiskCard({ risk, roles }: Props) {
   const navigate = useNavigate();
-  const responsible = roles.find(
-    (r) => risk.workstreamIds.includes(r.id) && r.type === "responsible"
-  );
+  const responsible = roles
+    .filter((r) => risk.workstreamIds.includes(r.id))
+    .map(pickResponsible)
+    .find((p) => p !== null);
   const workstreams = [
     ...new Set(
       roles
@@ -63,10 +64,10 @@ export default function RiskCard({ risk, roles }: Props) {
         </span>
         {responsible && (
           <span
-            title={responsible.person.name}
+            title={responsible.name}
             className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo/15 text-[9px] font-semibold text-indigo"
           >
-            {initials(responsible.person.name)}
+            {initials(responsible.name)}
           </span>
         )}
       </div>

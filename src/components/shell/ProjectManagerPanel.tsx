@@ -65,12 +65,25 @@ export default function ProjectManagerPanel() {
           status: r.status,
           priority: r.priority,
         })),
-        roles: roles.map((r) => ({
-          workstream: r.workstream,
-          org: r.organizationName,
-          person: r.person.name,
-          raci: r.type,
-        })),
+        roles: roles.flatMap((r) =>
+          (
+            [
+              ["Accountable", r.accountable],
+              ["Consulted", r.consulted],
+              ["Responsible (Customer)", r.responsibleCustomer],
+              ["Responsible (Contractor)", r.responsibleContractor],
+              ["Informed (Customer)", r.informedCustomer],
+              ["Informed (Contractor)", r.informedContractor],
+            ] as const
+          )
+            .filter(([, party]) => party !== null)
+            .map(([raci, party]) => ({
+              workstream: r.workstream,
+              org: party!.organization,
+              person: party!.name,
+              raci,
+            }))
+        ),
       };
 
       const reply = await askRiskManager(history, context);

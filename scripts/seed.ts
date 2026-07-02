@@ -15,6 +15,7 @@ import { readFileSync, existsSync } from "node:fs";
 import {
   SEED_PROJECT,
   SEED_ROLES,
+  SEED_ORGANIZATIONS,
   SEED_RISKS,
 } from "../src/lib/seedData.ts";
 
@@ -45,14 +46,30 @@ async function main() {
     await db.collection("roles_and_responsibilities").doc(role.id).set({
       projectId: SEED_PROJECT.id,
       workstream: role.workstream,
-      organization: role.organization,
-      organizationName: role.organizationName,
-      role: role.role,
-      person: role.person,
-      type: role.type,
+      accountable: role.accountable,
+      consulted: role.consulted,
+      responsibleCustomer: role.responsibleCustomer,
+      responsibleContractor: role.responsibleContractor,
+      informedCustomer: role.informedCustomer,
+      informedContractor: role.informedContractor,
+      description: role.description,
     });
   }
   console.log(`  ${SEED_ROLES.length} R&R entries written`);
+
+  // Organizations (Org Chart)
+  for (const org of SEED_ORGANIZATIONS) {
+    await db.collection("organizations").doc(org.orgId).set({
+      projectId: SEED_PROJECT.id,
+      orgId: org.orgId,
+      name: org.name,
+      tier: org.tier,
+      parentOrgId: org.parentOrgId,
+      contractType: org.contractType,
+      roleType: org.roleType,
+    });
+  }
+  console.log(`  ${SEED_ORGANIZATIONS.length} organizations written`);
 
   // Risks
   const now = Date.now();

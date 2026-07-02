@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { X } from "lucide-react";
-import type { Risk, RoleResponsibility } from "../../types";
+import type { Party, Risk, RoleResponsibility } from "../../types";
 import { useAuthStore, currentIdentity } from "../../store/authStore";
 import { sendRiskUpdate } from "../../firebase/firestore";
 import { toast } from "../../lib/toast";
@@ -11,19 +11,37 @@ interface Props {
   onClose: () => void;
 }
 
+interface Recipient {
+  key: string;
+  workstream: string;
+  slot: string;
+  party: Party;
+}
+
 export default function SendUpdateModal({ risk, roles, onClose }: Props) {
   const user = useAuthStore((s) => s.user);
   const me = currentIdentity(user);
 
   const riskRoles = roles.filter((r) => risk.workstreamIds.includes(r.id));
-  const responsible = riskRoles.filter((r) => r.type === "responsible");
-  const informed = riskRoles.filter((r) => r.type === "informed");
+
+  const responsible: Recipient[] = [];
+  const informed: Recipient[] = [];
+  for (const r of riskRoles) {
+    if (r.responsibleCustomer)
+      responsible.push({ key: `${r.id}-rc`, workstream: r.workstream, slot: "Customer", party: r.responsibleCustomer });
+    if (r.responsibleContractor)
+      responsible.push({ key: `${r.id}-rk`, workstream: r.workstream, slot: "Contractor", party: r.responsibleContractor });
+    if (r.informedCustomer)
+      informed.push({ key: `${r.id}-ic`, workstream: r.workstream, slot: "Customer", party: r.informedCustomer });
+    if (r.informedContractor)
+      informed.push({ key: `${r.id}-ik`, workstream: r.workstream, slot: "Contractor", party: r.informedContractor });
+  }
 
   const [toIds, setToIds] = useState<Set<string>>(
-    () => new Set(responsible.map((r) => r.id))
+    () => new Set(responsible.map((r) => r.key))
   );
   const [ccIds, setCcIds] = useState<Set<string>>(
-    () => new Set(informed.map((r) => r.id))
+    () => new Set(informed.map((r) => r.key))
   );
   const [subject, setSubject] = useState(
     `Update: ${risk.riskId} — ${risk.title.replace(/◆/g, " - ")}`
@@ -56,11 +74,11 @@ export default function SendUpdateModal({ risk, roles, onClose }: Props) {
     setSending(true);
     try {
       const recipients = responsible
-        .filter((r) => toIds.has(r.id))
-        .map((r) => `${r.organizationName} — ${r.person.name} (${r.role})`);
+        .filter((r) => toIds.has(r.key))
+        .map((r) => `${r.party.organization} — ${r.party.name} (${r.party.role})`);
       const cc = informed
-        .filter((r) => ccIds.has(r.id))
-        .map((r) => `${r.organizationName} — ${r.person.name} (${r.role})`);
+        .filter((r) => ccIds.has(r.key))
+        .map((r) => `${r.party.organization} — ${r.party.name} (${r.party.role})`);
 
       await sendRiskUpdate({
         riskId: risk.id,
@@ -132,18 +150,18 @@ export default function SendUpdateModal({ risk, roles, onClose }: Props) {
               <div className="flex flex-col gap-2">
                 {responsible.map((r) => (
                   <label
-                    key={r.id}
+                    key={r.key}
                     className="flex cursor-pointer items-center gap-2.5"
                   >
                     <input
                       type="checkbox"
-                      checked={toIds.has(r.id)}
-                      onChange={() => toggleId(toIds, r.id, setToIds)}
+                      checked={toIds.has(r.key)}
+                      onChange={() => toggleId(toIds, r.key, setToIds)}
                       className="h-4 w-4 rounded"
                       style={{ accentColor: "#0d08d2" }}
                     />
                     <span className="text-[13px] text-ink">
-                      {r.organizationName} — {r.person.name} ({r.role})
+                      {r.party.organization} — {r.party.name} ({r.party.role})
                     </span>
                   </label>
                 ))}
@@ -167,18 +185,18 @@ export default function SendUpdateModal({ risk, roles, onClose }: Props) {
               <div className="flex flex-col gap-2">
                 {informed.map((r) => (
                   <label
-                    key={r.id}
+                    key={r.key}
                     className="flex cursor-pointer items-center gap-2.5"
                   >
                     <input
                       type="checkbox"
-                      checked={ccIds.has(r.id)}
-                      onChange={() => toggleId(ccIds, r.id, setCcIds)}
+                      checked={ccIds.has(r.key)}
+                      onChange={() => toggleId(ccIds, r.key, setCcIds)}
                       className="h-4 w-4 rounded"
                       style={{ accentColor: "#0d08d2" }}
                     />
                     <span className="text-[13px] text-ink">
-                      {r.organizationName} — {r.person.name} ({r.role})
+                      {r.party.organization} — {r.party.name} ({r.party.role})
                     </span>
                   </label>
                 ))}

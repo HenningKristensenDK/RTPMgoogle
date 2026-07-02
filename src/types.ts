@@ -18,24 +18,36 @@ export interface Project {
   createdAt: Timestamp | null;
 }
 
-export type OrgType = "Owner" | "Main Contractor" | "Advisor" | "Subcontractor" | "Authority";
-export type RaciType = "responsible" | "informed";
-
-export interface Person {
+export interface Party {
   name: string;
-  email: string;
-  avatarUrl?: string;
+  organization: string;
+  role: string;
 }
 
 export interface RoleResponsibility {
   id: string;
   projectId: string;
   workstream: string;
-  organization: OrgType | string;
-  organizationName: string;
-  role: string;
-  person: Person;
-  type: RaciType;
+  accountable: Party;
+  consulted: Party;
+  responsibleCustomer: Party | null;
+  responsibleContractor: Party | null;
+  informedCustomer: Party | null;
+  informedContractor: Party | null;
+  description: string;
+}
+
+export type OrgTier = 1 | 2 | 3;
+
+export interface Organization {
+  id: string;
+  projectId: string;
+  orgId: string;
+  name: string;
+  tier: OrgTier;
+  parentOrgId: string | null;
+  contractType: string | null;
+  roleType: string;
 }
 
 export interface ChecklistItem {

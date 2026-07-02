@@ -12,64 +12,114 @@ export const WORKSTREAMS = [
   "Civil Works",
   "MEP Infrastructure",
   "IT/Data Infrastructure",
+  "Quality",
+  "HSE",
+  "Permit and Authorities",
 ];
+
+export interface SeedParty {
+  name: string;
+  organization: string;
+  role: string;
+}
 
 export interface SeedRole {
   id: string;
   workstream: string;
-  organization: string;
-  organizationName: string;
-  role: string;
-  person: { name: string; email: string };
-  type: "responsible" | "informed";
+  accountable: SeedParty;
+  consulted: SeedParty;
+  responsibleCustomer: SeedParty | null;
+  responsibleContractor: SeedParty | null;
+  informedCustomer: SeedParty | null;
+  informedContractor: SeedParty | null;
+  description: string;
 }
+
+const CLAUS = { name: "Claus Risum Korsgaard", organization: "Turner & Townsend", role: "Project Director" };
 
 export const SEED_ROLES: SeedRole[] = [
   {
-    id: "rr-001",
+    id: "civil-works",
     workstream: "Civil Works",
-    organization: "Main Contractor",
-    organizationName: "MT H�jgaard",
-    role: "Site Manager",
-    person: { name: "Jens Larsen", email: "jens.larsen@mth.dk" },
-    type: "responsible",
+    accountable: CLAUS,
+    consulted: { name: "Anna Nielsen", organization: "WSP Denmark", role: "Structural Advisor" },
+    responsibleCustomer: null,
+    responsibleContractor: { name: "Jens Larsen", organization: "MT Højgaard", role: "Site Manager" },
+    informedCustomer: null,
+    informedContractor: null,
+    description: "Foundations, structural concrete and building envelope works for Phase 1.",
   },
   {
-    id: "rr-002",
+    id: "mep-infrastructure",
     workstream: "MEP Infrastructure",
-    organization: "Main Contractor",
-    organizationName: "MT H�jgaard",
-    role: "MEP Lead",
-    person: { name: "Peter Koch", email: "peter.koch@mth.dk" },
-    type: "responsible",
+    accountable: CLAUS,
+    consulted: { name: "Anna Nielsen", organization: "WSP Denmark", role: "Structural Advisor" },
+    responsibleCustomer: null,
+    responsibleContractor: { name: "Peter Koch", organization: "MT Højgaard", role: "MEP Lead" },
+    informedCustomer: null,
+    informedContractor: null,
+    description: "Electrical, mechanical and utility infrastructure including grid connection and cooling.",
   },
   {
-    id: "rr-003",
-    workstream: "Civil Works",
-    organization: "Advisor",
-    organizationName: "WSP Denmark",
-    role: "Structural Advisor",
-    person: { name: "Anna Nielsen", email: "anna.nielsen@wsp.com" },
-    type: "responsible",
-  },
-  {
-    id: "rr-004",
+    id: "it-data-infrastructure",
     workstream: "IT/Data Infrastructure",
-    organization: "Owner",
-    organizationName: "Turner & Townsend",
-    role: "Project Director",
-    person: { name: "Claus Risum Korsgaard", email: "claus@tnandt.com" },
-    type: "informed",
+    accountable: CLAUS,
+    consulted: { name: "Peter Koch", organization: "MT Højgaard", role: "MEP Lead" },
+    responsibleCustomer: null,
+    responsibleContractor: { name: "Mikkel Holm", organization: "Nordic Fit-Out Partners", role: "Fit-Out Coordinator" },
+    informedCustomer: null,
+    informedContractor: null,
+    description: "IT fit-out, data hall racking, liquid cooling and network infrastructure.",
   },
   {
-    id: "rr-005",
-    workstream: "MEP Infrastructure",
-    organization: "Authority",
-    organizationName: "Energinet",
-    role: "Grid Connection Officer",
-    person: { name: "Mette S�rensen", email: "mette.sorensen@energinet.dk" },
-    type: "informed",
+    id: "quality",
+    workstream: "Quality",
+    accountable: CLAUS,
+    consulted: { name: "Anna Nielsen", organization: "WSP Denmark", role: "Structural Advisor" },
+    responsibleCustomer: { name: "Sofie Bruun", organization: "Turner & Townsend", role: "Quality Manager" },
+    responsibleContractor: { name: "Jens Larsen", organization: "MT Højgaard", role: "Site Manager" },
+    informedCustomer: null,
+    informedContractor: null,
+    description: "Quality assurance, inspection and NCR management across all workstreams.",
   },
+  {
+    id: "hse",
+    workstream: "HSE",
+    accountable: CLAUS,
+    consulted: { name: "Anna Nielsen", organization: "WSP Denmark", role: "HSE Advisor" },
+    responsibleCustomer: null,
+    responsibleContractor: { name: "Rasmus Vig", organization: "MT Højgaard", role: "HSE Manager" },
+    informedCustomer: null,
+    informedContractor: null,
+    description: "Health, safety and environmental management across all site works.",
+  },
+  {
+    id: "permit-and-authorities",
+    workstream: "Permit and Authorities",
+    accountable: CLAUS,
+    consulted: { name: "Anna Nielsen", organization: "WSP Denmark", role: "Planning Advisor" },
+    responsibleCustomer: { name: "Ida Kristoffersen", organization: "Turner & Townsend", role: "Permits & Compliance Lead" },
+    responsibleContractor: null,
+    informedCustomer: null,
+    informedContractor: { name: "Mette Sørensen", organization: "Energinet", role: "Grid Connection Officer" },
+    description: "Building permits, grid connection approvals and regulatory authority liaison.",
+  },
+];
+
+export interface SeedOrganization {
+  orgId: string;
+  name: string;
+  tier: 1 | 2 | 3;
+  parentOrgId: string | null;
+  contractType: string | null;
+  roleType: string;
+}
+
+export const SEED_ORGANIZATIONS: SeedOrganization[] = [
+  { orgId: "customer", name: "Customer", tier: 1, parentOrgId: null, contractType: null, roleType: "Home organization" },
+  { orgId: "mt-hojgaard", name: "MT Højgaard", tier: 2, parentOrgId: "customer", contractType: "NEC4 Option C", roleType: "Main contractor" },
+  { orgId: "wsp-denmark", name: "WSP Denmark", tier: 2, parentOrgId: "customer", contractType: "Advisory agreement", roleType: "Advisor" },
+  { orgId: "nordic-fitout", name: "Nordic Fit-Out Partners", tier: 3, parentOrgId: "mt-hojgaard", contractType: "Subcontract", roleType: "Subcontractor" },
 ];
 
 export interface SeedRisk {
@@ -91,7 +141,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "assessed",
     priority: "high",
     recurrence: "weekly",
-    workstreamIds: ["rr-001", "rr-003"],
+    workstreamIds: ["civil-works"],
     notes: "High water table observed during trial pits in the north-east plot. Risk of flooding the foundation excavation and delaying the concrete pour.",
     checklist: [
       { id: "c1", text: "Commission geotechnical survey", completed: true },
@@ -106,7 +156,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "identified",
     priority: "critical",
     recurrence: "none",
-    workstreamIds: ["rr-002", "rr-004"],
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
     notes: "Energinet has not confirmed the 60kV grid connection capacity required for Phase 1 IT load. Could block energisation milestone.",
     checklist: [
       { id: "c1", text: "Submit grid capacity request to Energinet", completed: true },
@@ -120,7 +170,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "mitigated",
     priority: "medium",
     recurrence: "monthly",
-    workstreamIds: ["rr-001"],
+    workstreamIds: ["civil-works"],
     notes: "Primary cement supplier flagged a 3-week delay. Secondary supplier engaged as backup to protect the slab pour schedule.",
     checklist: [
       { id: "c1", text: "Qualify secondary supplier", completed: true },
@@ -135,7 +185,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "assessed",
     priority: "critical",
     recurrence: "weekly",
-    workstreamIds: ["rr-002", "rr-004"],
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
     notes: "Main 60MVA power transformer lead time extended to 110 weeks. Current forecast delivery is 6 weeks behind Baseline ROS Date. Energisation milestone at risk.",
     checklist: [
       { id: "c1", text: "Issue PO within 60 days of NTP", completed: true },
@@ -150,7 +200,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "mitigated",
     priority: "high",
     recurrence: "weekly",
-    workstreamIds: ["rr-002"],
+    workstreamIds: ["mep-infrastructure"],
     notes: "Protection relay injection test failed on first witness. NCR raised. Cure period active � 18 days remaining before contractor installation window opens.",
     checklist: [
       { id: "c1", text: "NCR resolution plan accepted by vendor", completed: true },
@@ -165,7 +215,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "identified",
     priority: "critical",
     recurrence: "none",
-    workstreamIds: ["rr-002", "rr-004", "rr-005"],
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
     notes: "Energinet maturation phase approval running 8 weeks behind programme. Hard constraint on utility energisation milestone. Zero float available.",
     checklist: [
       { id: "c1", text: "Escalate to Energinet senior liaison", completed: false },
@@ -179,7 +229,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "identified",
     priority: "medium",
     recurrence: "none",
-    workstreamIds: ["rr-001", "rr-002"],
+    workstreamIds: ["civil-works", "mep-infrastructure"],
     notes: "Scope boundary dispute between MEP contractor and OFCI installation team on HV cable termination. Neither party has accepted responsibility. Level 3 pre-commissioning at risk.",
     checklist: [
       { id: "c1", text: "Issue Interface Control Document", completed: false },
@@ -193,7 +243,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "assessed",
     priority: "medium",
     recurrence: "weekly",
-    workstreamIds: ["rr-002"],
+    workstreamIds: ["mep-infrastructure"],
     notes: "2.5MW diesel generator vessel delayed at Hamburg due to port congestion. Oversize transport permit for onward road delivery not yet approved by Vejdirektoratet.",
     checklist: [
       { id: "c1", text: "Expedite permit application", completed: false },
@@ -207,7 +257,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "resolved",
     priority: "high",
     recurrence: "none",
-    workstreamIds: ["rr-002", "rr-004"],
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
     notes: "UPS installation was 3 weeks behind schedule. Level 4 integrated systems test could not commence without full UPS energisation. CxA confirmed zero residual impact after recovery plan executed.",
     checklist: [
       { id: "c1", text: "Recovery plan approved", completed: true },
@@ -221,7 +271,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "identified",
     priority: "high",
     recurrence: "weekly",
-    workstreamIds: ["rr-001", "rr-003"],
+    workstreamIds: ["civil-works"],
     notes: "Main piling contractor reports 40% crew shortage due to competing projects in the region. Risk to foundation programme of 4-6 weeks.",
     checklist: [
       { id: "c1", text: "Request resource recovery plan from contractor", completed: false },
@@ -235,7 +285,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "assessed",
     priority: "high",
     recurrence: "none",
-    workstreamIds: ["rr-001", "rr-004"],
+    workstreamIds: ["civil-works", "it-data-infrastructure"],
     notes: "Design change increases data hall clear height by 800mm. Building permit amendment required from Vejle Kommune. Estimated 8-12 week processing time.",
     checklist: [
       { id: "c1", text: "Submit permit amendment application", completed: true },
@@ -249,7 +299,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "identified",
     priority: "high",
     recurrence: "weekly",
-    workstreamIds: ["rr-002"],
+    workstreamIds: ["mep-infrastructure"],
     notes: "Custom chilled water distribution manifolds have 48-week lead time. Current schedule assumes 35 weeks. Risk of 13-week delay to Level 3 mechanical commissioning.",
     checklist: [
       { id: "c1", text: "Review design for standard component substitution", completed: false },
@@ -263,7 +313,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "assessed",
     priority: "medium",
     recurrence: "none",
-    workstreamIds: ["rr-002", "rr-004"],
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
     notes: "Client has requested upgrade from air-cooled to rear-door liquid cooling for AI rack rows. Structural and MEP impact assessment required. NEC4 compensation event likely.",
     checklist: [
       { id: "c1", text: "Issue Early Warning notice", completed: true },
@@ -278,7 +328,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "identified",
     priority: "medium",
     recurrence: "none",
-    workstreamIds: ["rr-001", "rr-002"],
+    workstreamIds: ["civil-works", "mep-infrastructure"],
     notes: "Beredskabsstyrelsen (Danish Emergency Management Agency) reviewing the inert gas suppression system design. Approval required before installation can commence.",
     checklist: [
       { id: "c1", text: "Submit design for regulatory review", completed: true },
@@ -292,7 +342,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "mitigated",
     priority: "low",
     recurrence: "none",
-    workstreamIds: ["rr-001"],
+    workstreamIds: ["civil-works"],
     notes: "Heavy lift crane transport route crosses a municipal road with 40-tonne weight limit. Special transport permit obtained. Reinforcement of road surface agreed with Vejle Kommune.",
     checklist: [
       { id: "c1", text: "Special transport permit obtained", completed: true },
@@ -306,7 +356,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "identified",
     priority: "high",
     recurrence: "weekly",
-    workstreamIds: ["rr-002", "rr-004"],
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
     notes: "BMS/EPMS integration scope boundary between MEP contractor and IT infrastructure team not formally defined. Risk of duplicate or missing scope at Level 4 commissioning.",
     checklist: [
       { id: "c1", text: "Issue BMS Interface Control Document", completed: false },
@@ -320,7 +370,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "mitigated",
     priority: "medium",
     recurrence: "none",
-    workstreamIds: ["rr-001", "rr-003"],
+    workstreamIds: ["civil-works"],
     notes: "Foundation slab pour scheduled for January. Risk of concrete quality issues if temperature drops below -5�C. Cold weather concreting plan prepared and approved.",
     checklist: [
       { id: "c1", text: "Cold weather concreting plan approved", completed: true },
@@ -335,7 +385,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "assessed",
     priority: "high",
     recurrence: "none",
-    workstreamIds: ["rr-004"],
+    workstreamIds: ["it-data-infrastructure"],
     notes: "Legal dispute with adjacent landowner over 12m strip required for substation access road. Title transfer blocked pending court mediation.",
     checklist: [
       { id: "c1", text: "Legal counsel appointed", completed: true },
@@ -350,7 +400,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "resolved",
     priority: "medium",
     recurrence: "none",
-    workstreamIds: ["rr-001", "rr-004"],
+    workstreamIds: ["civil-works", "it-data-infrastructure"],
     notes: "Environmental Impact Assessment required protected species survey before ground clearance. Survey completed � no protected species found. Clearance to proceed issued.",
     checklist: [
       { id: "c1", text: "Protected species survey completed", completed: true },
@@ -364,7 +414,7 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "assessed",
     priority: "high",
     recurrence: "weekly",
-    workstreamIds: ["rr-001", "rr-002"],
+    workstreamIds: ["civil-works", "mep-infrastructure"],
     notes: "Independent HSE audit identified 7 critical non-conformances with the main contractor safety management system. Stop-work authority exercised on 2 work fronts.",
     checklist: [
       { id: "c1", text: "Corrective action plan submitted by contractor", completed: true },

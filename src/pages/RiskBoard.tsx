@@ -10,11 +10,25 @@ import {
   STATUS_LABEL,
   formatDate,
   initials,
+  pickResponsible,
 } from "../lib/format";
 import { toast } from "../lib/toast";
 import RiskCard from "../components/risk/RiskCard";
 
 type View = "board" | "table";
+
+function roleOrganizations(r: ReturnType<typeof useRiskStore.getState>["roles"][number]): string[] {
+  return [
+    r.accountable,
+    r.consulted,
+    r.responsibleCustomer,
+    r.responsibleContractor,
+    r.informedCustomer,
+    r.informedContractor,
+  ]
+    .filter((p): p is NonNullable<typeof p> => p !== null)
+    .map((p) => p.organization);
+}
 
 export default function RiskBoard() {
   const navigate = useNavigate();
@@ -29,14 +43,14 @@ export default function RiskBoard() {
   const [fStatus, setFStatus] = useState("");
 
   const workstreams = [...new Set(roles.map((r) => r.workstream))];
-  const orgs = [...new Set(roles.map((r) => r.organizationName))];
+  const orgs = [...new Set(roles.flatMap(roleOrganizations))];
 
   const filtered = useMemo(() => {
     return risks.filter((risk) => {
       const riskRoles = roles.filter((r) => risk.workstreamIds.includes(r.id));
       if (fWorkstream && !riskRoles.some((r) => r.workstream === fWorkstream))
         return false;
-      if (fOrg && !riskRoles.some((r) => r.organizationName === fOrg))
+      if (fOrg && !riskRoles.some((r) => roleOrganizations(r).includes(fOrg)))
         return false;
       if (fPriority && risk.priority !== fPriority) return false;
       if (fStatus && risk.status !== fStatus) return false;
@@ -213,9 +227,10 @@ function TableView({
         <tbody>
           {risks.map((risk) => {
             const prio = PRIORITY_META[risk.priority];
-            const responsible = roles.find(
-              (r) => risk.workstreamIds.includes(r.id) && r.type === "responsible"
-            );
+            const responsible = roles
+              .filter((r) => risk.workstreamIds.includes(r.id))
+              .map(pickResponsible)
+              .find((p) => p !== null);
             const workstreams = [
               ...new Set(
                 roles
@@ -260,10 +275,10 @@ function TableView({
                   {responsible ? (
                     <span className="flex items-center gap-2">
                       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo/15 text-[9px] font-semibold text-indigo">
-                        {initials(responsible.person.name)}
+                        {initials(responsible.name)}
                       </span>
                       <span className="text-xs text-gray-600">
-                        {responsible.person.name}
+                        {responsible.name}
                       </span>
                     </span>
                   ) : (

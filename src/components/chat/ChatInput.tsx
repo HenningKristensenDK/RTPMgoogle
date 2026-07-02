@@ -27,8 +27,23 @@ export default function ChatInput({ mode, disabled, members, onSend }: Props) {
     }
   }, [text]);
 
-  // Distinct mention candidates by person name.
-  const mentionNames = [...new Set(members.map((m) => m.person.name))];
+  // Distinct mention candidates by person name, across all R&R slots.
+  const mentionNames = [
+    ...new Set(
+      members.flatMap((m) =>
+        [
+          m.accountable,
+          m.consulted,
+          m.responsibleCustomer,
+          m.responsibleContractor,
+          m.informedCustomer,
+          m.informedContractor,
+        ]
+          .filter((p): p is NonNullable<typeof p> => p !== null)
+          .map((p) => p.name)
+      )
+    ),
+  ];
 
   function submit() {
     const value = text.trim();

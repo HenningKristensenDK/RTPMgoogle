@@ -21,6 +21,7 @@ import type {
   Risk,
   RiskMessage,
   RoleResponsibility,
+  Organization,
   ChatMode,
   RiskStatus,
   StatusHistoryEntry,
@@ -33,6 +34,7 @@ const projectsCol = collection(db, "projects");
 const rolesCol = collection(db, "roles_and_responsibilities");
 const risksCol = collection(db, "risks");
 const messagesCol = collection(db, "risk_messages");
+const organizationsCol = collection(db, "organizations");
 
 function mapDoc<T>(id: string, data: DocumentData): T {
   return { id, ...data } as T;
@@ -73,6 +75,25 @@ export async function upsertRole(role: Partial<RoleResponsibility>): Promise<str
   }
   const ref = await addDoc(rolesCol, role as DocumentData);
   return ref.id;
+}
+
+// ---------------------------------------------------------------------------
+// Organizations (Org Chart)
+// ---------------------------------------------------------------------------
+export function watchOrganizations(
+  projectId: string,
+  cb: (organizations: Organization[]) => void
+) {
+  const q = query(organizationsCol, where("projectId", "==", projectId));
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => mapDoc<Organization>(d.id, d.data())));
+  });
+}
+
+export async function listOrganizations(projectId: string): Promise<Organization[]> {
+  const q = query(organizationsCol, where("projectId", "==", projectId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => mapDoc<Organization>(d.id, d.data()));
 }
 
 // ---------------------------------------------------------------------------

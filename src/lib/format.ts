@@ -1,5 +1,5 @@
 import type { Timestamp } from "firebase/firestore";
-import type { OrgType, RiskPriority, RiskStatus } from "../types";
+import type { Party, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
 
 export function tsToDate(ts: Timestamp | null | undefined): Date | null {
   return ts ? ts.toDate() : null;
@@ -64,21 +64,9 @@ export const STATUS_LABEL: Record<RiskStatus, string> = {
   resolved: "Resolved",
 };
 
-/** Left-border accent color per organization type for the involved-parties card. */
-export function orgAccent(org: OrgType | string): string {
-  switch (org) {
-    case "Owner":
-      return "#0d08d2"; // brand indigo
-    case "Main Contractor":
-    case "Subcontractor":
-      return "#F59E0B"; // orange/amber
-    case "Advisor":
-      return "#14B8A6"; // teal
-    case "Authority":
-      return "#A855F7"; // purple
-    default:
-      return "#9CA3AF";
-  }
+/** The single "responsible" party to show where only one avatar fits (Risk Card, Risk Board table). */
+export function pickResponsible(role: RoleResponsibility): Party | null {
+  return role.responsibleContractor ?? role.responsibleCustomer;
 }
 
 export function initials(name: string): string {

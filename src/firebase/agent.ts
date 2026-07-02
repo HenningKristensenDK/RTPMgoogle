@@ -27,6 +27,22 @@ export function buildRiskContext(
   roles: RoleResponsibility[]
 ): Record<string, unknown> {
   const involved = roles.filter((r) => risk.workstreamIds.includes(r.id));
+  const slots: [string, "accountable" | "consulted" | "responsibleCustomer" | "responsibleContractor" | "informedCustomer" | "informedContractor"][] = [
+    ["Accountable", "accountable"],
+    ["Consulted", "consulted"],
+    ["Responsible (Customer)", "responsibleCustomer"],
+    ["Responsible (Contractor)", "responsibleContractor"],
+    ["Informed (Customer)", "informedCustomer"],
+    ["Informed (Contractor)", "informedContractor"],
+  ];
+  const involvedParties = involved.flatMap((r) =>
+    slots
+      .map(([raci, key]) => {
+        const party = r[key];
+        return party ? { workstream: r.workstream, organization: party.organization, role: party.role, person: party.name, raci } : null;
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+  );
   return {
     riskId: risk.riskId,
     title: risk.title,
@@ -36,14 +52,7 @@ export function buildRiskContext(
     dueDate: risk.dueDate ? risk.dueDate.toDate().toISOString() : null,
     notes: risk.notes,
     checklist: risk.checklist.map((c) => ({ text: c.text, done: c.completed })),
-    involvedParties: involved.map((r) => ({
-      workstream: r.workstream,
-      organization: r.organizationName,
-      orgType: r.organization,
-      role: r.role,
-      person: r.person.name,
-      raci: r.type,
-    })),
+    involvedParties,
     statusHistory: risk.statusHistory.map((h) => ({
       from: h.from,
       to: h.to,
