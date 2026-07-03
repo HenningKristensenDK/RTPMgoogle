@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Check } from "lucide-react";
 import type { Timestamp } from "firebase/firestore";
 import { useRiskStore } from "../store/riskStore";
-import { STATUS_LABEL } from "../lib/format";
+import { STATUS_LABEL, NEXT_STEP_OWNER } from "../lib/format";
 import type { RiskStatus } from "../types";
 
 const MILESTONES = [
@@ -15,12 +15,6 @@ const MILESTONES = [
 ];
 
 const COD_DATE = new Date("2027-09-30");
-
-const NEXT_STEP_OWNER: Record<string, string> = {
-  identified: "Package PM",
-  assessed:   "Lead Scheduler",
-  mitigated:  "Quality Manager",
-};
 
 type ActivityEntry = {
   riskId: string;

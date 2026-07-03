@@ -64,6 +64,13 @@ export const STATUS_LABEL: Record<RiskStatus, string> = {
   resolved: "Resolved",
 };
 
+/** Whoever has the ball for a risk's current status. No entry for "resolved" — nothing left to own. */
+export const NEXT_STEP_OWNER: Record<string, string> = {
+  identified: "Package PM",
+  assessed: "Lead Scheduler",
+  mitigated: "Quality Manager",
+};
+
 /** The single "responsible" party to show where only one avatar fits (Risk Card, Risk Board table). */
 export function pickResponsible(role: RoleResponsibility): Party | null {
   return role.responsibleContractor ?? role.responsibleCustomer;

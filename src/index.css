@@ -31,6 +31,26 @@ body {
   background: transparent;
 }
 
+/* AI landing overlay: message fade-up + scrim fade-in */
+@keyframes aiFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes aiScrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes pulse-dot {
   0%,
   60%,

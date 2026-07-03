@@ -8,31 +8,37 @@ import LandingOverlay from "./shell/LandingOverlay";
 import MyTodosOverlay from "./shell/MyTodosOverlay";
 
 export default function AppShell() {
-  const { mode, setMode } = useShellStore();
+  const { mode } = useShellStore();
   const [todosOpen, setTodosOpen] = useState(false);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
-      if (todosOpen) { setTodosOpen(false); return; }
-      if (mode === "landing") setMode("active");
+      if (todosOpen) setTodosOpen(false);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [mode, todosOpen, setMode]);
+  }, [todosOpen]);
 
   return (
     <div className="flex h-full flex-col">
-      <Header onTodosOpen={() => setTodosOpen(true)} />
+      {/* The real dashboard, dimmed/blurred (not faked) behind the AI landing
+          overlay — purely visual context, non-interactive while it's up. */}
+      <div
+        className={`flex h-full flex-col ${mode === "landing" ? "pointer-events-none select-none" : ""}`}
+        style={mode === "landing" ? { filter: "blur(1px)" } : undefined}
+      >
+        <Header onTodosOpen={() => setTodosOpen(true)} />
 
-      <div className="flex min-h-0 flex-1">
-        <Sidebar />
+        <div className="flex min-h-0 flex-1">
+          <Sidebar />
 
-        <main className="scroll-thin flex-1 overflow-auto bg-fog">
-          <Outlet />
-        </main>
+          <main className="scroll-thin flex-1 overflow-auto bg-fog">
+            <Outlet />
+          </main>
 
-        {mode === "active" && <ProjectManagerPanel />}
+          {mode === "active" && <ProjectManagerPanel />}
+        </div>
       </div>
 
       {mode === "landing" && <LandingOverlay />}
