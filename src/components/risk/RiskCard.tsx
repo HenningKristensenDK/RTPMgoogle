@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { Risk, RoleResponsibility } from "../../types";
 import { PRIORITY_META, formatDate, initials, pickResponsible } from "../../lib/format";
 
@@ -9,6 +9,7 @@ interface Props {
 
 export default function RiskCard({ risk, roles }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const responsible = roles
     .filter((r) => risk.workstreamIds.includes(r.id))
     .map(pickResponsible)
@@ -24,7 +25,7 @@ export default function RiskCard({ risk, roles }: Props) {
 
   return (
     <button
-      onClick={() => navigate(`/risks/${risk.id}`)}
+      onClick={() => navigate(`/risks/${risk.id}`, { state: { background: location } })}
       className="flex w-full flex-col gap-2 rounded-card border border-bordergray bg-white p-3 text-left shadow-card transition-shadow hover:shadow-panel"
     >
       <div className="flex items-center justify-between">

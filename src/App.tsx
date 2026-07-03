@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Routes, Route, Navigate, useLocation, type Location } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import {
   Clock,
@@ -30,6 +30,15 @@ type PlaceholderDef = {
   isCorrespondence?: boolean;
 };
 
+// True only for the actual browser reload that just happened — react-router persists
+// navigate()'s `state` (including our modal `background` location) across a hard
+// refresh via the History API, so without this a refreshed page would still think
+// it arrived via in-app navigation and re-open the risk-detail popup.
+const IS_HARD_RELOAD =
+  typeof performance !== "undefined" &&
+  (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)
+    ?.type === "reload";
+
 const PLACEHOLDERS: PlaceholderDef[] = [
   { path: "/time-log",          moduleName: "Time Log",             Icon: Clock },
   { path: "/documents",         moduleName: "Documents",            Icon: FileText },
@@ -45,6 +54,15 @@ export default function App() {
   const { user, loading, init } = useAuthStore();
   const setProject = useRiskStore((s) => s.setProject);
   const subscribe = useRiskStore((s) => s.subscribe);
+  const location = useLocation();
+  // Only the history entry that was already active when this reload happened should
+  // have its stale background state ignored — any navigation after that is a fresh
+  // in-app click and should behave normally.
+  const [initialLocationKey] = useState(() => location.key);
+  const backgroundLocation =
+    IS_HARD_RELOAD && location.key === initialLocationKey
+      ? undefined
+      : (location.state as { background?: Location } | null)?.background;
 
   useEffect(() => init(), [init]);
 
@@ -79,27 +97,35 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route element={<AppShell />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/risks" element={<RiskBoard />} />
-        <Route path="/risks/:riskId" element={<RiskDetail />} />
-        <Route path="/roles" element={<RolesResponsibility />} />
-        {PLACEHOLDERS.map(({ path, moduleName, Icon, isCorrespondence }) => (
-          <Route
-            key={path}
-            path={path}
-            element={
-              <ModulePlaceholder
-                moduleName={moduleName}
-                icon={Icon}
-                isCorrespondence={isCorrespondence}
-              />
-            }
-          />
-        ))}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <>
+      <Routes location={backgroundLocation ?? location}>
+        <Route element={<AppShell />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/risks" element={<RiskBoard />} />
+          {/* Direct load / refresh on a risk URL (no background state) — send back to the table. */}
+          <Route path="/risks/:riskId" element={<Navigate to="/risks" replace />} />
+          <Route path="/roles" element={<RolesResponsibility />} />
+          {PLACEHOLDERS.map(({ path, moduleName, Icon, isCorrespondence }) => (
+            <Route
+              key={path}
+              path={path}
+              element={
+                <ModulePlaceholder
+                  moduleName={moduleName}
+                  icon={Icon}
+                  isCorrespondence={isCorrespondence}
+                />
+              }
+            />
+          ))}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+      {backgroundLocation && (
+        <Routes>
+          <Route path="/risks/:riskId" element={<RiskDetail />} />
+        </Routes>
+      )}
+    </>
   );
 }
