@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Table2, Network, ListTree, Pencil } from "lucide-react";
+import { Plus, Table2, Network, Pencil } from "lucide-react";
 import type { Organization, Party, RoleResponsibility } from "../types";
 import { useRiskStore } from "../store/riskStore";
 import { upsertRole, watchOrganizations } from "../firebase/firestore";
@@ -104,8 +104,21 @@ function PersonCard({
   );
 }
 
-function LegendBar({ orgs }: { orgs: Organization[] }) {
+function LegendBar({
+  orgs,
+  raci,
+  setRaci,
+}: {
+  orgs: Organization[];
+  raci: boolean;
+  setRaci: (v: boolean) => void;
+}) {
   const tiersPresent = [...new Set(orgs.map((o) => o.tier))].sort((a, b) => a - b);
+  const pillCls = (active: boolean) =>
+    `px-2 py-0.5 text-[10.5px] transition-colors ${
+      active ? "bg-indigo/10 font-medium text-indigo" : "text-gray-400 hover:bg-gray-50"
+    }`;
+
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-7 gap-y-2.5 rounded-card border border-bordergray bg-white px-4 py-3 shadow-card">
       <div className="flex flex-wrap items-center gap-5">
@@ -129,6 +142,18 @@ function LegendBar({ orgs }: { orgs: Organization[] }) {
             </div>
           );
         })}
+      </div>
+      <div className="hidden h-5 w-px self-stretch bg-bordergray sm:block" />
+      <div className="flex items-center gap-2">
+        <span className="text-[10.5px] font-medium uppercase tracking-wide text-gray-400">Group by</span>
+        <div className="flex overflow-hidden rounded-full border border-gray-200">
+          <button onClick={() => setRaci(false)} className={pillCls(!raci)}>
+            Tier
+          </button>
+          <button onClick={() => setRaci(true)} className={pillCls(raci)}>
+            RACI
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -197,7 +222,7 @@ export default function RolesResponsibility() {
           <h1 className="text-lg font-bold text-ink">
             {view === "orgchart" ? "OBS diagram" : raci ? "RACI" : "Roles & Responsibility"}
           </h1>
-          <p className="text-xs text-gray-400">
+          <p className="text-[12px] text-gray-400">
             {view === "orgchart"
               ? "A real-time map of who does the work. Displays the project organization in detail and structures all contractors by contract tiers—making responsibilities, boundaries, and hierarchy immediately visible."
               : raci
@@ -205,11 +230,11 @@ export default function RolesResponsibility() {
               : "Who is engaged at each contractual tier, and in what RACI capacity."}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-6">
           <div className="flex overflow-hidden rounded-btn border border-bordergray">
             <button
               onClick={() => setView("table")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${
+              className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm ${
                 view === "table"
                   ? "bg-indigo text-white"
                   : "bg-white text-gray-500 hover:bg-gray-50"
@@ -219,7 +244,7 @@ export default function RolesResponsibility() {
             </button>
             <button
               onClick={() => setView("orgchart")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${
+              className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm ${
                 view === "orgchart"
                   ? "bg-indigo text-white"
                   : "bg-white text-gray-500 hover:bg-gray-50"
@@ -228,18 +253,6 @@ export default function RolesResponsibility() {
               <Network size={15} /> OBS diagram
             </button>
           </div>
-          {view === "table" && (
-            <button
-              onClick={() => setRaci((v) => !v)}
-              className={`flex items-center gap-1.5 rounded-btn border px-3 py-1.5 text-sm ${
-                raci
-                  ? "border-indigo bg-indigo text-white"
-                  : "border-bordergray bg-white text-gray-500 hover:bg-gray-50"
-              }`}
-            >
-              <ListTree size={15} /> RACI
-            </button>
-          )}
           {view === "table" && (
             <button
               onClick={openCreateDrawer}
@@ -254,7 +267,7 @@ export default function RolesResponsibility() {
       <div className="scroll-thin flex-1 overflow-auto p-6">
         {view === "table" ? (
           <>
-            <LegendBar orgs={orgs} />
+            <LegendBar orgs={orgs} raci={raci} setRaci={setRaci} />
             <div className="overflow-x-auto rounded-card border border-bordergray bg-white shadow-card">
               {raci ? (
                 <RaciFlatTable roles={roles} orgs={orgs} onEdit={openEditDrawer} />
