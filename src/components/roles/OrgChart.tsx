@@ -200,7 +200,7 @@ export default function OrgChart({ projectId, roles }: Props) {
               Tier {tierNumbers[i]}
             </span>
           </div>
-          <div className="flex flex-1 flex-wrap gap-8">
+          <div className="flex flex-1 flex-wrap justify-center gap-8">
             {tierOrgs.map((org) => {
               const cards = disciplineCards(org.name, roles);
               return (

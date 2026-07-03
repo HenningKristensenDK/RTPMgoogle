@@ -277,7 +277,7 @@ export default function RolesResponsibility() {
             </div>
           </>
         ) : (
-          <div className="overflow-hidden rounded-card border border-bordergray shadow-card">
+          <div className="mx-auto max-w-[1200px] overflow-hidden rounded-card border border-bordergray shadow-card">
             <OrgChart projectId={projectId} roles={roles} />
           </div>
         )}
