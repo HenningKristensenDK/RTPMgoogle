@@ -69,8 +69,11 @@ Not built: Documents, Correspondence, NCR, RFI, Change Management, Interface Man
 ### Dashboard (verified against `src/pages/Dashboard.tsx`)
 Milestone timeline dates are **hardcoded** in a `MILESTONES` const (NTP 2026.03.01 → COD 2027.09.30) — not read from any project settings/master-data record. There is no project master-data screen anywhere in the app yet (`src/pages/` has no settings/config page) — if milestone dates or other project-level facts ever need to be editable, that screen doesn't exist and would need to be built from scratch.
 
-## Just changed — not yet visually verified by the user
-- **The R&R/RACI/OBS diagram tier-model redesign (2026-07-03)**: new Tier 0/1/2/3 model, `consulted` changed from single object to array, new Tier 3 org+person (EQ Supplier / Rasmus Iversen), org-grouped and role-grouped table views, legend bar. Checked programmatically (build, deploy, JS/DOM inspection, screenshots) with no console errors, but Henning himself hasn't looked at it live yet — **this is the first thing to check next session.**
+## Just changed, visually verified this session
+- **The R&R/RACI/OBS diagram tier-model redesign (2026-07-03)** — confirmed via screenshots across all three surfaces: OBS diagram, the RACI (group-by-role) table, and the Roles & Responsibility (group-by-tier) table. Tier 0 = Customer PMO + NT Advisor, Tier 1 = HD Contractor, Tier 2 = FO Sub-Contractor, Tier 3 = EQ Supplier (Rasmus Iversen) — all render correctly with the right people under the right tier, and the OBS diagram picked up the new tiers with zero code changes (confirming its tier-driven, non-hardcoded layout works as designed). Schema: `consulted` is an array (unlimited, must always be populated), `accountable` stays single-person, `responsibleCustomer`/`responsibleContractor` capped at exactly one person per side.
+
+## Next up, not yet built
+- **Header/toggle hierarchy fix on the Roles & Responsibility page** — a mockup has been approved (not in this repo) but the build prompt hasn't been written yet. Planned change: Table/OBS diagram stays the primary top-right switcher; the Tier/RACI "group by" toggle (currently a peer button next to Table/OBS diagram) moves down into the legend bar as a subordinate "Group by" control; the page subheadline's font size is reduced. Do not build this from memory — get the actual build prompt/spec first.
 
 ## Demo context
 Client: Henning Kristensen, Project director, Customer PMO
