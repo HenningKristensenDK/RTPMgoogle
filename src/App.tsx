@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, type Location } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import {
   Clock,
@@ -45,6 +45,9 @@ export default function App() {
   const { user, loading, init } = useAuthStore();
   const setProject = useRiskStore((s) => s.setProject);
   const subscribe = useRiskStore((s) => s.subscribe);
+  const location = useLocation();
+  const backgroundLocation = (location.state as { background?: Location } | null)
+    ?.background;
 
   useEffect(() => init(), [init]);
 
@@ -79,27 +82,34 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route element={<AppShell />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/risks" element={<RiskBoard />} />
-        <Route path="/risks/:riskId" element={<RiskDetail />} />
-        <Route path="/roles" element={<RolesResponsibility />} />
-        {PLACEHOLDERS.map(({ path, moduleName, Icon, isCorrespondence }) => (
-          <Route
-            key={path}
-            path={path}
-            element={
-              <ModulePlaceholder
-                moduleName={moduleName}
-                icon={Icon}
-                isCorrespondence={isCorrespondence}
-              />
-            }
-          />
-        ))}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <>
+      <Routes location={backgroundLocation ?? location}>
+        <Route element={<AppShell />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/risks" element={<RiskBoard />} />
+          <Route path="/risks/:riskId" element={<RiskDetail />} />
+          <Route path="/roles" element={<RolesResponsibility />} />
+          {PLACEHOLDERS.map(({ path, moduleName, Icon, isCorrespondence }) => (
+            <Route
+              key={path}
+              path={path}
+              element={
+                <ModulePlaceholder
+                  moduleName={moduleName}
+                  icon={Icon}
+                  isCorrespondence={isCorrespondence}
+                />
+              }
+            />
+          ))}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+      {backgroundLocation && (
+        <Routes>
+          <Route path="/risks/:riskId" element={<RiskDetail />} />
+        </Routes>
+      )}
+    </>
   );
 }

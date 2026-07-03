@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { LayoutGrid, Table2, Plus } from "lucide-react";
-import { RISK_STATUSES, type RiskPriority, type RiskStatus } from "../types";
+import { useLocation, useNavigate } from "react-router-dom";
+import { LayoutGrid, Table2, Plus, Trash2 } from "lucide-react";
+import { Timestamp } from "firebase/firestore";
+import { RISK_STATUSES, type Risk, type RiskPriority, type RiskStatus } from "../types";
 import { useRiskStore } from "../store/riskStore";
 import { useAuthStore, currentIdentity } from "../store/authStore";
-import { createRisk } from "../firebase/firestore";
+import { createRisk, deleteRisk } from "../firebase/firestore";
 import {
   PRIORITY_META,
   STATUS_LABEL,
@@ -14,6 +15,8 @@ import {
 } from "../lib/format";
 import { toast } from "../lib/toast";
 import RiskCard from "../components/risk/RiskCard";
+import RiskSummaryDashboard from "../components/risk/RiskSummaryDashboard";
+import NewRiskModal from "../components/risk/NewRiskModal";
 
 type View = "board" | "table";
 
@@ -32,15 +35,19 @@ function roleOrganizations(r: ReturnType<typeof useRiskStore.getState>["roles"][
 
 export default function RiskBoard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { risks, roles, projectId, loading } = useRiskStore();
   const user = useAuthStore((s) => s.user);
   const me = currentIdentity(user);
 
-  const [view, setView] = useState<View>("board");
+  const [view, setView] = useState<View>("table");
   const [fWorkstream, setFWorkstream] = useState("");
   const [fOrg, setFOrg] = useState("");
   const [fPriority, setFPriority] = useState("");
   const [fStatus, setFStatus] = useState("");
+  const [barWorkstream, setBarWorkstream] = useState<string | null>(null);
+  const [barTodo, setBarTodo] = useState<"responsible" | "informed" | null>(null);
+  const [newRiskOpen, setNewRiskOpen] = useState(false);
 
   const workstreams = [...new Set(roles.map((r) => r.workstream))];
   const orgs = [...new Set(roles.flatMap(roleOrganizations))];
@@ -58,11 +65,33 @@ export default function RiskBoard() {
     });
   }, [risks, roles, fWorkstream, fOrg, fPriority, fStatus]);
 
-  async function handleNewRisk() {
+  const tableRisks = useMemo(() => {
+    return filtered.filter((risk) => {
+      const riskRoles = roles.filter((r) => risk.workstreamIds.includes(r.id));
+      if (barWorkstream && !riskRoles.some((r) => r.workstream === barWorkstream))
+        return false;
+      if (barTodo === "responsible" && !riskRoles.some((r) => pickResponsible(r) !== null))
+        return false;
+      if (
+        barTodo === "informed" &&
+        !riskRoles.some((r) => r.informedCustomer.length > 0 || r.informedContractor.length > 0)
+      )
+        return false;
+      return true;
+    });
+  }, [filtered, roles, barWorkstream, barTodo]);
+
+  async function handleCreateRisk(data: {
+    title: string;
+    priority: RiskPriority;
+    dueDate: Timestamp | null;
+    workstreamIds: string[];
+  }) {
     if (!projectId) return;
     try {
-      const id = await createRisk(projectId, me.uid, { title: "New risk" });
-      navigate(`/risks/${id}`);
+      const id = await createRisk(projectId, me.uid, data);
+      setNewRiskOpen(false);
+      navigate(`/risks/${id}`, { state: { background: location } });
     } catch {
       toast.error("Could not create risk");
     }
@@ -105,7 +134,7 @@ export default function RiskBoard() {
             </button>
           </div>
           <button
-            onClick={handleNewRisk}
+            onClick={() => setNewRiskOpen(true)}
             className="flex items-center gap-1.5 rounded-btn bg-indigo px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo/90"
           >
             <Plus size={16} /> New Risk
@@ -194,9 +223,31 @@ export default function RiskBoard() {
             })}
           </div>
         ) : (
-          <TableView risks={filtered} roles={roles} onOpen={(id) => navigate(`/risks/${id}`)} />
+          <>
+            <RiskSummaryDashboard
+              risks={filtered}
+              roles={roles}
+              selectedWorkstream={barWorkstream}
+              onSelectWorkstream={setBarWorkstream}
+              selectedTodo={barTodo}
+              onSelectTodo={setBarTodo}
+            />
+            <TableView
+              risks={tableRisks}
+              roles={roles}
+              onOpen={(id) => navigate(`/risks/${id}`, { state: { background: location } })}
+            />
+          </>
         )}
       </div>
+
+      {newRiskOpen && (
+        <NewRiskModal
+          roles={roles}
+          onCreate={handleCreateRisk}
+          onCancel={() => setNewRiskOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -210,6 +261,22 @@ function TableView({
   roles: ReturnType<typeof useRiskStore.getState>["roles"];
   onOpen: (id: string) => void;
 }) {
+  const [deleteTarget, setDeleteTarget] = useState<Risk | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteRisk(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch {
+      toast.error("Could not delete risk");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="overflow-hidden rounded-card border border-bordergray bg-white shadow-card">
       <table className="w-full text-left text-sm">
@@ -222,6 +289,7 @@ function TableView({
             <th className="px-4 py-2.5">Workstream</th>
             <th className="px-4 py-2.5">Due</th>
             <th className="px-4 py-2.5">Responsible</th>
+            <th className="px-4 py-2.5"></th>
           </tr>
         </thead>
         <tbody>
@@ -285,18 +353,60 @@ function TableView({
                     "—"
                   )}
                 </td>
+                <td className="px-4 py-2.5 text-right">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteTarget(risk);
+                    }}
+                    title="Delete risk"
+                    className="rounded-btn p-1.5 text-gray-400 hover:bg-red-50 hover:text-critical"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </td>
               </tr>
             );
           })}
           {risks.length === 0 && (
             <tr>
-              <td colSpan={7} className="px-4 py-8 text-center text-gray-300">
+              <td colSpan={8} className="px-4 py-8 text-center text-gray-300">
                 No risks match the current filters.
               </td>
             </tr>
           )}
         </tbody>
       </table>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30">
+          <div className="w-[320px] rounded-card bg-white p-5 shadow-panel">
+            <p className="text-sm font-semibold text-ink">Delete risk?</p>
+            <p className="mt-1 text-sm text-gray-500">
+              <span className="font-medium text-ink">
+                {deleteTarget.riskId} — {deleteTarget.title}
+              </span>{" "}
+              will be permanently deleted. This can't be undone.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="rounded-btn border border-bordergray px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="rounded-btn bg-critical px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

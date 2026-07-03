@@ -102,6 +102,7 @@ export interface RiskMessage {
   authorUid: string;
   authorName: string;
   authorAvatar?: string;
+  images?: string[];
   reactions?: Record<string, string[]>; // emoji -> uid[]
   timestamp: Timestamp | null;
 }

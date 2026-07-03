@@ -8,6 +8,7 @@ import {
   sendMessage,
   toggleReaction,
 } from "../../firebase/firestore";
+import { uploadChatImage } from "../../firebase/storage";
 import { askRiskManager } from "../../services/geminiService";
 import { buildRiskContext, type AgentMessage } from "../../firebase/agent";
 import { toast } from "../../lib/toast";
@@ -41,18 +42,20 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
   function switchMode() {
     const next = isAgent ? "chat" : "agent";
     setMode(next);
-    // Drop a subtle system note into the mode we are entering.
-    void sendMessage({
-      riskId: risk.id,
-      mode: next,
-      role: "system",
-      content: `Switched to ${next === "agent" ? "Risk Management Agent" : "Team Chat"}`,
-      authorUid: me.uid,
-      authorName: me.name,
-    });
   }
 
-  async function handleSend(text: string) {
+  async function handleSend(text: string, images: File[]) {
+    let imageUrls: string[] = [];
+    if (images.length > 0) {
+      try {
+        imageUrls = await Promise.all(
+          images.map((file) => uploadChatImage(risk.id, file))
+        );
+      } catch {
+        toast.error("Could not upload image");
+      }
+    }
+
     // Persist the user's message in the active thread.
     await sendMessage({
       riskId: risk.id,
@@ -62,6 +65,7 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
       authorUid: me.uid,
       authorName: me.name,
       authorAvatar: me.avatar ?? "",
+      images: imageUrls,
     });
 
     if (!isAgent) return; // team chat is just multi-user persistence

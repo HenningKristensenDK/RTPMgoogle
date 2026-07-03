@@ -3,6 +3,7 @@ import {
   doc,
   addDoc,
   updateDoc,
+  deleteDoc,
   setDoc,
   getDoc,
   getDocs,
@@ -161,6 +162,10 @@ export async function createRisk(
   };
   const ref = await addDoc(risksCol, payload);
   return ref.id;
+}
+
+export async function deleteRisk(riskId: string): Promise<void> {
+  await deleteDoc(doc(risksCol, riskId));
 }
 
 export async function updateRisk(riskId: string, patch: Partial<Risk>): Promise<void> {

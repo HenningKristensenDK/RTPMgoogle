@@ -10,3 +10,13 @@ export async function uploadRiskAttachment(
   await uploadBytes(storageRef, file);
   return getDownloadURL(storageRef);
 }
+
+export async function uploadChatImage(
+  riskId: string,
+  file: File
+): Promise<string> {
+  const path = `risk_messages/${riskId}/${Date.now()}_${file.name}`;
+  const storageRef = ref(storage, path);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+}
