@@ -1,6 +1,6 @@
 # RTPM - Claude Code Project Memory
 Version: v2
-Last updated: 2026-06-27
+Last updated: 2026-07-03
 
 ## Project identity
 App: RTPM Risk Manager - Viking Project demo
@@ -53,9 +53,24 @@ Right panel AI: "Project Manager Agent"
 Per-risk team chat title: "[riskId] Chat Log" (e.g. RK-014 Chat Log)
 AI bot signature: "Risk Management Agent"
 
+### A2 — Brand / topbar / logo (verified against `src/components/shell/Header.tsx`)
+White header bar (`#ffffff`, 1px `#e6e6f0` border-bottom, 48px tall). Logo is `/RTPM icon navy.png` (44px height, auto width) + "Viking Project" (15px/600/`#070474`) over "RTPM Platform" (11px/`#8a8ca6`) stacked underneath. Right side: "My Todos" button, "Focus"/"Exit focus mode" toggle (active state `#e7e6fa` bg / `#0d08d2` text), a divider, then a 28px indigo (`#0d08d2`) initials-circle avatar + user's display name + sign-out icon.
+
+### B2 — Risk detail progress flow with changedBy trail (verified against `src/components/risk/RiskStatusBar.tsx`)
+4-step horizontal tracker (Identified → Assessed → Mitigated → Resolved). Completed steps: green filled circle + checkmark, green connector lines, and **the step's label swaps from a generic role placeholder to the actual `changedBy` display name** once that transition has happened (falls back to a static `STEP_OWNER` role title — Package PM / Lead Scheduler / Quality Manager / Commissioning Authority — until it does). The immediate next step gets an indigo outline; dates render under completed steps from `risk.statusHistory` (Resolved falls back to showing the due date in orange if not yet resolved). Clicking any step opens a confirm modal before calling `onChangeStatus`.
+
+### C — Send Update + R&R lookup (partial, verified against `SendUpdateModal.tsx` / `WorkstreamLookup.tsx`)
+Send Update modal (risk detail page) resolves recipients by matching the risk's linked workstream(s) against `roles_and_responsibilities`: "To" = `responsibleCustomer` + `responsibleContractor` (skips nulls), "Cc" = every entry in `informedCustomer` + `informedContractor`. "Look up in R&R" (from Risk Metadata) is a read-only per-workstream picker showing each workstream's Accountable. Still open: per-module dashboard + To Do chart (Contractor/Customer split) mentioned in GROUP C below.
+
 ## Modules
 Built: Dashboard, Risk Management, Roles & Responsibility
 Not built: Documents, Correspondence, NCR, RFI, Change Management, Interface Management, Technical Query, Time Log, Site Inspection, Permit & Compliance, Project Economics
+
+### Dashboard (verified against `src/pages/Dashboard.tsx`)
+Milestone timeline dates are **hardcoded** in a `MILESTONES` const (NTP 2026.03.01 → COD 2027.09.30) — not read from any project settings/master-data record. There is no project master-data screen anywhere in the app yet (`src/pages/` has no settings/config page) — if milestone dates or other project-level facts ever need to be editable, that screen doesn't exist and would need to be built from scratch.
+
+## Just changed — not yet visually verified by the user
+- **The R&R/RACI/OBS diagram tier-model redesign (2026-07-03)**: new Tier 0/1/2/3 model, `consulted` changed from single object to array, new Tier 3 org+person (EQ Supplier / Rasmus Iversen), org-grouped and role-grouped table views, legend bar. Checked programmatically (build, deploy, JS/DOM inspection, screenshots) with no console errors, but Henning himself hasn't looked at it live yet — **this is the first thing to check next session.**
 
 ## Demo context
 Client: Henning Kristensen, Project director, Customer PMO
@@ -75,5 +90,7 @@ Note (2026-07-02): all seed/demo data uses genericized names (Customer PMO / HD 
 
 ## Known issues
 - Existing Firestore risk docs show "DataCenter Vejle [diamond] Phase 1" until re-seed
+- The ◆ (mangled encoding, likely from a mojibake'd em-dash/degree-sign) appearing in several risk `notes`/`title` strings is baked into the Firestore documents themselves, not a display bug — fixing it needs a **source-level re-seed** (correcting the string in `seedData.ts`/seed scripts, then re-writing the affected documents), not a find/replace at render time.
+- Real client/company names have leaked into R&R seed data more than once already (see the genericized-names note above and the leak-purge fix on 2026-07-02) — stay alert for this recurring, especially now that this session's tier-model update added a new team member/org (EQ Supplier / Rasmus Iversen). Never reuse a real person or company name when authoring seed data.
 - serviceAccountKey.json must never be committed
 - Gemini key currently exposed in frontend bundle - to be secured via Cloud Function (Group E)

@@ -12,7 +12,8 @@
     "seed": "ts-node --esm scripts/seed.ts",
     "migrate:customer-rr": "ts-node --esm scripts/migrate-customer-rr.ts",
     "migrate:raci-orgs": "ts-node --esm scripts/migrate-raci-orgs.ts",
-    "migrate:tier-model": "ts-node --esm scripts/migrate-tier-model.ts"
+    "migrate:tier-model": "ts-node --esm scripts/migrate-tier-model.ts",
+    "backup:firestore": "ts-node --esm scripts/backup-firestore.ts"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",

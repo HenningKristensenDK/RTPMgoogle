@@ -21,6 +21,9 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 
+# Local Firestore backups (never committed)
+backups/
+
 # Editor / OS
 .DS_Store
 *.log
