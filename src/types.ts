@@ -29,7 +29,7 @@ export interface RoleResponsibility {
   projectId: string;
   workstream: string;
   accountable: Party;
-  consulted: Party;
+  consulted: Party[];
   responsibleCustomer: Party | null;
   responsibleContractor: Party | null;
   informedCustomer: Party[];

@@ -27,7 +27,7 @@ export interface SeedRole {
   id: string;
   workstream: string;
   accountable: SeedParty;
-  consulted: SeedParty;
+  consulted: SeedParty[];
   responsibleCustomer: SeedParty | null;
   responsibleContractor: SeedParty | null;
   informedCustomer: SeedParty[];
@@ -43,7 +43,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "civil-works",
     workstream: "Civil Works",
     accountable: ACCOUNTABLE,
-    consulted: { name: "Anna López", organization: "NT Advisor", role: "Structural advisor" },
+    consulted: [{ name: "Anna López", organization: "NT Advisor", role: "Structural advisor" }],
     responsibleCustomer: null,
     responsibleContractor: { name: "Jens Larsen", organization: "HD Contractor", role: "Site manager" },
     informedCustomer: [],
@@ -58,11 +58,11 @@ export const SEED_ROLES: SeedRole[] = [
     id: "mep-infrastructure",
     workstream: "MEP Infrastructure",
     accountable: ACCOUNTABLE,
-    consulted: { name: "Thomas Olsen", organization: "NT Advisor", role: "MEP advisor" },
+    consulted: [{ name: "Thomas Olsen", organization: "NT Advisor", role: "MEP advisor" }],
     responsibleCustomer: null,
     responsibleContractor: { name: "Peter Koch", organization: "HD Contractor", role: "MEP lead" },
     informedCustomer: [{ name: "Sindhu K", organization: "Customer PMO", role: "PMO lead" }],
-    informedContractor: [],
+    informedContractor: [{ name: "Rasmus Iversen", organization: "EQ Supplier", role: "Account manager" }],
     description: "Electrical, mechanical and utility infrastructure.",
     interactionSummary: "Contractor installs equipment, Customer's advisor witnesses factory acceptance tests.",
   },
@@ -70,7 +70,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "it-data-infrastructure",
     workstream: "IT/Data Infrastructure",
     accountable: ACCOUNTABLE,
-    consulted: { name: "Anna López", organization: "NT Advisor", role: "Structural advisor" },
+    consulted: [{ name: "Anna López", organization: "NT Advisor", role: "Structural advisor" }],
     responsibleCustomer: { name: "Sindhu K", organization: "Customer PMO", role: "PMO lead" },
     responsibleContractor: { name: "Ming Zhang", organization: "FO Sub-Contractor", role: "IT infrastructure lead" },
     informedCustomer: [],
@@ -78,6 +78,7 @@ export const SEED_ROLES: SeedRole[] = [
       { name: "Jens Larsen", organization: "HD Contractor", role: "Site manager" },
       { name: "Peter Koch", organization: "HD Contractor", role: "MEP lead" },
       { name: "Bharat Khunti", organization: "HD Contractor", role: "QA/QC manager" },
+      { name: "Rasmus Iversen", organization: "EQ Supplier", role: "Account manager" },
     ],
     description: "IT fit-out, data hall racking and liquid cooling.",
     interactionSummary: "Sub-contractor fits out racks and cooling, main contractor coordinates site access.",
@@ -86,7 +87,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "quality",
     workstream: "Quality",
     accountable: ACCOUNTABLE,
-    consulted: { name: "Thomas Olsen", organization: "NT Advisor", role: "MEP advisor" },
+    consulted: [{ name: "Thomas Olsen", organization: "NT Advisor", role: "MEP advisor" }],
     responsibleCustomer: null,
     responsibleContractor: { name: "Bharat Khunti", organization: "HD Contractor", role: "QA/QC manager" },
     informedCustomer: [{ name: "Sindhu K", organization: "Customer PMO", role: "PMO lead" }],
@@ -98,7 +99,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "hse",
     workstream: "HSE",
     accountable: ACCOUNTABLE,
-    consulted: { name: "Thomas Olsen", organization: "NT Advisor", role: "HSE advisor" },
+    consulted: [{ name: "Thomas Olsen", organization: "NT Advisor", role: "HSE advisor" }],
     responsibleCustomer: { name: "Sindhu K", organization: "Customer PMO", role: "PMO lead" },
     responsibleContractor: { name: "Jens Lorenzen", organization: "HD Contractor", role: "HSE coordinator" },
     informedCustomer: [],
@@ -110,7 +111,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "permit-and-authorities",
     workstream: "Permit and Authorities",
     accountable: ACCOUNTABLE,
-    consulted: { name: "Rohan Sameer", organization: "NT Advisor", role: "Permitting advisor" },
+    consulted: [{ name: "Rohan Sameer", organization: "NT Advisor", role: "Permitting advisor" }],
     responsibleCustomer: { name: "Sindhu K", organization: "Customer PMO", role: "PMO lead" },
     responsibleContractor: null,
     informedCustomer: [],
@@ -130,9 +131,10 @@ export interface SeedOrganization {
 
 export const SEED_ORGANIZATIONS: SeedOrganization[] = [
   { orgId: "customer", name: "Customer PMO", tier: 0, parentOrgId: null, roleType: "Home organization" },
+  { orgId: "wsp-denmark", name: "NT Advisor", tier: 0, parentOrgId: "customer", roleType: "Advisor" },
   { orgId: "mt-hojgaard", name: "HD Contractor", tier: 1, parentOrgId: "customer", roleType: "Main contractor" },
-  { orgId: "wsp-denmark", name: "NT Advisor", tier: 1, parentOrgId: "customer", roleType: "Advisor" },
   { orgId: "nordic-fitout", name: "FO Sub-Contractor", tier: 2, parentOrgId: "mt-hojgaard", roleType: "Sub-contractor" },
+  { orgId: "eq-supplier", name: "EQ Supplier", tier: 3, parentOrgId: "mt-hojgaard", roleType: "Vendor" },
 ];
 
 export interface SeedRisk {

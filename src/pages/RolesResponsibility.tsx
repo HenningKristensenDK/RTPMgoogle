@@ -1,47 +1,175 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Table2, Network, ListTree, Pencil } from "lucide-react";
-import type { Party, RoleResponsibility } from "../types";
+import type { Organization, Party, RoleResponsibility } from "../types";
 import { useRiskStore } from "../store/riskStore";
-import { upsertRole } from "../firebase/firestore";
+import { upsertRole, watchOrganizations } from "../firebase/firestore";
 import { toast } from "../lib/toast";
+import { initials } from "../lib/format";
 import OrgChart from "../components/roles/OrgChart";
 import RoleDrawer from "../components/roles/RoleDrawer";
 
 type View = "table" | "orgchart";
 
-const CUSTOMER_ZONE = "#e7e6fa";
-const CONTRACTOR_ZONE = "#f7f7fb";
+interface TierMeta {
+  color: string;
+  label: string;
+  sublabel: string;
+}
 
-function PartyStack({ party }: { party: Party | null }) {
-  if (!party || !party.name) return <span className="text-gray-300">—</span>;
+const TIER_META: Record<number, TierMeta> = {
+  0: { color: "#0d08d2", label: "Tier 0", sublabel: "Customer & PMC" },
+  1: { color: "#00acff", label: "Tier 1", sublabel: "Main contractors" },
+  2: { color: "#ff8b00", label: "Tier 2", sublabel: "Sub-contractors" },
+  3: { color: "#14B8A6", label: "Tier 3", sublabel: "Vendors & suppliers" },
+};
+
+function tierMeta(tier: number): TierMeta {
+  return TIER_META[tier] ?? { color: "#9CA3AF", label: `Tier ${tier}`, sublabel: "" };
+}
+
+function tierOf(orgs: Organization[], orgName: string): number | undefined {
+  return orgs.find((o) => o.name === orgName)?.tier;
+}
+
+const RACI_META: Record<"A" | "R" | "C" | "I", { bg: string; label: string }> = {
+  A: { bg: "#15162b", label: "Accountable owns the outcome" },
+  R: { bg: "#0d08d2", label: "Responsible does the work, one per side" },
+  C: { bg: "#00acff", label: "Consulted gives input first" },
+  I: { bg: "#9CA3AF", label: "Informed kept up to date" },
+};
+
+interface RaciEntry {
+  raci: "A" | "R" | "C" | "I";
+  party: Party;
+}
+
+function raciEntries(r: RoleResponsibility): RaciEntry[] {
+  const entries: RaciEntry[] = [{ raci: "A", party: r.accountable }];
+  for (const p of r.consulted) entries.push({ raci: "C", party: p });
+  if (r.responsibleCustomer) entries.push({ raci: "R", party: r.responsibleCustomer });
+  if (r.responsibleContractor) entries.push({ raci: "R", party: r.responsibleContractor });
+  for (const p of r.informedCustomer) entries.push({ raci: "I", party: p });
+  for (const p of r.informedContractor) entries.push({ raci: "I", party: p });
+  return entries;
+}
+
+function TierPill({ tier }: { tier: number | undefined }) {
+  if (tier === undefined) return null;
+  const meta = tierMeta(tier);
   return (
-    <div>
-      <div className="text-[13px] font-medium text-ink">{party.name}</div>
-      <div className="text-[11px] text-gray-400">{party.organization}</div>
+    <span
+      className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-bold text-white"
+      style={{ background: meta.color, lineHeight: 1.4 }}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
+function RaciBadge({ raci }: { raci: "A" | "R" | "C" | "I" }) {
+  return (
+    <span
+      className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+      style={{ background: RACI_META[raci].bg }}
+    >
+      {raci}
+    </span>
+  );
+}
+
+function PersonCard({
+  party,
+  orgs,
+  raci,
+}: {
+  party: Party;
+  orgs: Organization[];
+  raci?: "A" | "R" | "C" | "I";
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      {raci && <RaciBadge raci={raci} />}
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo/15 text-[10px] font-semibold text-indigo">
+        {initials(party.name)}
+      </span>
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-[13px] font-semibold text-ink">{party.name}</span>
+          <TierPill tier={tierOf(orgs, party.organization)} />
+        </div>
+        <div className="truncate text-[11px] text-gray-500">{party.role}</div>
+        <div className="truncate text-[11px] italic text-gray-400">{party.organization}</div>
+      </div>
     </div>
   );
 }
 
-function PartyListStack({ people }: { people: Party[] }) {
-  if (people.length === 0) return <span className="text-gray-300">—</span>;
+function LegendBar({ orgs }: { orgs: Organization[] }) {
+  const tiersPresent = [...new Set(orgs.map((o) => o.tier))].sort((a, b) => a - b);
   return (
-    <div className="flex flex-col gap-1.5">
-      {people.map((p, i) => (
-        <div key={i}>
-          <div className="text-[12px] font-medium text-ink">{p.name}</div>
-          <div className="text-[11px] text-gray-400">{p.organization}</div>
-        </div>
-      ))}
+    <div className="mb-4 flex flex-wrap items-center gap-x-7 gap-y-2.5 rounded-card border border-bordergray bg-white px-4 py-3 shadow-card">
+      <div className="flex flex-wrap items-center gap-5">
+        {(["A", "R", "C", "I"] as const).map((k) => (
+          <div key={k} className="flex items-center gap-2">
+            <RaciBadge raci={k} />
+            <span className="text-[11px] text-gray-600">{RACI_META[k].label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="hidden h-5 w-px self-stretch bg-bordergray sm:block" />
+      <div className="flex flex-wrap items-center gap-4">
+        {tiersPresent.map((t) => {
+          const meta = tierMeta(t);
+          return (
+            <div key={t} className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: meta.color }} />
+              <span className="text-[11px] text-gray-600">
+                <strong className="text-ink">{meta.label}</strong> {meta.sublabel}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WorkstreamCell({
+  role,
+  onEdit,
+}: {
+  role: RoleResponsibility;
+  onEdit: (role: RoleResponsibility) => void;
+}) {
+  return (
+    <div className="group flex items-start justify-between gap-2">
+      <div>
+        <div className="font-semibold text-ink">{role.workstream}</div>
+        <div className="mt-0.5 max-w-[26ch] text-[12px] text-gray-500">{role.description}</div>
+      </div>
+      <button
+        onClick={() => onEdit(role)}
+        className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-indigo group-hover:opacity-100"
+        title="Edit workstream"
+      >
+        <Pencil size={14} />
+      </button>
     </div>
   );
 }
 
 export default function RolesResponsibility() {
   const { roles, projectId } = useRiskStore();
+  const [orgs, setOrgs] = useState<Organization[]>([]);
   const [view, setView] = useState<View>("table");
   const [raci, setRaci] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleResponsibility | null>(null);
+
+  useEffect(() => {
+    if (!projectId) return;
+    return watchOrganizations(projectId, setOrgs);
+  }, [projectId]);
 
   function openCreateDrawer() {
     setEditingRole(null);
@@ -74,7 +202,7 @@ export default function RolesResponsibility() {
               ? "A real-time map of who does the work. Displays the project organization in detail and structures all contractors by contract tiers—making responsibilities, boundaries, and hierarchy immediately visible."
               : raci
               ? "Defines the project team and ownership across workstreams. Each workstream drives responsibility and automatically assigns all tasks, documents, and communication to the right people while informing stakeholders in real time."
-              : "Source of truth for workstream lookups and involved parties"}
+              : "Who is engaged at each contractual tier, and in what RACI capacity."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -125,13 +253,16 @@ export default function RolesResponsibility() {
 
       <div className="scroll-thin flex-1 overflow-auto p-6">
         {view === "table" ? (
-          <div className="overflow-x-auto rounded-card border border-bordergray bg-white shadow-card">
-            {raci ? (
-              <RaciTable roles={roles} onEdit={openEditDrawer} />
-            ) : (
-              <CollapsedTable roles={roles} />
-            )}
-          </div>
+          <>
+            <LegendBar orgs={orgs} />
+            <div className="overflow-x-auto rounded-card border border-bordergray bg-white shadow-card">
+              {raci ? (
+                <RaciFlatTable roles={roles} orgs={orgs} onEdit={openEditDrawer} />
+              ) : (
+                <OrgGroupedTable roles={roles} orgs={orgs} onEdit={openEditDrawer} />
+              )}
+            </div>
+          </>
         ) : (
           <div className="overflow-hidden rounded-card border border-bordergray shadow-card">
             <OrgChart projectId={projectId} roles={roles} />
@@ -149,33 +280,66 @@ export default function RolesResponsibility() {
   );
 }
 
-function CollapsedTable({ roles }: { roles: RoleResponsibility[] }) {
+/** groupBy = "org": one column per contractual tier present in the data. */
+function OrgGroupedTable({
+  roles,
+  orgs,
+  onEdit,
+}: {
+  roles: RoleResponsibility[];
+  orgs: Organization[];
+  onEdit: (role: RoleResponsibility) => void;
+}) {
+  const tiers = [...new Set(orgs.map((o) => o.tier))].sort((a, b) => a - b);
+  const th = "px-4 py-2.5 align-top min-w-[200px]";
+  const td = "px-4 py-3 align-top";
+
   return (
     <table className="w-full text-left text-sm">
-      <thead className="bg-gray-50 text-[11px] tracking-wide text-gray-400">
+      <thead className="bg-gray-50 text-[11px] tracking-wide text-gray-500">
         <tr>
-          <th className="px-4 py-2.5">Workstream</th>
-          <th className="px-4 py-2.5">Description</th>
-          <th className="px-4 py-2.5">Customer</th>
-          <th className="px-4 py-2.5">Contractor</th>
+          <th className={`${th} min-w-[240px]`}>Workstream</th>
+          {tiers.map((t) => {
+            const meta = tierMeta(t);
+            return (
+              <th key={t} className={th} style={{ borderTop: `2px solid ${meta.color}` }}>
+                <div className="font-bold">{meta.label}</div>
+                <div className="text-[11px] font-medium normal-case text-gray-400">{meta.sublabel}</div>
+              </th>
+            );
+          })}
         </tr>
       </thead>
       <tbody>
-        {roles.map((r) => (
-          <tr key={r.id} className="border-t border-bordergray">
-            <td className="px-4 py-2.5 font-medium text-ink">{r.workstream}</td>
-            <td className="max-w-[280px] px-4 py-2.5 text-gray-500">{r.description}</td>
-            <td className="px-4 py-2.5">
-              <PartyStack party={r.responsibleCustomer} />
-            </td>
-            <td className="px-4 py-2.5">
-              <PartyStack party={r.responsibleContractor} />
-            </td>
-          </tr>
-        ))}
+        {roles.map((r) => {
+          const entries = raciEntries(r);
+          return (
+            <tr key={r.id} className="border-t border-bordergray">
+              <td className={td}>
+                <WorkstreamCell role={r} onEdit={onEdit} />
+              </td>
+              {tiers.map((t) => {
+                const atTier = entries.filter((e) => tierOf(orgs, e.party.organization) === t);
+                return (
+                  <td key={t} className={td}>
+                    {atTier.length === 0 ? (
+                      <span className="text-gray-300">—</span>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        {atTier.map((e, i) => (
+                          <PersonCard key={i} party={e.party} orgs={orgs} raci={e.raci} />
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          );
+        })}
         {roles.length === 0 && (
           <tr>
-            <td colSpan={4} className="px-4 py-8 text-center text-gray-300">
+            <td colSpan={1 + tiers.length} className="px-4 py-8 text-center text-gray-300">
               No workstreams yet. Add the first one.
             </td>
           </tr>
@@ -185,76 +349,96 @@ function CollapsedTable({ roles }: { roles: RoleResponsibility[] }) {
   );
 }
 
-function RaciTable({
+/** groupBy = "role": who is Accountable / Responsible / Consulted / Informed. */
+function RaciFlatTable({
   roles,
+  orgs,
   onEdit,
 }: {
   roles: RoleResponsibility[];
+  orgs: Organization[];
   onEdit: (role: RoleResponsibility) => void;
 }) {
-  const th = "px-3 py-2.5 align-top";
-  const td = "px-3 py-2.5 align-top";
+  const th = "px-4 py-2.5 align-top min-w-[200px]";
+  const td = "px-4 py-3 align-top";
 
   return (
     <table className="w-full text-left text-sm">
-      <thead className="text-[11px] tracking-wide text-gray-500">
+      <thead className="bg-gray-50 text-[11px] tracking-wide text-gray-500">
         <tr>
-          <th rowSpan={2} className={`${th} bg-gray-50 align-middle`}>Workstream</th>
-          <th rowSpan={2} className={`${th} bg-gray-50 align-middle`}>Description</th>
-          <th rowSpan={2} className={`${th} bg-gray-50 align-middle`}>Accountable</th>
-          <th colSpan={3} className="px-3 py-2 text-center" style={{ background: CUSTOMER_ZONE }}>
-            Customer
+          <th className={`${th} min-w-[240px]`}>Workstream</th>
+          <th className={th}>Accountable</th>
+          <th className={th}>
+            Responsible
+            <div className="text-[10px] font-medium normal-case text-gray-400">one per side</div>
           </th>
-          <th colSpan={2} className="px-3 py-2 text-center" style={{ background: CONTRACTOR_ZONE }}>
-            Contractor
-          </th>
-          <th rowSpan={2} className={`${th} bg-gray-50`} />
-        </tr>
-        <tr>
-          <th className={th} style={{ background: CUSTOMER_ZONE }}>Consulted</th>
-          <th className={th} style={{ background: CUSTOMER_ZONE }}>Responsible</th>
-          <th className={th} style={{ background: CUSTOMER_ZONE }}>Informed</th>
-          <th className={th} style={{ background: CONTRACTOR_ZONE }}>Responsible</th>
-          <th className={th} style={{ background: CONTRACTOR_ZONE }}>Informed</th>
+          <th className={th}>Consulted</th>
+          <th className={th}>Informed</th>
         </tr>
       </thead>
       <tbody>
-        {roles.map((r) => (
-          <tr key={r.id} className="border-t border-bordergray">
-            <td className={`${td} font-medium text-ink`}>{r.workstream}</td>
-            <td className={`${td} max-w-[220px] text-gray-500`}>{r.description}</td>
-            <td className={td}>
-              <PartyStack party={r.accountable} />
-            </td>
-            <td className={td} style={{ background: CUSTOMER_ZONE }}>
-              <PartyStack party={r.consulted} />
-            </td>
-            <td className={td} style={{ background: CUSTOMER_ZONE }}>
-              <PartyStack party={r.responsibleCustomer} />
-            </td>
-            <td className={td} style={{ background: CUSTOMER_ZONE }}>
-              <PartyListStack people={r.informedCustomer} />
-            </td>
-            <td className={td} style={{ background: CONTRACTOR_ZONE }}>
-              <PartyStack party={r.responsibleContractor} />
-            </td>
-            <td className={td} style={{ background: CONTRACTOR_ZONE }}>
-              <PartyListStack people={r.informedContractor} />
-            </td>
-            <td className={td}>
-              <button
-                onClick={() => onEdit(r)}
-                className="text-gray-400 hover:text-indigo"
-                title="Edit"
-              >
-                <Pencil size={15} />
-              </button>
-            </td>
-          </tr>
-        ))}
+        {roles.map((r) => {
+          const informed = [...r.informedCustomer, ...r.informedContractor];
+          return (
+            <tr key={r.id} className="border-t border-bordergray">
+              <td className={td}>
+                <WorkstreamCell role={r} onEdit={onEdit} />
+              </td>
+              <td className={td}>
+                <PersonCard party={r.accountable} orgs={orgs} />
+              </td>
+              <td className={td}>
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                      Customer side
+                    </div>
+                    {r.responsibleCustomer ? (
+                      <PersonCard party={r.responsibleCustomer} orgs={orgs} />
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </div>
+                  <div>
+                    <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                      Contractor side
+                    </div>
+                    {r.responsibleContractor ? (
+                      <PersonCard party={r.responsibleContractor} orgs={orgs} />
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </div>
+                </div>
+              </td>
+              <td className={td}>
+                {r.consulted.length === 0 ? (
+                  <span className="text-gray-300">—</span>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {r.consulted.map((p, i) => (
+                      <PersonCard key={i} party={p} orgs={orgs} />
+                    ))}
+                  </div>
+                )}
+              </td>
+              <td className={td}>
+                {informed.length === 0 ? (
+                  <span className="text-gray-300">—</span>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {informed.map((p, i) => (
+                      <PersonCard key={i} party={p} orgs={orgs} />
+                    ))}
+                  </div>
+                )}
+              </td>
+            </tr>
+          );
+        })}
         {roles.length === 0 && (
           <tr>
-            <td colSpan={9} className="px-4 py-8 text-center text-gray-300">
+            <td colSpan={5} className="px-4 py-8 text-center text-gray-300">
               No workstreams yet. Add the first one.
             </td>
           </tr>

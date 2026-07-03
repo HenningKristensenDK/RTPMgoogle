@@ -16,7 +16,7 @@ function emptyDraft(): Omit<RoleResponsibility, "id" | "projectId"> {
     workstream: "",
     description: "",
     accountable: { ...EMPTY_PARTY },
-    consulted: { ...EMPTY_PARTY },
+    consulted: [],
     responsibleCustomer: null,
     responsibleContractor: null,
     informedCustomer: [],
@@ -207,13 +207,11 @@ export default function RoleDrawer({ role, open, onClose, onSave }: Props) {
               />
             </div>
 
-            <div>
-              <label className={labelCls}>Consulted</label>
-              <PartyFields
-                party={draft.consulted}
-                onChange={(p) => setDraft({ ...draft, consulted: p })}
-              />
-            </div>
+            <PartyListEditor
+              label="Consulted"
+              people={draft.consulted}
+              onChange={(p) => setDraft({ ...draft, consulted: p })}
+            />
 
             <ClearablePartyField
               label="Responsible – customer"

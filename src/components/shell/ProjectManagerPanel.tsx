@@ -69,7 +69,6 @@ export default function ProjectManagerPanel() {
           const entries: { workstream: string; org: string; person: string; raci: string }[] = [];
           const single: [string, typeof r.accountable | null][] = [
             ["Accountable", r.accountable],
-            ["Consulted", r.consulted],
             ["Responsible (Customer)", r.responsibleCustomer],
             ["Responsible (Contractor)", r.responsibleContractor],
           ];
@@ -77,6 +76,7 @@ export default function ProjectManagerPanel() {
             if (party) entries.push({ workstream: r.workstream, org: party.organization, person: party.name, raci });
           }
           const lists: [string, typeof r.informedCustomer][] = [
+            ["Consulted", r.consulted],
             ["Informed (Customer)", r.informedCustomer],
             ["Informed (Contractor)", r.informedContractor],
           ];

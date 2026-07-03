@@ -31,7 +31,6 @@ export function buildRiskContext(
     const entries: { workstream: string; organization: string; role: string; person: string; raci: string }[] = [];
     const single: [string, typeof r.accountable | null][] = [
       ["Accountable", r.accountable],
-      ["Consulted", r.consulted],
       ["Responsible (Customer)", r.responsibleCustomer],
       ["Responsible (Contractor)", r.responsibleContractor],
     ];
@@ -39,6 +38,7 @@ export function buildRiskContext(
       if (party) entries.push({ workstream: r.workstream, organization: party.organization, role: party.role, person: party.name, raci });
     }
     const lists: [string, typeof r.informedCustomer][] = [
+      ["Consulted", r.consulted],
       ["Informed (Customer)", r.informedCustomer],
       ["Informed (Contractor)", r.informedContractor],
     ];

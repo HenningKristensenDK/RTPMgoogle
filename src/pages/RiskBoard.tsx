@@ -20,7 +20,7 @@ type View = "board" | "table";
 function roleOrganizations(r: ReturnType<typeof useRiskStore.getState>["roles"][number]): string[] {
   return [
     r.accountable,
-    r.consulted,
+    ...r.consulted,
     r.responsibleCustomer,
     r.responsibleContractor,
     ...r.informedCustomer,

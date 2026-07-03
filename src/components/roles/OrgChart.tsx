@@ -35,7 +35,7 @@ function disciplineCards(orgName: string, roles: RoleResponsibility[]): Discipli
   for (const r of roles) {
     const candidates: (Party | null)[] = [
       r.accountable,
-      r.consulted,
+      ...r.consulted,
       r.responsibleCustomer,
       r.responsibleContractor,
       ...r.informedCustomer,

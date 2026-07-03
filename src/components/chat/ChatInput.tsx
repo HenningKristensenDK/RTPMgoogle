@@ -33,7 +33,7 @@ export default function ChatInput({ mode, disabled, members, onSend }: Props) {
       members.flatMap((m) =>
         [
           m.accountable,
-          m.consulted,
+          ...m.consulted,
           m.responsibleCustomer,
           m.responsibleContractor,
           ...m.informedCustomer,

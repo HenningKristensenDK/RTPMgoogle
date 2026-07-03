@@ -11,7 +11,8 @@
     "lint": "tsc --noEmit",
     "seed": "ts-node --esm scripts/seed.ts",
     "migrate:customer-rr": "ts-node --esm scripts/migrate-customer-rr.ts",
-    "migrate:raci-orgs": "ts-node --esm scripts/migrate-raci-orgs.ts"
+    "migrate:raci-orgs": "ts-node --esm scripts/migrate-raci-orgs.ts",
+    "migrate:tier-model": "ts-node --esm scripts/migrate-tier-model.ts"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",
