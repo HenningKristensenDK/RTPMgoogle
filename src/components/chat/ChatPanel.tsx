@@ -9,8 +9,7 @@ import {
   toggleReaction,
 } from "../../firebase/firestore";
 import { uploadChatImage } from "../../firebase/storage";
-import { askRiskManager } from "../../services/geminiService";
-import { buildRiskContext, type AgentMessage } from "../../firebase/agent";
+import { askRiskManager, buildRiskContext, type AgentMessage } from "../../firebase/agent";
 import { toast } from "../../lib/toast";
 import ChatModeToggle from "./ChatModeToggle";
 import ChatMessages from "./ChatMessages";
