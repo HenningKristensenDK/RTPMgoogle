@@ -1,0 +1,10 @@
+# Local notes (personal, not shared)
+
+Copy this file to `CLAUDE.local.md` (gitignored) and fill in your own values.
+Claude Code loads `CLAUDE.local.md` alongside the shared `CLAUDE.md` automatically.
+
+Local checkout path: C:\Users\<you>\...\RTPMgoogle
+
+Add anything else here that's true for you specifically but would be noise or
+wrong for a teammate — e.g. a personal dev-server port override, local-only
+debug accounts, or notes-to-self mid-task.

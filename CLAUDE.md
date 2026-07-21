@@ -14,8 +14,10 @@ App: RTPM Risk Manager - Viking Project demo
 Live URL: https://rtpm-cf560.web.app  ⚠️ DOWN — see suspension note above
 GitHub: https://github.com/HenningKristensenDK/RTPMgoogle
 Working branch: claude/epic-feynman-wx9jhf
-Local: C:\Users\henni\RTPMgoogle
 Firebase project: rtpm-cf560 (europe-west1)  ⚠️ SUSPENDED — see note above; replacement project TBD, created by Henning
+Your own local checkout path and other machine-specific notes go in `CLAUDE.local.md` (gitignored, not shared) — see `CLAUDE.local.md.example` for the template.
+
+@.claude/rules/no-client-secrets.md
 
 ## How to work on this project (IMPORTANT)
 - Edit code ONLY in Claude Code running inside PowerShell (terminal), never the desktop app Code tab (that runs in a sandbox that cannot reach this machine or deploy).
