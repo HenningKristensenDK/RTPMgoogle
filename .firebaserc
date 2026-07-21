@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "rtpm--v2"
+    "default": "rtpm--v2",
+    "old-suspended": "rtpm-cf560"
   }
 }
