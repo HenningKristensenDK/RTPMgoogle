@@ -1,24 +1,39 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LayoutGrid, Table2, Plus, Trash2 } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
-import { RISK_STATUSES, type Risk, type RiskPriority, type RiskStatus } from "../types";
+import {
+  RISK_STATUSES,
+  type Organization,
+  type Risk,
+  type RiskKind,
+  type RiskPriority,
+  type RiskStatus,
+} from "../types";
 import { useRiskStore } from "../store/riskStore";
 import { useAuthStore, currentIdentity } from "../store/authStore";
-import { createRisk, deleteRisk } from "../firebase/firestore";
+import { createRisk, deleteRisk, watchOrganizations } from "../firebase/firestore";
 import {
   PRIORITY_META,
   STATUS_LABEL,
   formatDate,
-  initials,
   pickResponsible,
+  riskKind,
 } from "../lib/format";
+import { tierColor } from "../lib/tiers";
 import { toast } from "../lib/toast";
 import RiskCard from "../components/risk/RiskCard";
 import RiskSummaryDashboard from "../components/risk/RiskSummaryDashboard";
 import NewRiskModal from "../components/risk/NewRiskModal";
+import PersonAvatar from "../components/common/PersonAvatar";
 
 type View = "board" | "table";
+
+interface PresetFilters {
+  presetWorkstream?: string;
+  presetPriority?: RiskPriority;
+  presetKind?: RiskKind;
+}
 
 function roleOrganizations(r: ReturnType<typeof useRiskStore.getState>["roles"][number]): string[] {
   return [
@@ -40,17 +55,28 @@ export default function RiskBoard() {
   const user = useAuthStore((s) => s.user);
   const me = currentIdentity(user);
 
+  // Dashboard drill-downs (e.g. clicking a risk matrix cell) navigate here with
+  // preset filters in nav state — read once on mount as the initial filter values.
+  const presetFilters = (location.state as PresetFilters | null) ?? {};
+
   const [view, setView] = useState<View>("table");
-  const [fWorkstream, setFWorkstream] = useState("");
+  const [fWorkstream, setFWorkstream] = useState(presetFilters.presetWorkstream ?? "");
   const [fOrg, setFOrg] = useState("");
-  const [fPriority, setFPriority] = useState("");
+  const [fPriority, setFPriority] = useState<RiskPriority | "">(presetFilters.presetPriority ?? "");
   const [fStatus, setFStatus] = useState("");
+  const [fKind, setFKind] = useState<RiskKind | "">(presetFilters.presetKind ?? "");
   const [barWorkstream, setBarWorkstream] = useState<string | null>(null);
-  const [barTodo, setBarTodo] = useState<"responsible" | "informed" | null>(null);
+  const [barTodo, setBarTodo] = useState<string | null>(null);
   const [newRiskOpen, setNewRiskOpen] = useState(false);
+  const [orgs, setOrgs] = useState<Organization[]>([]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    return watchOrganizations(projectId, setOrgs);
+  }, [projectId]);
 
   const workstreams = [...new Set(roles.map((r) => r.workstream))];
-  const orgs = [...new Set(roles.flatMap(roleOrganizations))];
+  const orgNames = [...new Set(roles.flatMap(roleOrganizations))];
 
   const filtered = useMemo(() => {
     return risks.filter((risk) => {
@@ -61,20 +87,21 @@ export default function RiskBoard() {
         return false;
       if (fPriority && risk.priority !== fPriority) return false;
       if (fStatus && risk.status !== fStatus) return false;
+      if (fKind && riskKind(risk) !== fKind) return false;
       return true;
     });
-  }, [risks, roles, fWorkstream, fOrg, fPriority, fStatus]);
+  }, [risks, roles, fWorkstream, fOrg, fPriority, fStatus, fKind]);
 
   const tableRisks = useMemo(() => {
     return filtered.filter((risk) => {
       const riskRoles = roles.filter((r) => risk.workstreamIds.includes(r.id));
       if (barWorkstream && !riskRoles.some((r) => r.workstream === barWorkstream))
         return false;
-      if (barTodo === "responsible" && !riskRoles.some((r) => pickResponsible(r) !== null))
-        return false;
       if (
-        barTodo === "informed" &&
-        !riskRoles.some((r) => r.informedCustomer.length > 0 || r.informedContractor.length > 0)
+        barTodo &&
+        !riskRoles.some(
+          (r) => r.responsibleCustomer?.organization === barTodo || r.responsibleContractor?.organization === barTodo
+        )
       )
         return false;
       return true;
@@ -82,6 +109,7 @@ export default function RiskBoard() {
   }, [filtered, roles, barWorkstream, barTodo]);
 
   async function handleCreateRisk(data: {
+    kind: RiskKind;
     title: string;
     priority: RiskPriority;
     dueDate: Timestamp | null;
@@ -105,9 +133,9 @@ export default function RiskBoard() {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-bordergray bg-white px-6 py-4">
         <div>
-          <h1 className="text-lg font-bold text-ink">Risk Board</h1>
+          <h1 className="text-lg font-bold text-ink">Risk Register</h1>
           <p className="text-xs text-gray-400">
-            {filtered.length} of {risks.length} risks
+            {filtered.length} of {risks.length} items
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -137,13 +165,22 @@ export default function RiskBoard() {
             onClick={() => setNewRiskOpen(true)}
             className="flex items-center gap-1.5 rounded-btn bg-indigo px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo/90"
           >
-            <Plus size={16} /> New Risk
+            <Plus size={16} /> New
           </button>
         </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 border-b border-bordergray bg-white px-6 py-2.5">
+        <select
+          className={selectCls}
+          value={fKind}
+          onChange={(e) => setFKind(e.target.value as RiskKind | "")}
+        >
+          <option value="">Risks & opportunities</option>
+          <option value="risk">Risks only</option>
+          <option value="opportunity">Opportunities only</option>
+        </select>
         <select
           className={selectCls}
           value={fWorkstream}
@@ -160,14 +197,14 @@ export default function RiskBoard() {
           onChange={(e) => setFOrg(e.target.value)}
         >
           <option value="">All organizations</option>
-          {orgs.map((o) => (
+          {orgNames.map((o) => (
             <option key={o}>{o}</option>
           ))}
         </select>
         <select
           className={selectCls}
           value={fPriority}
-          onChange={(e) => setFPriority(e.target.value)}
+          onChange={(e) => setFPriority(e.target.value as RiskPriority | "")}
         >
           <option value="">All priorities</option>
           {(["low", "medium", "high", "critical"] as RiskPriority[]).map((p) => (
@@ -210,11 +247,11 @@ export default function RiskBoard() {
                   </div>
                   <div className="flex flex-col gap-2">
                     {col.map((risk) => (
-                      <RiskCard key={risk.id} risk={risk} roles={roles} />
+                      <RiskCard key={risk.id} risk={risk} roles={roles} orgs={orgs} />
                     ))}
                     {col.length === 0 && (
                       <div className="rounded-card border border-dashed border-bordergray py-6 text-center text-[11px] text-gray-300">
-                        No risks
+                        Nothing here
                       </div>
                     )}
                   </div>
@@ -227,6 +264,7 @@ export default function RiskBoard() {
             <RiskSummaryDashboard
               risks={filtered}
               roles={roles}
+              orgs={orgs}
               selectedWorkstream={barWorkstream}
               onSelectWorkstream={setBarWorkstream}
               selectedTodo={barTodo}
@@ -235,6 +273,7 @@ export default function RiskBoard() {
             <TableView
               risks={tableRisks}
               roles={roles}
+              orgs={orgs}
               onOpen={(id) => navigate(`/risks/${id}`, { state: { background: location } })}
             />
           </>
@@ -255,10 +294,12 @@ export default function RiskBoard() {
 function TableView({
   risks,
   roles,
+  orgs,
   onOpen,
 }: {
   risks: ReturnType<typeof useRiskStore.getState>["risks"];
   roles: ReturnType<typeof useRiskStore.getState>["roles"];
+  orgs: Organization[];
   onOpen: (id: string) => void;
 }) {
   const [deleteTarget, setDeleteTarget] = useState<Risk | null>(null);
@@ -342,9 +383,11 @@ function TableView({
                 <td className="px-4 py-2.5">
                   {responsible ? (
                     <span className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo/15 text-[9px] font-semibold text-indigo">
-                        {initials(responsible.name)}
-                      </span>
+                      <PersonAvatar
+                        name={responsible.name}
+                        ringColor={tierColor(orgs, responsible.organization)}
+                        size={24}
+                      />
                       <span className="text-xs text-gray-600">
                         {responsible.name}
                       </span>
@@ -371,7 +414,7 @@ function TableView({
           {risks.length === 0 && (
             <tr>
               <td colSpan={8} className="px-4 py-8 text-center text-gray-300">
-                No risks match the current filters.
+                No risks or opportunities match the current filters.
               </td>
             </tr>
           )}

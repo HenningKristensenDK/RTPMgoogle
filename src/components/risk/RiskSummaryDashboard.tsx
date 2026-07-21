@@ -1,11 +1,16 @@
-import type { Risk, RoleResponsibility } from "../../types";
-import { pickResponsible } from "../../lib/format";
+import type { Organization, Risk, RoleResponsibility } from "../../types";
+import { TIER_COLORS, DEFAULT_TIER_COLOR } from "../../lib/tiers";
 
 const MUTED = "#8a8ca6";
 const SECONDARY = "#595b78";
 const INDIGO = "#0d08d2";
 const GREEN = "#28a745";
 const ORANGE = "#ff8b00";
+
+/** Zero counts render as a flat zero-height bar — no visual floor. */
+function barHeight(count: number, max: number): number {
+  return count === 0 ? 0 : Math.max(6, (count / max) * 100);
+}
 
 function Ring({ pct, color }: { pct: number; color: string }) {
   const size = 56;
@@ -53,11 +58,10 @@ function Label({ children }: { children: React.ReactNode }) {
   );
 }
 
-type TodoKey = "responsible" | "informed";
-
 export default function RiskSummaryDashboard({
   risks,
   roles,
+  orgs,
   selectedWorkstream,
   onSelectWorkstream,
   selectedTodo,
@@ -65,10 +69,11 @@ export default function RiskSummaryDashboard({
 }: {
   risks: Risk[];
   roles: RoleResponsibility[];
+  orgs: Organization[];
   selectedWorkstream: string | null;
   onSelectWorkstream: (label: string | null) => void;
-  selectedTodo: TodoKey | null;
-  onSelectTodo: (key: TodoKey | null) => void;
+  selectedTodo: string | null;
+  onSelectTodo: (key: string | null) => void;
 }) {
   const total = risks.length;
   const completed = risks.filter((r) => r.status === "resolved").length;
@@ -86,20 +91,21 @@ export default function RiskSummaryDashboard({
   });
   const maxWs = Math.max(...workstream.map((w) => w.count), 1);
 
-  const responsibleCount = risks.filter((r) =>
-    roles
-      .filter((role) => r.workstreamIds.includes(role.id))
-      .some((role) => pickResponsible(role) !== null)
-  ).length;
-  const informedCount = risks.filter((r) =>
-    roles
-      .filter((role) => r.workstreamIds.includes(role.id))
-      .some((role) => role.informedCustomer.length > 0 || role.informedContractor.length > 0)
-  ).length;
-  const todo: { key: TodoKey; label: string; count: number; color: string }[] = [
-    { key: "responsible", label: "Responsible", count: responsibleCount, color: INDIGO },
-    { key: "informed", label: "Informed", count: informedCount, color: "#a8a29e" },
-  ];
+  const orgsByTier = [...orgs].sort((a, b) => a.tier - b.tier);
+  const todo: { key: string; label: string; count: number; color: string }[] = orgsByTier.map((org) => ({
+    key: org.name,
+    label: org.name,
+    count: risks.filter((r) =>
+      roles
+        .filter((role) => r.workstreamIds.includes(role.id))
+        .some(
+          (role) =>
+            role.responsibleCustomer?.organization === org.name ||
+            role.responsibleContractor?.organization === org.name
+        )
+    ).length,
+    color: TIER_COLORS[org.tier] ?? DEFAULT_TIER_COLOR,
+  }));
   const maxTodo = Math.max(...todo.map((t) => t.count), 1);
 
   return (
@@ -190,7 +196,7 @@ export default function RiskSummaryDashboard({
                       className="w-full max-w-[40px] rounded-t-md"
                       style={{
                         background: INDIGO,
-                        height: `${28 + (w.count / maxWs) * 88}px`,
+                        height: `${barHeight(w.count, maxWs)}px`,
                       }}
                     />
                   </div>
@@ -214,54 +220,60 @@ export default function RiskSummaryDashboard({
 
       {/* To Do */}
       <div
-        className="flex min-w-[220px] flex-col rounded-card border border-bordergray bg-white px-6 py-4 shadow-card"
+        className="flex min-w-0 flex-1 flex-col rounded-card border border-bordergray bg-white px-6 py-4 shadow-card"
         onClick={() => onSelectTodo(null)}
       >
         <div className="flex items-baseline justify-between">
-          <Label>To Do</Label>
+          <Label>To Do by stakeholder</Label>
           <span className="text-[12px] font-semibold" style={{ color: MUTED }}>
             {total} total
           </span>
         </div>
-        <div className="mt-2 flex flex-1 items-end justify-center gap-10 border-b border-gray-100 pt-2">
-          {todo.map((t) => {
-            const isSelected = selectedTodo === t.key;
-            const dimmed = selectedTodo !== null && !isSelected;
-            return (
-              <div
-                key={t.key}
-                className="flex cursor-pointer flex-col items-center gap-2"
-                style={{ opacity: dimmed ? 0.35 : 1 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectTodo(isSelected ? null : t.key);
-                }}
-              >
+        {todo.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-400">No stakeholders.</p>
+        ) : (
+          <>
+            <div className="mt-2 flex flex-1 items-end justify-between gap-2 border-b border-gray-100 pt-2">
+              {todo.map((t) => {
+                const isSelected = selectedTodo === t.key;
+                const dimmed = selectedTodo !== null && !isSelected;
+                return (
+                  <div
+                    key={t.key}
+                    className="flex min-w-0 flex-1 cursor-pointer flex-col items-center gap-2"
+                    style={{ opacity: dimmed ? 0.35 : 1 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectTodo(isSelected ? null : t.key);
+                    }}
+                  >
+                    <span
+                      className="rounded-full bg-gray-100 px-2 py-px text-[12px] font-bold"
+                      style={{ color: "#15162b" }}
+                    >
+                      {t.count}
+                    </span>
+                    <div
+                      className="w-full max-w-[36px] rounded-t-md"
+                      style={{ background: t.color, height: `${barHeight(t.count, maxTodo)}px` }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex justify-between gap-2 pt-2">
+              {todo.map((t) => (
                 <span
-                  className="rounded-full bg-gray-100 px-2 py-px text-[12px] font-bold"
-                  style={{ color: "#15162b" }}
+                  key={t.key}
+                  className="min-w-0 flex-1 text-center text-[10.5px] leading-tight"
+                  style={{ color: selectedTodo === t.key ? INDIGO : SECONDARY }}
                 >
-                  {t.count}
+                  {t.label}
                 </span>
-                <div
-                  className="w-12 rounded-t-md"
-                  style={{ background: t.color, height: `${28 + (t.count / maxTodo) * 88}px` }}
-                />
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex justify-center gap-10 pt-2">
-          {todo.map((t) => (
-            <span
-              key={t.key}
-              className="w-12 text-center text-[11px]"
-              style={{ color: selectedTodo === t.key ? INDIGO : SECONDARY }}
-            >
-              {t.label}
-            </span>
-          ))}
-        </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

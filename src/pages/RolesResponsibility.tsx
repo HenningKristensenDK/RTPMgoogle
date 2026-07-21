@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Plus, Table2, Network, Pencil } from "lucide-react";
 import type { Organization, Party, RoleResponsibility } from "../types";
 import { useRiskStore } from "../store/riskStore";
 import { upsertRole, watchOrganizations } from "../firebase/firestore";
 import { toast } from "../lib/toast";
-import { initials } from "../lib/format";
+import { TIER_COLORS, DEFAULT_TIER_COLOR, tierOf, tierColor } from "../lib/tiers";
+import PersonAvatar from "../components/common/PersonAvatar";
 import OrgChart from "../components/roles/OrgChart";
 import RoleDrawer from "../components/roles/RoleDrawer";
 
@@ -17,18 +19,14 @@ interface TierMeta {
 }
 
 const TIER_META: Record<number, TierMeta> = {
-  0: { color: "#0d08d2", label: "Tier 0", sublabel: "Customer & PMC" },
-  1: { color: "#00acff", label: "Tier 1", sublabel: "Main contractors" },
-  2: { color: "#ff8b00", label: "Tier 2", sublabel: "Sub-contractors" },
-  3: { color: "#14B8A6", label: "Tier 3", sublabel: "Vendors & suppliers" },
+  0: { color: TIER_COLORS[0], label: "Tier 0", sublabel: "Customer & PMC" },
+  1: { color: TIER_COLORS[1], label: "Tier 1", sublabel: "Main contractors" },
+  2: { color: TIER_COLORS[2], label: "Tier 2", sublabel: "Sub-contractors" },
+  3: { color: TIER_COLORS[3], label: "Tier 3", sublabel: "Vendors & suppliers" },
 };
 
 function tierMeta(tier: number): TierMeta {
-  return TIER_META[tier] ?? { color: "#9CA3AF", label: `Tier ${tier}`, sublabel: "" };
-}
-
-function tierOf(orgs: Organization[], orgName: string): number | undefined {
-  return orgs.find((o) => o.name === orgName)?.tier;
+  return TIER_META[tier] ?? { color: DEFAULT_TIER_COLOR, label: `Tier ${tier}`, sublabel: "" };
 }
 
 const RACI_META: Record<"A" | "R" | "C" | "I", { bg: string; label: string }> = {
@@ -51,19 +49,6 @@ function raciEntries(r: RoleResponsibility): RaciEntry[] {
   for (const p of r.informedCustomer) entries.push({ raci: "I", party: p });
   for (const p of r.informedContractor) entries.push({ raci: "I", party: p });
   return entries;
-}
-
-function TierPill({ tier }: { tier: number | undefined }) {
-  if (tier === undefined) return null;
-  const meta = tierMeta(tier);
-  return (
-    <span
-      className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-bold text-white"
-      style={{ background: meta.color, lineHeight: 1.4 }}
-    >
-      {meta.label}
-    </span>
-  );
 }
 
 function RaciBadge({ raci }: { raci: "A" | "R" | "C" | "I" }) {
@@ -89,13 +74,10 @@ function PersonCard({
   return (
     <div className="flex items-start gap-2">
       {raci && <RaciBadge raci={raci} />}
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo/15 text-[10px] font-semibold text-indigo">
-        {initials(party.name)}
-      </span>
+      <PersonAvatar name={party.name} ringColor={tierColor(orgs, party.organization)} size={28} />
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-[13px] font-semibold text-ink">{party.name}</span>
-          <TierPill tier={tierOf(orgs, party.organization)} />
         </div>
         <div className="truncate text-[11px] text-gray-500">{party.role}</div>
         <div className="truncate text-[11px] italic text-gray-400">{party.organization}</div>
@@ -190,11 +172,27 @@ export default function RolesResponsibility() {
   const [raci, setRaci] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleResponsibility | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!projectId) return;
     return watchOrganizations(projectId, setOrgs);
   }, [projectId]);
+
+  // Arriving from the Project Manager Agent's "who's responsible for X" prompt —
+  // open that workstream's drawer once its data has loaded, then clear the nav
+  // state so refreshing this page doesn't reopen it.
+  useEffect(() => {
+    const workstreamId = (location.state as { openWorkstreamId?: string } | null)?.openWorkstreamId;
+    if (!workstreamId || roles.length === 0) return;
+    const match = roles.find((r) => r.id === workstreamId);
+    if (match) {
+      setEditingRole(match);
+      setDrawerOpen(true);
+    }
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location, roles, navigate]);
 
   function openCreateDrawer() {
     setEditingRole(null);
@@ -231,10 +229,10 @@ export default function RolesResponsibility() {
           </p>
         </div>
         <div className="flex items-center gap-6">
-          <div className="flex overflow-hidden rounded-btn border border-bordergray">
+          <div className="flex h-9 overflow-hidden rounded-btn border border-bordergray">
             <button
               onClick={() => setView("table")}
-              className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm ${
+              className={`flex h-full items-center gap-1.5 whitespace-nowrap px-3 text-sm ${
                 view === "table"
                   ? "bg-indigo text-white"
                   : "bg-white text-gray-500 hover:bg-gray-50"
@@ -244,7 +242,7 @@ export default function RolesResponsibility() {
             </button>
             <button
               onClick={() => setView("orgchart")}
-              className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm ${
+              className={`flex h-full items-center gap-1.5 whitespace-nowrap px-3 text-sm ${
                 view === "orgchart"
                   ? "bg-indigo text-white"
                   : "bg-white text-gray-500 hover:bg-gray-50"
@@ -256,7 +254,7 @@ export default function RolesResponsibility() {
           {view === "table" && (
             <button
               onClick={openCreateDrawer}
-              className="flex items-center gap-1.5 rounded-btn bg-indigo px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo/90"
+              className="flex h-9 items-center gap-1.5 rounded-btn bg-indigo px-3 text-sm font-semibold text-white hover:bg-indigo/90"
             >
               <Plus size={16} /> Add workstream
             </button>

@@ -20,6 +20,7 @@ import { db } from "./config";
 import type {
   Project,
   Risk,
+  RiskKind,
   RiskMessage,
   RoleResponsibility,
   Organization,
@@ -122,17 +123,24 @@ export async function getRisk(riskId: string): Promise<Risk | null> {
   return snap.exists() ? mapDoc<Risk>(snap.id, snap.data()) : null;
 }
 
-/** Generate the next sequential human-readable risk id e.g. RK-007. */
-export async function nextRiskCode(projectId: string): Promise<string> {
+const RISK_KIND_PREFIX: Record<RiskKind, string> = {
+  risk: "RK-",
+  opportunity: "OP-",
+};
+
+/** Generate the next sequential human-readable id e.g. RK-007 or OP-003 — each kind has its own counter. */
+export async function nextRiskCode(projectId: string, kind: RiskKind = "risk"): Promise<string> {
+  const prefix = RISK_KIND_PREFIX[kind];
   const q = query(risksCol, where("projectId", "==", projectId));
   const snap = await getDocs(q);
   let max = 0;
   snap.docs.forEach((d) => {
     const code: string = d.data().riskId || "";
-    const n = parseInt(code.replace(/^RK-/, ""), 10);
+    if (!code.startsWith(prefix)) return;
+    const n = parseInt(code.slice(prefix.length), 10);
     if (!Number.isNaN(n) && n > max) max = n;
   });
-  return `RK-${String(max + 1).padStart(3, "0")}`;
+  return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
 
 export async function createRisk(
@@ -140,10 +148,12 @@ export async function createRisk(
   createdBy: string,
   partial: Partial<Risk> = {}
 ): Promise<string> {
-  const code = await nextRiskCode(projectId);
+  const kind = partial.kind || "risk";
+  const code = await nextRiskCode(projectId, kind);
   const payload: DocumentData = {
     projectId,
     riskId: code,
+    kind,
     title: partial.title || "Untitled risk",
     status: partial.status || "identified",
     priority: partial.priority || "medium",

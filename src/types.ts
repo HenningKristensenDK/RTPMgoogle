@@ -3,6 +3,12 @@ import type { Timestamp } from "firebase/firestore";
 export type RiskStatus = "identified" | "assessed" | "mitigated" | "resolved";
 export type RiskPriority = "low" | "medium" | "high" | "critical";
 export type Recurrence = "none" | "daily" | "weekly" | "monthly";
+export type RiskKind = "risk" | "opportunity";
+
+export const RISK_KIND_LABEL: Record<RiskKind, string> = {
+  risk: "Risk",
+  opportunity: "Opportunity",
+};
 
 export const RISK_STATUSES: RiskStatus[] = [
   "identified",
@@ -72,7 +78,8 @@ export interface StatusHistoryEntry {
 export interface Risk {
   id: string;
   projectId: string;
-  riskId: string; // "RK-001"
+  riskId: string; // "RK-001" or "OP-001"
+  kind?: RiskKind; // absent on pre-existing docs — treat as "risk", see riskKind() in lib/format.ts
   title: string;
   status: RiskStatus;
   priority: RiskPriority;

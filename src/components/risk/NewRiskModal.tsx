@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Timestamp } from "firebase/firestore";
-import type { RiskPriority, RoleResponsibility } from "../../types";
+import type { RiskKind, RiskPriority, RoleResponsibility } from "../../types";
 import { PRIORITY_META } from "../../lib/format";
 
 interface Props {
   roles: RoleResponsibility[];
   onCreate: (data: {
+    kind: RiskKind;
     title: string;
     priority: RiskPriority;
     dueDate: Timestamp | null;
@@ -19,12 +20,29 @@ const labelCls = "mb-1 block text-[12px] font-medium text-gray-500";
 const fieldCls =
   "w-full rounded-input border border-bordergray bg-white px-2.5 py-2 text-sm text-ink outline-none focus:border-indigo focus:ring-1 focus:ring-indigo";
 
+const KIND_COPY: Record<RiskKind, { heading: string; placeholder: string; create: string; discardNoun: string }> = {
+  risk: {
+    heading: "New risk",
+    placeholder: "e.g. Late steel delivery",
+    create: "Create risk",
+    discardNoun: "risk",
+  },
+  opportunity: {
+    heading: "New opportunity",
+    placeholder: "e.g. Early completion bonus on civil works",
+    create: "Create opportunity",
+    discardNoun: "opportunity",
+  },
+};
+
 export default function NewRiskModal({ roles, onCreate, onCancel }: Props) {
+  const [kind, setKind] = useState<RiskKind>("risk");
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<RiskPriority>("medium");
   const [dueDate, setDueDate] = useState("");
   const [workstreamIds, setWorkstreamIds] = useState<string[]>([]);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const copy = KIND_COPY[kind];
 
   const dirty =
     title.trim() !== "" ||
@@ -45,7 +63,8 @@ export default function NewRiskModal({ roles, onCreate, onCancel }: Props) {
 
   function handleCreate() {
     onCreate({
-      title: title.trim() || "New risk",
+      kind,
+      title: title.trim() || (kind === "opportunity" ? "New opportunity" : "New risk"),
       priority,
       dueDate: dueDate ? Timestamp.fromDate(new Date(dueDate)) : null,
       workstreamIds,
@@ -59,12 +78,30 @@ export default function NewRiskModal({ roles, onCreate, onCancel }: Props) {
       onClick={(e) => e.target === e.currentTarget && requestClose()}
     >
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-        <h2 className="text-[15px] font-semibold text-ink">New risk</h2>
+        <h2 className="text-[15px] font-semibold text-ink">{copy.heading}</h2>
         <p className="mt-1 text-[12px] text-gray-400">
           Fill in the basics — you can add full details after creating it.
         </p>
 
         <div className="mt-4 flex flex-col gap-4">
+          <div>
+            <label className={labelCls}>Type</label>
+            <div className="flex overflow-hidden rounded-input border border-bordergray">
+              {(["risk", "opportunity"] as RiskKind[]).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setKind(k)}
+                  className={`flex-1 py-1.5 text-sm font-medium ${
+                    kind === k ? "bg-indigo text-white" : "bg-white text-gray-500 hover:bg-gray-50"
+                  }`}
+                >
+                  {KIND_COPY[k].heading.replace("New ", "")}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label className={labelCls}>Title</label>
             <input
@@ -72,7 +109,7 @@ export default function NewRiskModal({ roles, onCreate, onCancel }: Props) {
               className={fieldCls}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Late steel delivery"
+              placeholder={copy.placeholder}
             />
           </div>
 
@@ -137,7 +174,7 @@ export default function NewRiskModal({ roles, onCreate, onCancel }: Props) {
             onClick={handleCreate}
             className="rounded-btn bg-indigo px-4 py-1.5 text-sm font-semibold text-white hover:bg-indigo/90"
           >
-            Create risk
+            {copy.create}
           </button>
         </div>
       </div>
@@ -148,7 +185,7 @@ export default function NewRiskModal({ roles, onCreate, onCancel }: Props) {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="w-[320px] rounded-card bg-white p-5 shadow-panel">
-            <p className="text-sm font-semibold text-ink">Discard this risk?</p>
+            <p className="text-sm font-semibold text-ink">Discard this {copy.discardNoun}?</p>
             <p className="mt-1 text-sm text-gray-500">
               You've entered some details that haven't been saved yet.
             </p>
@@ -169,7 +206,7 @@ export default function NewRiskModal({ roles, onCreate, onCancel }: Props) {
                 onClick={handleCreate}
                 className="rounded-btn bg-indigo px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo/90"
               >
-                Save risk
+                {copy.create}
               </button>
             </div>
           </div>

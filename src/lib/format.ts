@@ -1,5 +1,10 @@
 import type { Timestamp } from "firebase/firestore";
-import type { Party, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
+import type { Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
+
+/** Pre-existing docs have no `kind` field — treat those as plain risks. */
+export function riskKind(risk: Pick<Risk, "kind">): RiskKind {
+  return risk.kind ?? "risk";
+}
 
 export function tsToDate(ts: Timestamp | null | undefined): Date | null {
   return ts ? ts.toDate() : null;
@@ -54,7 +59,7 @@ export const PRIORITY_META: Record<
   low: { label: "Low", dot: "#10B981", text: "#047857" },
   medium: { label: "Medium", dot: "#F59E0B", text: "#B45309" },
   high: { label: "High", dot: "#EF4444", text: "#B91C1C" },
-  critical: { label: "Critical", dot: "#F59E0B", text: "#92400E" },
+  critical: { label: "Critical", dot: "#DC2626", text: "#7F1D1D" },
 };
 
 export const STATUS_LABEL: Record<RiskStatus, string> = {
@@ -71,7 +76,7 @@ export const NEXT_STEP_OWNER: Record<string, string> = {
   mitigated: "Quality Manager",
 };
 
-/** The single "responsible" party to show where only one avatar fits (Risk Card, Risk Board table). */
+/** The single "responsible" party to show where only one avatar fits (Risk Card, Risk Register table). */
 export function pickResponsible(role: RoleResponsibility): Party | null {
   return role.responsibleContractor ?? role.responsibleCustomer;
 }

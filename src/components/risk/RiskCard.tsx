@@ -1,13 +1,16 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import type { Risk, RoleResponsibility } from "../../types";
-import { PRIORITY_META, formatDate, initials, pickResponsible } from "../../lib/format";
+import type { Organization, Risk, RoleResponsibility } from "../../types";
+import { PRIORITY_META, formatDate, pickResponsible } from "../../lib/format";
+import { tierColor } from "../../lib/tiers";
+import PersonAvatar from "../common/PersonAvatar";
 
 interface Props {
   risk: Risk;
   roles: RoleResponsibility[];
+  orgs: Organization[];
 }
 
-export default function RiskCard({ risk, roles }: Props) {
+export default function RiskCard({ risk, roles, orgs }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const responsible = roles
@@ -64,12 +67,11 @@ export default function RiskCard({ risk, roles }: Props) {
           Due {formatDate(risk.dueDate)}
         </span>
         {responsible && (
-          <span
-            title={responsible.name}
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo/15 text-[9px] font-semibold text-indigo"
-          >
-            {initials(responsible.name)}
-          </span>
+          <PersonAvatar
+            name={responsible.name}
+            ringColor={tierColor(orgs, responsible.organization)}
+            size={24}
+          />
         )}
       </div>
     </button>

@@ -59,7 +59,7 @@ export default function RiskDetail() {
           <div className="p-8 text-sm text-gray-500">
             Risk not found.{" "}
             <button onClick={close} className="text-indigo underline">
-              Back to Risk Board
+              Back to Risk Register
             </button>
           </div>
         ) : !risk ? (
