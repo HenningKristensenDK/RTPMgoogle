@@ -2,26 +2,27 @@
 Version: v4
 Last updated: 2026-07-06
 
-## ⚠️ CRITICAL — read before touching Firebase (2026-07-06)
-The original Firebase project **`rtpm-cf560` is SUSPENDED by Google** ("abusive activity consistent with hijacking" — likely the client-exposed `VITE_GEMINI_API_KEY` was scraped from the live site and abused). This blocks ALL of its APIs: Hosting, Firestore, Auth, Storage — everything, not just the live site. `https://rtpm-cf560.web.app` and `app.rtpm.dk` will show "Site Not Found" or `auth/permission-denied ... has been suspended` until this is resolved.
-- **Decision made:** do NOT appeal (too slow) — migrate to a brand-new Firebase project instead. No live data is recoverable from the suspended project (no local Firestore backup exists, and a suspended project blocks API/Admin-SDK access needed to export it anyway) — this is OK because the app already has a built-in `seedIfEmpty()` that repopulates the baseline demo dataset (`seedData.ts`, safe in git) the moment someone signs in on a fresh project. Auth accounts do NOT carry over — everyone re-registers on the new project.
-- **`rtpm-app-host`** is a scratch/WIP project created under Ranjith's Google account while exploring this migration — Firestore is already enabled and `firestore.rules`/`firestore.indexes.json` deployed there, but it is meant to be **abandoned**, not the final answer.
-- **Decision (2026-07-06):** Henning creates his OWN fresh Firebase project under his own Google account (so the client's infrastructure/billing lives with the client, not a collaborator's personal account). Once that exists, whoever does it needs to: register a Web App on it → enable Firestore + Auth (Email/Password) + Storage (Storage requires upgrading to the **Blaze** billing plan — Console will prompt for a payment method, this is expected, not an error) → deploy `firestore.rules`/`firestore.indexes.json`/`storage.rules` → update `.env` (all `VITE_FIREBASE_*` vars, see `.env.example`) → `npm run build && firebase deploy --only hosting --project <new-project-id>` → re-point the `app.rtpm.dk` CNAME at Simply.com to the new project's hosting target → update this file's "Project identity" section below with the real new project ID/URL once known.
-- Until that migration lands, treat every value in "Project identity" below as **stale** — do not assume `rtpm-cf560` works.
+## ⚠️ Firebase project migrated (2026-07-21) — read before assuming `rtpm-cf560` works
+The original Firebase project **`rtpm-cf560` was SUSPENDED by Google** ("abusive activity consistent with hijacking" — likely the client-exposed `VITE_GEMINI_API_KEY` was scraped from the live site and abused) and was never reinstated (no appeal was filed — decided too slow). **The project has moved to `rtpm--v2`, created and owned by Henning.** This is now the real, live project — treat `rtpm-cf560` as permanently dead, don't debug it, don't assume old links/docs referencing it still apply.
+- `rtpm--v2` has Firestore, Auth (Email/Password), and Storage all enabled and confirmed working (verified 2026-07-21: Auth's `createAuthUri` responds normally, Firestore/Storage correctly reject unauthenticated reads rather than erroring "not enabled"). `firestore.rules`/`storage.rules`/`firestore.indexes.json` from this repo are deployed there and were confirmed byte-identical to what Henning had already set up.
+- No data carried over from `rtpm-cf560` (couldn't — a suspended project blocks the API/Admin-SDK access needed to export anything, and no local Firestore backup existed). Not a real loss: the app's `seedIfEmpty()` auto-populates the baseline demo dataset (`seedData.ts`) the moment someone signs in on a fresh project. **Everyone re-registers** — old Auth accounts don't exist on `rtpm--v2`.
+- `rtpm-app-host` (a scratch project created under Ranjith's account while exploring this migration) is now dead/abandoned — ignore it, it was never the real answer.
+- Ranjith's Google account (`ranjith@henningkristensen.com`) has been added as a member on `rtpm--v2` so deploys work the same way they did on the old project — `firebase deploy --only hosting --project rtpm--v2` (or omit `--project`, `.firebaserc`'s default now points here).
+- `app.rtpm.dk`'s DNS/CNAME has **not** been re-pointed at `rtpm--v2` yet — still needs to happen at Simply.com once confirmed as the permanent home. Until then the real live URL is `https://rtpm--v2.web.app`.
 
 ## Project identity
 App: RTPM Risk Manager - Viking Project demo
-Live URL: https://rtpm-cf560.web.app  ⚠️ DOWN — see suspension note above
+Live URL: https://rtpm--v2.web.app
 GitHub: https://github.com/HenningKristensenDK/RTPMgoogle
 Working branch: claude/epic-feynman-wx9jhf
-Firebase project: rtpm-cf560 (europe-west1)  ⚠️ SUSPENDED — see note above; replacement project TBD, created by Henning
+Firebase project: rtpm--v2 (owned by Henning) — previously rtpm-cf560, suspended by Google 2026-07-06, see migration note above
 Your own local checkout path and other machine-specific notes go in `CLAUDE.local.md` (gitignored, not shared) — see `CLAUDE.local.md.example` for the template.
 
 @.claude/rules/no-client-secrets.md
 
 ## How to work on this project (IMPORTANT)
 - Edit code ONLY in Claude Code running inside PowerShell (terminal), never the desktop app Code tab (that runs in a sandbox that cannot reach this machine or deploy).
-- After changes: npm run build && firebase deploy --only hosting --project rtpm-cf560
+- After changes: npm run build && firebase deploy --only hosting --project rtpm--v2
 - Then commit and push: git add . / git commit / git push origin claude/epic-feynman-wx9jhf
 - GitHub is the single source of truth. Ranjith now actively collaborates as a developer via his own VS Code + Claude Code setup, pushing directly to `claude/epic-feynman-wx9jhf` (not `main` — `main` is still just the original scaffold commit and has none of the real app; there is no merged PR yet, decide with Henning when/whether to open one).
 - **First-time setup on a new machine (Ranjith or anyone else):** `git checkout claude/epic-feynman-wx9jhf` (not main) → `npm install` → copy `.env.example` to `.env` and fill in the Firebase web config (Console → Project settings → your web app) **plus `VITE_GEMINI_API_KEY`** (this key is required or AI chat throws immediately — it was missing from `.env.example` until 2026-07-03, now fixed) → `npm run dev`. `.env` and `serviceAccountKey.json` are gitignored on purpose and never travel with `git pull` — `serviceAccountKey.json` is only needed for the seed/backup scripts, not to run the app.
@@ -119,7 +120,7 @@ Note (2026-07-02): all seed/demo data uses genericized names (Customer PMO / HD 
 5. GROUP F - Looker Studio dashboard + "Generate Weekly Report" button (demo finale).
 6. Re-seed Firestore to clear old project name + diamond encoding in existing risk docs.
 7. Decide: should the per-risk agent know the whole project or only its own risk? (Currently only its own.)
-8. Finish verifying `app.rtpm.dk` custom domain (DNS/CNAME added at Simply.com 2026-07-03, verification pending in Firebase Console).
+8. Re-point `app.rtpm.dk` at `rtpm--v2` (the 2026-07-03 CNAME pointed at the now-dead `rtpm-cf560` — needs redoing at Simply.com plus adding the custom domain fresh in `rtpm--v2`'s Hosting settings).
 9. Decide with Henning whether/when to open a PR merging `claude/epic-feynman-wx9jhf` into `main` — `main` currently has none of the real app.
 
 ## Known issues
