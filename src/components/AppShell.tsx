@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { useShellStore } from "../store/shellStore";
+import { useTodosOverlayStore } from "../store/todosStore";
 import Header from "./shell/Header";
 import Sidebar from "./shell/Sidebar";
 import ProjectManagerPanel from "./shell/ProjectManagerPanel";
@@ -9,7 +10,8 @@ import MyTodosOverlay from "./shell/MyTodosOverlay";
 
 export default function AppShell() {
   const { mode } = useShellStore();
-  const [todosOpen, setTodosOpen] = useState(false);
+  const todosOpen = useTodosOverlayStore((s) => s.open);
+  const setTodosOpen = useTodosOverlayStore((s) => s.setOpen);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -18,7 +20,7 @@ export default function AppShell() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [todosOpen]);
+  }, [todosOpen, setTodosOpen]);
 
   return (
     <div className="flex h-full flex-col">
@@ -28,7 +30,7 @@ export default function AppShell() {
         className={`flex h-full flex-col ${mode === "landing" ? "pointer-events-none select-none" : ""}`}
         style={mode === "landing" ? { filter: "blur(1px)" } : undefined}
       >
-        <Header onTodosOpen={() => setTodosOpen(true)} />
+        <Header />
 
         <div className="flex min-h-0 flex-1">
           <Sidebar />

@@ -2,7 +2,8 @@ import { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Bot, Send } from "lucide-react";
 import { useRiskStore } from "../../store/riskStore";
-import { askRiskManager } from "../../services/geminiService";
+import { useAgentPanelStore } from "../../store/agentPanelStore";
+import { askRiskManager } from "../../firebase/agent";
 
 interface Msg {
   role: "user" | "bot";
@@ -23,6 +24,8 @@ export default function ProjectManagerPanel() {
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const pendingPrompt = useAgentPanelStore((s) => s.pendingPrompt);
+  const clearPendingPrompt = useAgentPanelStore((s) => s.clearPendingPrompt);
 
   function resizeInput() {
     const el = inputRef.current;
@@ -36,6 +39,16 @@ export default function ProjectManagerPanel() {
       inputRef.current.style.height = "auto";
     }
   }, [input]);
+
+  // A prompt pushed in from elsewhere (e.g. the Dashboard's AI Insights card) —
+  // fill the input and focus it, but don't send automatically.
+  useEffect(() => {
+    if (!pendingPrompt) return;
+    setInput(pendingPrompt);
+    inputRef.current?.focus();
+    requestAnimationFrame(resizeInput);
+    clearPendingPrompt();
+  }, [pendingPrompt, clearPendingPrompt]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { X, CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
+import { X, CheckCircle2, Circle, Plus, Trash2, FileText, Mail, GitPullRequest } from "lucide-react";
+import { MY_TODO_PREVIEW_MOCK } from "../../lib/dashboardMock";
+
+const PREVIEW_ICON = { Document: FileText, Correspondence: Mail, Change: GitPullRequest } as const;
 
 interface Props {
   onClose: () => void;
@@ -74,6 +77,32 @@ export default function MyTodosOverlay({ onClose }: Props) {
 
         {/* List */}
         <div className="flex-1 overflow-y-auto px-4 py-3">
+          <div className="mb-3">
+            <div className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              Assigned to you across the project
+            </div>
+            <div className="flex flex-col gap-1">
+              {MY_TODO_PREVIEW_MOCK.map((item, i) => {
+                const Icon = PREVIEW_ICON[item.type as keyof typeof PREVIEW_ICON];
+                return (
+                  <div key={i} className="flex items-center gap-2.5 rounded-btn px-2 py-2 hover:bg-fog">
+                    <Icon size={15} className="shrink-0 text-indigo" />
+                    <span className="flex-1 truncate text-sm text-gray-700">{item.title}</span>
+                    <span className="shrink-0 text-[11px] text-gray-400">{item.due}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="my-3 flex items-center gap-2">
+            <div className="h-px flex-1 bg-gray-100" />
+            <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+              Your notes
+            </span>
+            <div className="h-px flex-1 bg-gray-100" />
+          </div>
+
           {open.length === 0 && done.length === 0 && (
             <p className="py-8 text-center text-sm text-gray-400">
               No todos yet. Add one below!

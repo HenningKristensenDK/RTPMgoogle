@@ -1,16 +1,14 @@
 import { CheckSquare, Maximize2, Minimize2, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useShellStore } from "../../store/shellStore";
+import { useTodosOverlayStore } from "../../store/todosStore";
 import { useAuthStore, currentIdentity } from "../../store/authStore";
 import { signOut } from "../../firebase/auth";
 import { initials } from "../../lib/format";
 
-interface Props {
-  onTodosOpen: () => void;
-}
-
-export default function Header({ onTodosOpen }: Props) {
+export default function Header() {
   const { mode, toggleFocus } = useShellStore();
+  const setTodosOpen = useTodosOverlayStore((s) => s.setOpen);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const id = currentIdentity(user);
@@ -30,7 +28,7 @@ export default function Header({ onTodosOpen }: Props) {
 
       <div className="flex items-center gap-1">
         <button
-          onClick={onTodosOpen}
+          onClick={() => setTodosOpen(true)}
           title="My Todos"
           className="flex items-center gap-1.5 rounded-btn px-2.5 py-1.5 text-xs font-medium transition hover:bg-fog"
           style={{ color: "#595b78" }}
