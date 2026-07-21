@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, Search, FileText, AlertTriangle, MessageSquare, Paperclip, Send, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Bot, Inbox, AlertTriangle, Users, Mail, Paperclip, Send, ArrowRight } from "lucide-react";
 import { useShellStore } from "../../store/shellStore";
 import { useAuthStore, currentIdentity } from "../../store/authStore";
 import { useRiskStore } from "../../store/riskStore";
@@ -10,15 +11,19 @@ interface Message {
   text: string;
 }
 
-const SUGGESTIONS = [
-  { text: "Find my urgent tasks", icon: Search },
-  { text: "Review the latest site report", icon: FileText },
-  { text: "Analyze open project risks", icon: AlertTriangle },
-  { text: "Draft a message to a contractor", icon: MessageSquare },
+// The R&R suggestion carries a workstreamId instead of a chat prompt — clicking it
+// navigates straight into Roles & Responsibility with that workstream's drawer open,
+// rather than answering inline like the risk-backed prompts do.
+const SUGGESTIONS: { text: string; icon: typeof Bot; workstreamId?: string }[] = [
+  { text: "What needs my action today?", icon: Inbox },
+  { text: "Show critical risks and blockers", icon: AlertTriangle },
+  { text: "Who's responsible for civil works?", icon: Users, workstreamId: "civil-works" },
+  { text: "Find the latest correspondence", icon: Mail },
 ];
 
 export default function LandingOverlay() {
   const setMode = useShellStore((s) => s.setMode);
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const risks = useRiskStore((s) => s.risks);
   const me = currentIdentity(user);
@@ -33,16 +38,19 @@ export default function LandingOverlay() {
     setMode("active");
   }
 
-  // Esc only dismisses before a conversation has started — never discards an
-  // active thread by accident.
+  function openWorkstream(workstreamId: string) {
+    setMode("active");
+    navigate("/roles", { state: { openWorkstreamId: workstreamId } });
+  }
+
+  // Esc always dismisses the popup, whether or not a conversation is in progress.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !started) openDashboard();
+      if (e.key === "Escape") openDashboard();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [started]);
+  }, []);
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -82,12 +90,12 @@ export default function LandingOverlay() {
       >
         {!started ? (
           <div className="animate-[aiFadeUp_220ms_ease-out] px-10 pb-7 pt-11 text-center">
-            <div
-              className="mx-auto mb-4 flex items-center justify-center rounded-full"
-              style={{ background: "#e7e6fa", width: 52, height: 52 }}
-            >
-              <Bot size={26} style={{ color: "#0d08d2" }} />
-            </div>
+            <img
+              src="/rtpm-icon-primary.svg"
+              alt=""
+              className="mx-auto mb-4"
+              style={{ height: 38, width: "auto" }}
+            />
             <h1
               style={{
                 fontFamily: "'Barlow Semi Condensed', sans-serif",
@@ -97,14 +105,10 @@ export default function LandingOverlay() {
                 marginBottom: "6px",
               }}
             >
-              Hi {me.name}. What are we tackling today?
+              Hi {me.name}. What's on your mind?
             </h1>
-            <p className="mb-1 text-sm font-semibold" style={{ color: "#070474" }}>
-              Your Project Manager Agent
-            </p>
             <p className="mx-auto max-w-[40ch] text-sm" style={{ color: "#8a8ca6" }}>
-              I have full context on Viking Project: tasks, documents, risks, and every workstream. Ask me
-              anything.
+              I'm your Project Manager Agent — here to help with anything on Viking Project.
             </p>
           </div>
         ) : (
@@ -162,7 +166,7 @@ export default function LandingOverlay() {
             {SUGGESTIONS.map((s) => (
               <button
                 key={s.text}
-                onClick={() => send(s.text)}
+                onClick={() => (s.workstreamId ? openWorkstream(s.workstreamId) : send(s.text))}
                 className="flex items-center gap-1.5 rounded-full border border-bordergray bg-fog px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-indigo/40 hover:bg-indigo/5 hover:text-indigo"
               >
                 <s.icon size={14} style={{ color: "#0d08d2" }} />

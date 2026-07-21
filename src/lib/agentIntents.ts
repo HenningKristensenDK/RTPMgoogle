@@ -7,7 +7,7 @@ export type Intent = "urgent" | "risks" | "documents" | "correspondence" | "unkn
  * everything else gets an honest "not built yet" reply. No invented content. */
 export function classifyIntent(text: string): Intent {
   const t = text.toLowerCase();
-  if (t.includes("urgent") || t.includes("task")) return "urgent";
+  if (t.includes("urgent") || t.includes("task") || t.includes("my action") || t.includes("attention")) return "urgent";
   if (t.includes("risk")) return "risks";
   if (t.includes("document") || t.includes("report") || t.includes("inspection") || t.includes("nonconformance")) {
     return "documents";
