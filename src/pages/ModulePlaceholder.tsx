@@ -3,22 +3,11 @@ import type { LucideIcon } from "lucide-react";
 interface Props {
   moduleName: string;
   icon: LucideIcon;
-  isCorrespondence?: boolean;
 }
 
 const KPI_LABELS = ["Total", "Open", "My items", "Overdue"];
 
-const CORRESPONDENCE_TYPES = [
-  "RFI",
-  "TQ",
-  "Meeting Minutes",
-  "Variation Request",
-  "Site Instruction",
-  "Extension of Time",
-  "Inspection Request",
-];
-
-export default function ModulePlaceholder({ moduleName, icon: Icon, isCorrespondence }: Props) {
+export default function ModulePlaceholder({ moduleName, icon: Icon }: Props) {
   return (
     <div className="flex h-full flex-col">
       {/* Module header */}
@@ -39,24 +28,6 @@ export default function ModulePlaceholder({ moduleName, icon: Icon, isCorrespond
 
       {/* KPI strip */}
       <div className="border-b border-bordergray bg-white px-6 py-5">
-        {isCorrespondence && (
-          <div className="mb-4">
-            <p className="mb-3 text-xs leading-relaxed" style={{ color: "#595b78" }}>
-              Correspondence is a cross-cutting view of all communication threads across modules, filtered by type.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {CORRESPONDENCE_TYPES.map((type) => (
-                <span
-                  key={type}
-                  className="rounded-full border border-bordergray bg-fog px-3 py-1 text-xs font-medium"
-                  style={{ color: "#595b78" }}
-                >
-                  {type}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
         <div className="grid grid-cols-4 gap-4">
           {KPI_LABELS.map((label) => (
             <div

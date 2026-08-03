@@ -75,6 +75,63 @@ export interface StatusHistoryEntry {
   comment: string;
 }
 
+// ---------------------------------------------------------------------------
+// Correspondence
+// ---------------------------------------------------------------------------
+export type CorrespondenceType =
+  | "RFI"
+  | "TQ"
+  | "Meeting Minutes"
+  | "Variation Request"
+  | "Site Instruction"
+  | "Extension of Time"
+  | "Inspection Request";
+
+export const CORRESPONDENCE_TYPES: CorrespondenceType[] = [
+  "RFI",
+  "TQ",
+  "Meeting Minutes",
+  "Variation Request",
+  "Site Instruction",
+  "Extension of Time",
+  "Inspection Request",
+];
+
+export type CorrespondenceStatus =
+  | "registered"
+  | "sent_accountable"
+  | "sent_responsible"
+  | "completed"
+  | "obsolete";
+
+/** The linear track shown in the status tracker — "obsolete" is a side branch, not a track step. */
+export const CORRESPONDENCE_TRACK_STATUSES: CorrespondenceStatus[] = [
+  "registered",
+  "sent_accountable",
+  "sent_responsible",
+  "completed",
+];
+
+export interface CorrespondenceItem {
+  id: string;
+  projectId: string;
+  itemId: string; // "RFI-001", "TQ-001", ... — per-type counter, see nextCorrespondenceCode()
+  type: CorrespondenceType;
+  title: string;
+  status: CorrespondenceStatus;
+  priority: RiskPriority;
+  startDate: Timestamp | null;
+  dueDate: Timestamp | null;
+  workstreamIds: string[];
+  checklist: ChecklistItem[];
+  notes: string;
+  attachments: Attachment[];
+  statusHistory: StatusHistoryEntry[];
+  createdBy: string;
+  createdAt: Timestamp | null;
+  updatedAt: Timestamp | null;
+}
+
 export interface Risk {
   id: string;
   projectId: string;
@@ -100,10 +157,9 @@ export interface Risk {
 export type ChatMode = "chat" | "agent";
 export type MessageRole = "user" | "assistant" | "system";
 
-export interface RiskMessage {
+/** Shared shape consumed by ChatMessages/ChatInput — lets both Risk and Correspondence chat reuse the same UI. */
+export interface BaseMessage {
   id: string;
-  riskId: string;
-  mode: ChatMode;
   role: MessageRole;
   content: string;
   authorUid: string;
@@ -112,4 +168,14 @@ export interface RiskMessage {
   images?: string[];
   reactions?: Record<string, string[]>; // emoji -> uid[]
   timestamp: Timestamp | null;
+}
+
+export interface RiskMessage extends BaseMessage {
+  riskId: string;
+  mode: ChatMode;
+}
+
+/** Correspondence chat is team-chat only — no `mode`, role is always "user". */
+export interface CorrespondenceMessage extends BaseMessage {
+  itemId: string;
 }

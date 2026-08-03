@@ -14,6 +14,7 @@ import {
   SEED_ROLES,
   SEED_ORGANIZATIONS,
   SEED_RISKS,
+  SEED_CORRESPONDENCE,
 } from "./seedData";
 
 let seedingPromise: Promise<void> | null = null;
@@ -86,6 +87,29 @@ async function run(createdBy: string): Promise<void> {
       workstreamIds: risk.workstreamIds,
       checklist: risk.checklist,
       notes: risk.notes,
+      attachments: [],
+      statusHistory: [],
+      createdBy,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  // Correspondence
+  for (const item of SEED_CORRESPONDENCE) {
+    const ref = doc(collection(db, "correspondence"));
+    batch.set(ref, {
+      projectId: SEED_PROJECT.id,
+      itemId: item.itemId,
+      type: item.type,
+      title: item.title,
+      status: item.status,
+      priority: item.priority,
+      startDate: Timestamp.fromMillis(now),
+      dueDate: Timestamp.fromMillis(now + item.dueOffsetDays * 86400000),
+      workstreamIds: item.workstreamIds,
+      checklist: item.checklist,
+      notes: item.notes,
       attachments: [],
       statusHistory: [],
       createdBy,

@@ -1,5 +1,5 @@
 import type { Timestamp } from "firebase/firestore";
-import type { Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
+import type { CorrespondenceStatus, Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
 
 /** Pre-existing docs have no `kind` field — treat those as plain risks. */
 export function riskKind(risk: Pick<Risk, "kind">): RiskKind {
@@ -67,6 +67,14 @@ export const STATUS_LABEL: Record<RiskStatus, string> = {
   assessed: "Assessed",
   mitigated: "Mitigated",
   resolved: "Resolved",
+};
+
+export const CORRESPONDENCE_STATUS_LABEL: Record<CorrespondenceStatus, string> = {
+  registered: "Registered",
+  sent_accountable: "Sent to Accountable",
+  sent_responsible: "Sent to Responsible",
+  completed: "Completed",
+  obsolete: "Obsolete",
 };
 
 /** Whoever has the ball for a risk's current status. No entry for "resolved" — nothing left to own. */

@@ -27,6 +27,10 @@ import type {
   ChatMode,
   RiskStatus,
   StatusHistoryEntry,
+  CorrespondenceItem,
+  CorrespondenceMessage,
+  CorrespondenceStatus,
+  CorrespondenceType,
 } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -37,6 +41,8 @@ const rolesCol = collection(db, "roles_and_responsibilities");
 const risksCol = collection(db, "risks");
 const messagesCol = collection(db, "risk_messages");
 const organizationsCol = collection(db, "organizations");
+const correspondenceCol = collection(db, "correspondence");
+const correspondenceMessagesCol = collection(db, "correspondence_messages");
 
 function mapDoc<T>(id: string, data: DocumentData): T {
   return { id, ...data } as T;
@@ -274,6 +280,177 @@ export async function toggleReaction(
   if (list.length) reactions[emoji] = list;
   else delete reactions[emoji];
   await updateDoc(doc(messagesCol, messageId), { reactions });
+}
+
+// ---------------------------------------------------------------------------
+// Correspondence
+// ---------------------------------------------------------------------------
+export function watchCorrespondence(
+  projectId: string,
+  cb: (items: CorrespondenceItem[]) => void
+) {
+  const q = query(
+    correspondenceCol,
+    where("projectId", "==", projectId),
+    orderBy("createdAt", "desc")
+  );
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => mapDoc<CorrespondenceItem>(d.id, d.data())));
+  });
+}
+
+export function watchCorrespondenceItem(
+  itemId: string,
+  cb: (item: CorrespondenceItem | null) => void
+) {
+  return onSnapshot(doc(correspondenceCol, itemId), (snap) => {
+    cb(snap.exists() ? mapDoc<CorrespondenceItem>(snap.id, snap.data()) : null);
+  });
+}
+
+export async function getCorrespondenceItem(itemId: string): Promise<CorrespondenceItem | null> {
+  const snap = await getDoc(doc(correspondenceCol, itemId));
+  return snap.exists() ? mapDoc<CorrespondenceItem>(snap.id, snap.data()) : null;
+}
+
+const CORRESPONDENCE_TYPE_PREFIX: Record<CorrespondenceType, string> = {
+  RFI: "RFI-",
+  TQ: "TQ-",
+  "Meeting Minutes": "MM-",
+  "Variation Request": "VR-",
+  "Site Instruction": "SI-",
+  "Extension of Time": "EOT-",
+  "Inspection Request": "IR-",
+};
+
+/** Generate the next sequential id e.g. RFI-007 — each correspondence type has its own counter. */
+export async function nextCorrespondenceCode(
+  projectId: string,
+  type: CorrespondenceType
+): Promise<string> {
+  const prefix = CORRESPONDENCE_TYPE_PREFIX[type];
+  const q = query(correspondenceCol, where("projectId", "==", projectId));
+  const snap = await getDocs(q);
+  let max = 0;
+  snap.docs.forEach((d) => {
+    const code: string = d.data().itemId || "";
+    if (!code.startsWith(prefix)) return;
+    const n = parseInt(code.slice(prefix.length), 10);
+    if (!Number.isNaN(n) && n > max) max = n;
+  });
+  return `${prefix}${String(max + 1).padStart(3, "0")}`;
+}
+
+export async function createCorrespondence(
+  projectId: string,
+  createdBy: string,
+  partial: Partial<CorrespondenceItem> = {}
+): Promise<string> {
+  const type = partial.type || "RFI";
+  const code = await nextCorrespondenceCode(projectId, type);
+  const payload: DocumentData = {
+    projectId,
+    itemId: code,
+    type,
+    title: partial.title || "Untitled item",
+    status: partial.status || "registered",
+    priority: partial.priority || "medium",
+    startDate: partial.startDate ?? null,
+    dueDate: partial.dueDate ?? null,
+    workstreamIds: partial.workstreamIds || [],
+    checklist: partial.checklist || [],
+    notes: partial.notes || "",
+    attachments: partial.attachments || [],
+    statusHistory: partial.statusHistory || [],
+    createdBy,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  const ref = await addDoc(correspondenceCol, payload);
+  return ref.id;
+}
+
+export async function deleteCorrespondence(itemId: string): Promise<void> {
+  await deleteDoc(doc(correspondenceCol, itemId));
+}
+
+export async function updateCorrespondence(
+  itemId: string,
+  patch: Partial<CorrespondenceItem>
+): Promise<void> {
+  const { id, ...rest } = patch as DocumentData;
+  await updateDoc(doc(correspondenceCol, itemId), {
+    ...rest,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function changeCorrespondenceStatus(
+  itemId: string,
+  from: CorrespondenceStatus,
+  to: CorrespondenceStatus,
+  changedBy: string,
+  comment = ""
+): Promise<void> {
+  const item = await getCorrespondenceItem(itemId);
+  const history: StatusHistoryEntry[] = item?.statusHistory
+    ? [...item.statusHistory]
+    : [];
+  history.push({
+    from,
+    to,
+    changedBy,
+    changedAt: Timestamp.now(),
+    comment,
+  });
+  await updateDoc(doc(correspondenceCol, itemId), {
+    status: to,
+    statusHistory: history,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Correspondence messages (team chat only — no AI agent mode)
+// ---------------------------------------------------------------------------
+export function watchCorrespondenceMessages(
+  itemId: string,
+  cb: (messages: CorrespondenceMessage[]) => void
+) {
+  const q = query(
+    correspondenceMessagesCol,
+    where("itemId", "==", itemId),
+    orderBy("timestamp", "asc")
+  );
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => mapDoc<CorrespondenceMessage>(d.id, d.data())));
+  });
+}
+
+export async function sendCorrespondenceMessage(
+  message: Omit<CorrespondenceMessage, "id" | "timestamp">
+): Promise<string> {
+  const ref = await addDoc(correspondenceMessagesCol, {
+    ...message,
+    timestamp: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function toggleCorrespondenceReaction(
+  messageId: string,
+  emoji: string,
+  uid: string,
+  current: Record<string, string[]> | undefined
+): Promise<void> {
+  const reactions: Record<string, string[]> = { ...(current || {}) };
+  const list = reactions[emoji] ? [...reactions[emoji]] : [];
+  const idx = list.indexOf(uid);
+  if (idx >= 0) list.splice(idx, 1);
+  else list.push(uid);
+  if (list.length) reactions[emoji] = list;
+  else delete reactions[emoji];
+  await updateDoc(doc(correspondenceMessagesCol, messageId), { reactions });
 }
 
 // ---------------------------------------------------------------------------

@@ -137,6 +137,140 @@ export const SEED_ORGANIZATIONS: SeedOrganization[] = [
   { orgId: "eq-supplier", name: "EQ Supplier", tier: 3, parentOrgId: "nordic-fitout", roleType: "Vendor" },
 ];
 
+export interface SeedCorrespondence {
+  itemId: string;
+  type:
+    | "RFI"
+    | "TQ"
+    | "Meeting Minutes"
+    | "Variation Request"
+    | "Site Instruction"
+    | "Extension of Time"
+    | "Inspection Request";
+  title: string;
+  status: "registered" | "sent_accountable" | "sent_responsible" | "completed" | "obsolete";
+  priority: "low" | "medium" | "high" | "critical";
+  workstreamIds: string[];
+  notes: string;
+  checklist: { id: string; text: string; completed: boolean }[];
+  dueOffsetDays: number;
+}
+
+export const SEED_CORRESPONDENCE: SeedCorrespondence[] = [
+  {
+    itemId: "RFI-001",
+    type: "RFI",
+    title: "Clarification on foundation rebar spacing at grid line C",
+    status: "sent_responsible",
+    priority: "medium",
+    workstreamIds: ["civil-works"],
+    notes: "Drawing S-102 Rev C shows 150mm spacing but the schedule references 200mm. Need confirmation before the next pour.",
+    checklist: [
+      { id: "c1", text: "Log RFI in register", completed: true },
+      { id: "c2", text: "Attach marked-up drawing", completed: true },
+      { id: "c3", text: "Confirm response with site QA", completed: false },
+    ],
+    dueOffsetDays: 7,
+  },
+  {
+    itemId: "TQ-001",
+    type: "TQ",
+    title: "Technical query on transformer earthing configuration",
+    status: "sent_accountable",
+    priority: "high",
+    workstreamIds: ["mep-infrastructure"],
+    notes: "Vendor datasheet conflicts with the single-line diagram on earthing resistance requirements.",
+    checklist: [
+      { id: "c1", text: "Collect vendor datasheet", completed: true },
+      { id: "c2", text: "Route to design authority", completed: false },
+    ],
+    dueOffsetDays: 5,
+  },
+  {
+    itemId: "MM-001",
+    type: "Meeting Minutes",
+    title: "Weekly site coordination meeting minutes — Week 14",
+    status: "completed",
+    priority: "low",
+    workstreamIds: ["civil-works", "mep-infrastructure"],
+    notes: "Circulated to all attendees. Action items tracked separately in the risk register.",
+    checklist: [
+      { id: "c1", text: "Draft minutes", completed: true },
+      { id: "c2", text: "Circulate for review", completed: true },
+      { id: "c3", text: "File signed copy", completed: true },
+    ],
+    dueOffsetDays: 0,
+  },
+  {
+    itemId: "VR-001",
+    type: "Variation Request",
+    title: "Variation request for additional fire-rated cable tray",
+    status: "registered",
+    priority: "high",
+    workstreamIds: ["mep-infrastructure"],
+    notes: "Scope addition following updated fire strategy review. Cost and schedule impact pending contractor quotation.",
+    checklist: [
+      { id: "c1", text: "Attach updated fire strategy drawing", completed: true },
+      { id: "c2", text: "Request contractor quotation", completed: false },
+    ],
+    dueOffsetDays: 10,
+  },
+  {
+    itemId: "SI-001",
+    type: "Site Instruction",
+    title: "Site instruction to halt piling near existing utility trench",
+    status: "completed",
+    priority: "critical",
+    workstreamIds: ["civil-works"],
+    notes: "Issued after utility strike near-miss during piling works. Works resumed after trial pit confirmation.",
+    checklist: [
+      { id: "c1", text: "Issue stop-work instruction", completed: true },
+      { id: "c2", text: "Trial pit to confirm utility location", completed: true },
+      { id: "c3", text: "Authorize resumption of works", completed: true },
+    ],
+    dueOffsetDays: 0,
+  },
+  {
+    itemId: "EOT-001",
+    type: "Extension of Time",
+    title: "Extension of time claim for weather-related delay",
+    status: "sent_accountable",
+    priority: "high",
+    workstreamIds: ["civil-works"],
+    notes: "Claim supported by site diary records showing 9 lost working days due to sustained sub-zero temperatures.",
+    checklist: [
+      { id: "c1", text: "Compile weather records", completed: true },
+      { id: "c2", text: "Prepare delay analysis", completed: false },
+    ],
+    dueOffsetDays: 21,
+  },
+  {
+    itemId: "IR-001",
+    type: "Inspection Request",
+    title: "Inspection request for IT room raised floor installation",
+    status: "sent_responsible",
+    priority: "medium",
+    workstreamIds: ["it-data-infrastructure"],
+    notes: "Ready for inspection ahead of rack installation. Access coordinated with site security.",
+    checklist: [
+      { id: "c1", text: "Confirm work complete on site", completed: true },
+      { id: "c2", text: "Schedule inspection slot", completed: false },
+    ],
+    dueOffsetDays: 4,
+  },
+  {
+    itemId: "RFI-002",
+    type: "RFI",
+    title: "RFI on HSE requirement for confined space entry",
+    status: "obsolete",
+    priority: "low",
+    workstreamIds: ["hse"],
+    notes: "Superseded by the revised HSE plan Rev D, which already answers this question directly.",
+    checklist: [],
+    dueOffsetDays: 3,
+  },
+];
+
 export interface SeedRisk {
   riskId: string;
   title: string;
