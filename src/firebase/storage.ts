@@ -40,3 +40,23 @@ export async function uploadCorrespondenceChatImage(
   await uploadBytes(storageRef, file);
   return getDownloadURL(storageRef);
 }
+
+export async function uploadDocumentFile(
+  documentId: string,
+  file: File
+): Promise<string> {
+  const path = `documents/${documentId}/${Date.now()}_${file.name}`;
+  const storageRef = ref(storage, path);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+}
+
+export async function uploadDocumentChatImage(
+  documentId: string,
+  file: File
+): Promise<string> {
+  const path = `document_messages/${documentId}/${Date.now()}_${file.name}`;
+  const storageRef = ref(storage, path);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+}

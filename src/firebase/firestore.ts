@@ -31,6 +31,10 @@ import type {
   CorrespondenceMessage,
   CorrespondenceStatus,
   CorrespondenceType,
+  DocumentItem,
+  DocumentMessage,
+  DocumentStatus,
+  DocumentAnnotation,
 } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -43,6 +47,9 @@ const messagesCol = collection(db, "risk_messages");
 const organizationsCol = collection(db, "organizations");
 const correspondenceCol = collection(db, "correspondence");
 const correspondenceMessagesCol = collection(db, "correspondence_messages");
+const documentsCol = collection(db, "documents");
+const documentMessagesCol = collection(db, "document_messages");
+const documentAnnotationsCol = collection(db, "document_annotations");
 
 function mapDoc<T>(id: string, data: DocumentData): T {
   return { id, ...data } as T;
@@ -451,6 +458,206 @@ export async function toggleCorrespondenceReaction(
   if (list.length) reactions[emoji] = list;
   else delete reactions[emoji];
   await updateDoc(doc(correspondenceMessagesCol, messageId), { reactions });
+}
+
+// ---------------------------------------------------------------------------
+// Documents
+// ---------------------------------------------------------------------------
+export function watchDocuments(
+  projectId: string,
+  cb: (items: DocumentItem[]) => void
+) {
+  const q = query(
+    documentsCol,
+    where("projectId", "==", projectId),
+    orderBy("createdAt", "desc")
+  );
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => mapDoc<DocumentItem>(d.id, d.data())));
+  });
+}
+
+export function watchDocumentItem(
+  documentId: string,
+  cb: (item: DocumentItem | null) => void
+) {
+  return onSnapshot(doc(documentsCol, documentId), (snap) => {
+    cb(snap.exists() ? mapDoc<DocumentItem>(snap.id, snap.data()) : null);
+  });
+}
+
+export async function getDocumentItem(documentId: string): Promise<DocumentItem | null> {
+  const snap = await getDoc(doc(documentsCol, documentId));
+  return snap.exists() ? mapDoc<DocumentItem>(snap.id, snap.data()) : null;
+}
+
+const DOCUMENT_ID_PREFIX = "DOC-";
+
+/** Generate the next sequential id e.g. DOC-007 — single shared counter across all document types. */
+export async function nextDocumentCode(projectId: string): Promise<string> {
+  const q = query(documentsCol, where("projectId", "==", projectId));
+  const snap = await getDocs(q);
+  let max = 0;
+  snap.docs.forEach((d) => {
+    const code: string = d.data().docId || "";
+    if (!code.startsWith(DOCUMENT_ID_PREFIX)) return;
+    const n = parseInt(code.slice(DOCUMENT_ID_PREFIX.length), 10);
+    if (!Number.isNaN(n) && n > max) max = n;
+  });
+  return `${DOCUMENT_ID_PREFIX}${String(max + 1).padStart(3, "0")}`;
+}
+
+export async function createDocumentItem(
+  projectId: string,
+  createdBy: string,
+  partial: Partial<DocumentItem> = {}
+): Promise<string> {
+  const code = await nextDocumentCode(projectId);
+  const payload: DocumentData = {
+    projectId,
+    docId: code,
+    title: partial.title || "Untitled document",
+    type: partial.type || "Drawing",
+    status: partial.status || "registered",
+    workstreamIds: partial.workstreamIds || [],
+    fileUrl: partial.fileUrl || "",
+    fileName: partial.fileName || "",
+    fileType: partial.fileType || "",
+    notes: partial.notes || "",
+    statusHistory: partial.statusHistory || [],
+    createdBy,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  const ref = await addDoc(documentsCol, payload);
+  return ref.id;
+}
+
+export async function deleteDocumentItem(documentId: string): Promise<void> {
+  await deleteDoc(doc(documentsCol, documentId));
+}
+
+export async function updateDocumentItem(
+  documentId: string,
+  patch: Partial<DocumentItem>
+): Promise<void> {
+  const { id, ...rest } = patch as DocumentData;
+  await updateDoc(doc(documentsCol, documentId), {
+    ...rest,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function changeDocumentStatus(
+  documentId: string,
+  from: DocumentStatus,
+  to: DocumentStatus,
+  changedBy: string,
+  comment = ""
+): Promise<void> {
+  const item = await getDocumentItem(documentId);
+  const history: StatusHistoryEntry[] = item?.statusHistory
+    ? [...item.statusHistory]
+    : [];
+  history.push({
+    from,
+    to,
+    changedBy,
+    changedAt: Timestamp.now(),
+    comment,
+  });
+  await updateDoc(doc(documentsCol, documentId), {
+    status: to,
+    statusHistory: history,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Document messages (team chat only — no AI agent mode)
+// ---------------------------------------------------------------------------
+export function watchDocumentMessages(
+  documentId: string,
+  cb: (messages: DocumentMessage[]) => void
+) {
+  const q = query(
+    documentMessagesCol,
+    where("documentId", "==", documentId),
+    orderBy("timestamp", "asc")
+  );
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => mapDoc<DocumentMessage>(d.id, d.data())));
+  });
+}
+
+export async function sendDocumentMessage(
+  message: Omit<DocumentMessage, "id" | "timestamp">
+): Promise<string> {
+  const ref = await addDoc(documentMessagesCol, {
+    ...message,
+    timestamp: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function toggleDocumentMessageReaction(
+  messageId: string,
+  emoji: string,
+  uid: string,
+  current: Record<string, string[]> | undefined
+): Promise<void> {
+  const reactions: Record<string, string[]> = { ...(current || {}) };
+  const list = reactions[emoji] ? [...reactions[emoji]] : [];
+  const idx = list.indexOf(uid);
+  if (idx >= 0) list.splice(idx, 1);
+  else list.push(uid);
+  if (list.length) reactions[emoji] = list;
+  else delete reactions[emoji];
+  await updateDoc(doc(documentMessagesCol, messageId), { reactions });
+}
+
+// ---------------------------------------------------------------------------
+// Document annotations (pin-drop comments on rendered PDF/image pages)
+// ---------------------------------------------------------------------------
+export function watchDocumentAnnotations(
+  documentId: string,
+  cb: (annotations: DocumentAnnotation[]) => void
+) {
+  // Queried by documentId only (no orderBy) so no composite index is needed —
+  // sort client-side by page then createdAt instead.
+  const q = query(documentAnnotationsCol, where("documentId", "==", documentId));
+  return onSnapshot(q, (snap) => {
+    const items = snap.docs.map((d) => mapDoc<DocumentAnnotation>(d.id, d.data()));
+    items.sort((a, b) => {
+      if (a.page !== b.page) return a.page - b.page;
+      const at = a.createdAt?.toMillis() ?? 0;
+      const bt = b.createdAt?.toMillis() ?? 0;
+      return at - bt;
+    });
+    cb(items);
+  });
+}
+
+export async function addDocumentAnnotation(
+  annotation: Omit<DocumentAnnotation, "id" | "createdAt">
+): Promise<string> {
+  const ref = await addDoc(documentAnnotationsCol, {
+    ...annotation,
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function updateDocumentAnnotation(
+  annotationId: string,
+  patch: Partial<DocumentAnnotation>
+): Promise<void> {
+  const { id, ...rest } = patch as DocumentData;
+  await updateDoc(doc(documentAnnotationsCol, annotationId), rest);
+}
+
+export async function deleteDocumentAnnotation(annotationId: string): Promise<void> {
+  await deleteDoc(doc(documentAnnotationsCol, annotationId));
 }
 
 // ---------------------------------------------------------------------------

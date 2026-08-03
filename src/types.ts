@@ -179,3 +179,77 @@ export interface RiskMessage extends BaseMessage {
 export interface CorrespondenceMessage extends BaseMessage {
   itemId: string;
 }
+
+// ---------------------------------------------------------------------------
+// Documents
+// ---------------------------------------------------------------------------
+export type DocumentType =
+  | "Drawing"
+  | "Plan"
+  | "Report"
+  | "Method Statement"
+  | "Spec"
+  | "Certificate";
+
+export const DOCUMENT_TYPES: DocumentType[] = [
+  "Drawing",
+  "Plan",
+  "Report",
+  "Method Statement",
+  "Spec",
+  "Certificate",
+];
+
+export type DocumentStatus =
+  | "registered"
+  | "sent_accountable"
+  | "sent_responsible"
+  | "completed"
+  | "obsolete";
+
+/** The linear track shown in the status tracker — "obsolete" is a side branch, not a track step. */
+export const DOCUMENT_TRACK_STATUSES: DocumentStatus[] = [
+  "registered",
+  "sent_accountable",
+  "sent_responsible",
+  "completed",
+];
+
+export interface DocumentItem {
+  id: string;
+  projectId: string;
+  docId: string; // "DOC-001", see nextDocumentCode()
+  title: string;
+  type: DocumentType;
+  status: DocumentStatus;
+  workstreamIds: string[];
+  fileUrl: string;
+  fileName: string;
+  fileType: string; // MIME type — decides PDF/image/fallback rendering in DocumentViewer
+  notes: string;
+  statusHistory: StatusHistoryEntry[];
+  createdBy: string;
+  createdAt: Timestamp | null;
+  updatedAt: Timestamp | null;
+}
+
+/** Document chat is team-chat only — no `mode`, role is always "user". */
+export interface DocumentMessage extends BaseMessage {
+  documentId: string;
+}
+
+/** A pin-drop comment on a rendered document page. Position is a 0..1 fraction of the
+ * rendered page's width/height, so it stays correctly placed across resizes without
+ * needing to track zoom level. */
+export interface DocumentAnnotation {
+  id: string;
+  documentId: string;
+  page: number; // 1 for images (single "page")
+  xPct: number;
+  yPct: number;
+  text: string;
+  authorUid: string;
+  authorName: string;
+  resolved: boolean;
+  createdAt: Timestamp | null;
+}

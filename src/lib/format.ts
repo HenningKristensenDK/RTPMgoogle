@@ -1,5 +1,5 @@
 import type { Timestamp } from "firebase/firestore";
-import type { CorrespondenceStatus, Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
+import type { CorrespondenceStatus, DocumentStatus, Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
 
 /** Pre-existing docs have no `kind` field — treat those as plain risks. */
 export function riskKind(risk: Pick<Risk, "kind">): RiskKind {
@@ -70,6 +70,14 @@ export const STATUS_LABEL: Record<RiskStatus, string> = {
 };
 
 export const CORRESPONDENCE_STATUS_LABEL: Record<CorrespondenceStatus, string> = {
+  registered: "Registered",
+  sent_accountable: "Sent to Accountable",
+  sent_responsible: "Sent to Responsible",
+  completed: "Completed",
+  obsolete: "Obsolete",
+};
+
+export const DOCUMENT_STATUS_LABEL: Record<DocumentStatus, string> = {
   registered: "Registered",
   sent_accountable: "Sent to Accountable",
   sent_responsible: "Sent to Responsible",

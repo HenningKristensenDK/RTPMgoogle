@@ -3,7 +3,6 @@ import { Routes, Route, Navigate, useLocation, type Location } from "react-route
 import type { LucideIcon } from "lucide-react";
 import {
   Clock,
-  FileText,
   ClipboardCheck,
   AlertTriangle,
   BadgeCheck,
@@ -13,6 +12,7 @@ import {
 import { useAuthStore, currentIdentity } from "./store/authStore";
 import { useRiskStore } from "./store/riskStore";
 import { useCorrespondenceStore } from "./store/correspondenceStore";
+import { useDocumentStore } from "./store/documentStore";
 import { seedIfEmpty } from "./lib/seed";
 import { SEED_PROJECT } from "./lib/seedData";
 import Login from "./pages/Login";
@@ -22,6 +22,8 @@ import RiskDetail from "./pages/RiskDetail";
 import RolesResponsibility from "./pages/RolesResponsibility";
 import CorrespondenceBoard from "./pages/CorrespondenceBoard";
 import CorrespondenceDetail from "./pages/CorrespondenceDetail";
+import DocumentBoard from "./pages/DocumentBoard";
+import DocumentDetail from "./pages/DocumentDetail";
 import ModulePlaceholder from "./pages/ModulePlaceholder";
 import AppShell from "./components/AppShell";
 
@@ -42,7 +44,6 @@ const IS_HARD_RELOAD =
 
 const PLACEHOLDERS: PlaceholderDef[] = [
   { path: "/time-log",          moduleName: "Time Log",             Icon: Clock },
-  { path: "/documents",         moduleName: "Documents",            Icon: FileText },
   { path: "/site-inspection",   moduleName: "Site Inspection",      Icon: ClipboardCheck },
   { path: "/ncr",               moduleName: "Nonconformance (NCR)", Icon: AlertTriangle },
   { path: "/permit-compliance", moduleName: "Permit & Compliance",  Icon: BadgeCheck },
@@ -56,6 +57,8 @@ export default function App() {
   const subscribe = useRiskStore((s) => s.subscribe);
   const setCorrespondenceProject = useCorrespondenceStore((s) => s.setProject);
   const subscribeCorrespondence = useCorrespondenceStore((s) => s.subscribe);
+  const setDocumentProject = useDocumentStore((s) => s.setProject);
+  const subscribeDocuments = useDocumentStore((s) => s.subscribe);
   const location = useLocation();
   // Only the history entry that was already active when this reload happened should
   // have its stale background state ignored — any navigation after that is a fresh
@@ -74,8 +77,9 @@ export default function App() {
     void seedIfEmpty(id.uid).then(() => {
       setProject(SEED_PROJECT.id);
       setCorrespondenceProject(SEED_PROJECT.id);
+      setDocumentProject(SEED_PROJECT.id);
     });
-  }, [user, setProject, setCorrespondenceProject]);
+  }, [user, setProject, setCorrespondenceProject, setDocumentProject]);
 
   useEffect(() => {
     if (!user) return;
@@ -88,6 +92,12 @@ export default function App() {
     const unsub = subscribeCorrespondence();
     return unsub;
   }, [user, subscribeCorrespondence]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = subscribeDocuments();
+    return unsub;
+  }, [user, subscribeDocuments]);
 
   if (loading) {
     return (
@@ -116,6 +126,9 @@ export default function App() {
           <Route path="/correspondence" element={<CorrespondenceBoard />} />
           {/* Direct load / refresh on a correspondence URL (no background state) — send back to the table. */}
           <Route path="/correspondence/:itemId" element={<Navigate to="/correspondence" replace />} />
+          <Route path="/documents" element={<DocumentBoard />} />
+          {/* Direct load / refresh on a document URL (no background state) — send back to the table. */}
+          <Route path="/documents/:docId" element={<Navigate to="/documents" replace />} />
           <Route path="/roles" element={<RolesResponsibility />} />
           {PLACEHOLDERS.map(({ path, moduleName, Icon }) => (
             <Route
@@ -131,6 +144,7 @@ export default function App() {
         <Routes>
           <Route path="/risks/:riskId" element={<RiskDetail />} />
           <Route path="/correspondence/:itemId" element={<CorrespondenceDetail />} />
+          <Route path="/documents/:docId" element={<DocumentDetail />} />
         </Routes>
       )}
     </>
