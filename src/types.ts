@@ -238,15 +238,22 @@ export interface DocumentMessage extends BaseMessage {
   documentId: string;
 }
 
-/** A pin-drop comment on a rendered document page. Position is a 0..1 fraction of the
- * rendered page's width/height, so it stays correctly placed across resizes without
- * needing to track zoom level. */
+export type AnnotationKind = "comment" | "highlight" | "arrow" | "rectangle";
+
+/** A markup on a rendered document page. Position(s) are 0..1 fractions of the
+ * rendered page's width/height, so they stay correctly placed across resizes
+ * without needing to track zoom level. */
 export interface DocumentAnnotation {
   id: string;
   documentId: string;
   page: number; // 1 for images (single "page")
-  xPct: number;
+  /** Absent on documents predating this field — treat as "comment", see effectiveKind() in lib/format.ts. */
+  kind?: AnnotationKind;
+  xPct: number; // comment: pin position. highlight/rectangle: top-left. arrow: start point.
   yPct: number;
+  x2Pct?: number; // arrow: end point. highlight/rectangle: bottom-right. unused for comment.
+  y2Pct?: number;
+  /** Required (non-empty) for "comment"; optional (may be "") for shape kinds. */
   text: string;
   authorUid: string;
   authorName: string;

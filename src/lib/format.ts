@@ -1,9 +1,14 @@
 import type { Timestamp } from "firebase/firestore";
-import type { CorrespondenceStatus, DocumentStatus, Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
+import type { AnnotationKind, CorrespondenceStatus, DocumentAnnotation, DocumentStatus, Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
 
 /** Pre-existing docs have no `kind` field — treat those as plain risks. */
 export function riskKind(risk: Pick<Risk, "kind">): RiskKind {
   return risk.kind ?? "risk";
+}
+
+/** Annotations predating the kind field have none — treat those as comment pins. */
+export function effectiveKind(annotation: Pick<DocumentAnnotation, "kind">): AnnotationKind {
+  return annotation.kind ?? "comment";
 }
 
 export function tsToDate(ts: Timestamp | null | undefined): Date | null {

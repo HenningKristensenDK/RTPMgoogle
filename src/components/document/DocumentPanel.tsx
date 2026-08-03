@@ -51,7 +51,7 @@ export default function DocumentPanel({
       </div>
 
       {/* Sidebar — Details / Chat */}
-      <div className="scroll-thin flex w-[340px] shrink-0 flex-col gap-3 overflow-auto">
+      <div className="scroll-thin flex w-[380px] shrink-0 flex-col gap-3 overflow-auto">
         <div className="flex gap-1 rounded-btn border border-bordergray bg-white p-1">
           <button
             onClick={() => setTab("details")}
