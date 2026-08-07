@@ -224,7 +224,7 @@ export default function DocumentSummaryDashboard({
           <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
             <span className="flex items-center gap-1.5 text-[12px]" style={{ color: SECONDARY }}>
               <span className="h-2 w-2 rounded-sm" style={{ background: GREEN }} />
-              {completed} done
+              {completed} completed
             </span>
             <span className="flex items-center gap-1.5 text-[12px]" style={{ color: SECONDARY }}>
               <span className="h-2 w-2 rounded-sm" style={{ background: ORANGE }} />
