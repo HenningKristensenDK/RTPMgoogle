@@ -1,5 +1,5 @@
 import type { Timestamp } from "firebase/firestore";
-import type { AnnotationKind, CorrespondenceStatus, DocumentAnnotation, DocumentStatus, Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
+import type { AnnotationKind, CommentStatus, CorrespondenceStatus, DocumentAnnotation, DocumentStatus, Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
 
 /** Pre-existing docs have no `kind` field — treat those as plain risks. */
 export function riskKind(risk: Pick<Risk, "kind">): RiskKind {
@@ -88,6 +88,19 @@ export const DOCUMENT_STATUS_LABEL: Record<DocumentStatus, string> = {
   sent_responsible: "Sent to Responsible",
   completed: "Completed",
   obsolete: "Obsolete",
+};
+
+export const COMMENT_STATUS_LABEL: Record<CommentStatus, string> = {
+  open: "Open",
+  answered: "Answered",
+  closed: "Closed",
+};
+
+/** Pill colors for comment-sheet statuses, from the brand palette. */
+export const COMMENT_STATUS_META: Record<CommentStatus, { text: string; bg: string }> = {
+  open: { text: "#cc7000", bg: "#fff3e0" }, // amber
+  answered: { text: "#0069b3", bg: "#e3f3ff" }, // info-blue
+  closed: { text: "#1b7a34", bg: "#e6f6ea" }, // green
 };
 
 /** Whoever has the ball for a risk's current status. No entry for "resolved" — nothing left to own. */

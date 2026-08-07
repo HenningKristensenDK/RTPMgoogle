@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, X } from "lucide-react";
-import type { DocumentItem, DocumentStatus } from "../types";
-import { watchDocumentItem, changeDocumentStatus } from "../firebase/firestore";
+import { ArrowLeft, X, MessageSquareText } from "lucide-react";
+import type { DocumentComment, DocumentItem, DocumentStatus } from "../types";
+import { watchDocumentItem, changeDocumentStatus, watchDocumentComments } from "../firebase/firestore";
 import { useDocumentStore } from "../store/documentStore";
 import { useRiskStore } from "../store/riskStore";
 import { useAuthStore, currentIdentity } from "../store/authStore";
 import { DOCUMENT_STATUS_LABEL } from "../lib/format";
 import { toast } from "../lib/toast";
 import DocumentPanel from "../components/document/DocumentPanel";
+import CommentSheet from "../components/document/CommentSheet";
 
 export default function DocumentDetail() {
   const { docId } = useParams<{ docId: string }>();
@@ -20,6 +21,8 @@ export default function DocumentDetail() {
 
   const [item, setItem] = useState<DocumentItem | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [comments, setComments] = useState<DocumentComment[]>([]);
+  const [commentSheetOpen, setCommentSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!docId) return;
@@ -29,6 +32,13 @@ export default function DocumentDetail() {
     });
     return unsub;
   }, [docId]);
+
+  useEffect(() => {
+    if (!docId) return;
+    return watchDocumentComments(docId, setComments);
+  }, [docId]);
+
+  const openComments = comments.filter((c) => c.status !== "closed").length;
 
   function close() {
     navigate("/documents");
@@ -70,13 +80,26 @@ export default function DocumentDetail() {
               >
                 <ArrowLeft size={16} /> Back
               </button>
-              <button
-                onClick={close}
-                title="Close"
-                className="flex h-8 w-8 items-center justify-center rounded border border-bordergray text-gray-500 hover:bg-gray-50 hover:text-critical"
-              >
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCommentSheetOpen(true)}
+                  className="flex items-center gap-1.5 rounded-btn border border-bordergray px-3 py-1.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  <MessageSquareText size={15} /> Comment Sheet
+                  {openComments > 0 && (
+                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-indigo px-1.5 text-[11px] font-bold text-white">
+                      {openComments}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={close}
+                  title="Close"
+                  className="flex h-8 w-8 items-center justify-center rounded border border-bordergray text-gray-500 hover:bg-gray-50 hover:text-critical"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-hidden">
               <DocumentPanel
@@ -88,6 +111,15 @@ export default function DocumentDetail() {
                 onChangeStatus={handleChangeStatus}
               />
             </div>
+            {commentSheetOpen && (
+              <CommentSheet
+                item={item}
+                roles={roles}
+                currentUid={me.uid}
+                currentName={me.name}
+                onClose={() => setCommentSheetOpen(false)}
+              />
+            )}
           </>
         )}
       </div>

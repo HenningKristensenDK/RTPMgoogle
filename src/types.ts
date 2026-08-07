@@ -260,3 +260,42 @@ export interface DocumentAnnotation {
   resolved: boolean;
   createdAt: Timestamp | null;
 }
+
+// ---------------------------------------------------------------------------
+// Document Comment Sheet (formal per-document review register)
+// ---------------------------------------------------------------------------
+export type CommentStatus = "open" | "answered" | "closed";
+export const COMMENT_STATUSES: CommentStatus[] = ["open", "answered", "closed"];
+
+/** Whether the contractor actually changed the document in response — "" = not yet decided. */
+export type IncorporatedFlag = "yes" | "no" | "";
+
+/** One entry in a comment's back-and-forth thread (after the original comment). */
+export interface CommentReply {
+  id: string;
+  role: "commenter" | "responder"; // commenter = customer/reviewer side, responder = contractor
+  authorUid: string;
+  authorName: string;
+  text: string;
+  createdAt: Timestamp | null;
+}
+
+export interface DocumentComment {
+  id: string;
+  documentId: string;
+  projectId: string;
+  commentNo: number; // sequential per document: 1, 2, 3…
+  workstreamId: string; // links to a role/workstream ("" if none)
+  section: string; // free text — "3.3", "GENERAL", etc.
+  page: string; // free text — real sheets mix "6" and "GENERAL"
+  // Commenter raises it (customer/reviewer). Responder must answer (contractor).
+  commenterUid: string;
+  commenterName: string;
+  responderName: string; // display name of the assigned responder (defaults from R&R)
+  text: string; // the original comment (commenter's)
+  replies: CommentReply[]; // alternating thread after the original
+  status: CommentStatus;
+  incorporated: IncorporatedFlag;
+  createdAt: Timestamp | null;
+  updatedAt: Timestamp | null;
+}

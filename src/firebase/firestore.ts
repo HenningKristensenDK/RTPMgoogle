@@ -35,6 +35,7 @@ import type {
   DocumentMessage,
   DocumentStatus,
   DocumentAnnotation,
+  DocumentComment,
 } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -50,6 +51,7 @@ const correspondenceMessagesCol = collection(db, "correspondence_messages");
 const documentsCol = collection(db, "documents");
 const documentMessagesCol = collection(db, "document_messages");
 const documentAnnotationsCol = collection(db, "document_annotations");
+const documentCommentsCol = collection(db, "document_comments");
 
 function mapDoc<T>(id: string, data: DocumentData): T {
   return { id, ...data } as T;
@@ -658,6 +660,61 @@ export async function updateDocumentAnnotation(
 
 export async function deleteDocumentAnnotation(annotationId: string): Promise<void> {
   await deleteDoc(doc(documentAnnotationsCol, annotationId));
+}
+
+// ---------------------------------------------------------------------------
+// Document comment sheet (formal per-document review register)
+// ---------------------------------------------------------------------------
+export function watchDocumentComments(
+  documentId: string,
+  cb: (comments: DocumentComment[]) => void
+) {
+  // Queried by documentId only (no orderBy) so no composite index is needed —
+  // sort client-side by commentNo instead.
+  const q = query(documentCommentsCol, where("documentId", "==", documentId));
+  return onSnapshot(q, (snap) => {
+    const items = snap.docs.map((d) => mapDoc<DocumentComment>(d.id, d.data()));
+    items.sort((a, b) => a.commentNo - b.commentNo);
+    cb(items);
+  });
+}
+
+/** Next per-document sequential comment number (1, 2, 3…). */
+export async function nextCommentNo(documentId: string): Promise<number> {
+  const q = query(documentCommentsCol, where("documentId", "==", documentId));
+  const snap = await getDocs(q);
+  let max = 0;
+  snap.docs.forEach((d) => {
+    const n: number = d.data().commentNo || 0;
+    if (n > max) max = n;
+  });
+  return max + 1;
+}
+
+export async function addDocumentComment(
+  comment: Omit<DocumentComment, "id" | "createdAt" | "updatedAt">
+): Promise<string> {
+  const ref = await addDoc(documentCommentsCol, {
+    ...comment,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function updateDocumentComment(
+  commentId: string,
+  patch: Partial<DocumentComment>
+): Promise<void> {
+  const { id, ...rest } = patch as DocumentData;
+  await updateDoc(doc(documentCommentsCol, commentId), {
+    ...rest,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteDocumentComment(commentId: string): Promise<void> {
+  await deleteDoc(doc(documentCommentsCol, commentId));
 }
 
 // ---------------------------------------------------------------------------
