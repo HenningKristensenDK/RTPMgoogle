@@ -2,9 +2,19 @@ import { useMemo, useState } from "react";
 import type { RoleResponsibility } from "../../types";
 import { pickResponsible } from "../../lib/format";
 
+interface InitialValues {
+  section?: string;
+  page?: string;
+  text?: string;
+}
+
 interface Props {
   roles: RoleResponsibility[];
   commenterName: string;
+  /** Prefilled when the comment is raised from the PDF viewer (page + quoted text). */
+  initial?: InitialValues;
+  /** True when opened from the viewer — shows a hint that it's anchored to the page. */
+  fromViewer?: boolean;
   onCreate: (data: {
     workstreamId: string;
     section: string;
@@ -19,11 +29,11 @@ const labelCls = "mb-1 block text-[12px] font-medium text-gray-500";
 const fieldCls =
   "w-full rounded-input border border-bordergray bg-white px-2.5 py-2 text-sm text-ink outline-none focus:border-indigo focus:ring-1 focus:ring-indigo";
 
-export default function NewCommentModal({ roles, commenterName, onCreate, onCancel }: Props) {
+export default function NewCommentModal({ roles, commenterName, initial, fromViewer, onCreate, onCancel }: Props) {
   const [workstreamId, setWorkstreamId] = useState("");
-  const [section, setSection] = useState("");
-  const [page, setPage] = useState("");
-  const [text, setText] = useState("");
+  const [section, setSection] = useState(initial?.section ?? "");
+  const [page, setPage] = useState(initial?.page ?? "");
+  const [text, setText] = useState(initial?.text ?? "");
 
   // Responder defaults to the linked workstream's Responsible (contractor side).
   const responderName = useMemo(() => {
@@ -57,6 +67,11 @@ export default function NewCommentModal({ roles, commenterName, onCreate, onCanc
           Raised by <span className="font-medium text-gray-600">{commenterName}</span>. The
           responder is set from the selected workstream.
         </p>
+        {fromViewer && (
+          <p className="mt-2 rounded-btn bg-indigo/5 px-2.5 py-1.5 text-[11px] font-medium text-indigo">
+            📍 Anchored to page {page || "?"} — it will show as a marker on the document.
+          </p>
+        )}
 
         <div className="mt-4 flex flex-col gap-4">
           <div>

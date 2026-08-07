@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Timestamp } from "firebase/firestore";
-import { X, Plus, Download, Trash2, Send } from "lucide-react";
+import { X, Plus, Download, Trash2, Send, MapPin } from "lucide-react";
 import {
   COMMENT_STATUSES,
   type CommentReply,
@@ -27,6 +27,10 @@ interface Props {
   roles: RoleResponsibility[];
   currentUid: string;
   currentName: string;
+  /** When opened from a marker click, pre-select this comment. */
+  initialSelectedId?: string | null;
+  /** "Locate in PDF" on an anchored row — jump the viewer to the comment. */
+  onJumpToAnchor?: (comment: DocumentComment) => void;
   onClose: () => void;
 }
 
@@ -42,9 +46,9 @@ function StatusPill({ status }: { status: CommentStatus }) {
   );
 }
 
-export default function CommentSheet({ item, roles, currentUid, currentName, onClose }: Props) {
+export default function CommentSheet({ item, roles, currentUid, currentName, initialSelectedId, onJumpToAnchor, onClose }: Props) {
   const [comments, setComments] = useState<DocumentComment[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
   const [newOpen, setNewOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DocumentComment | null>(null);
 
@@ -189,16 +193,30 @@ export default function CommentSheet({ item, roles, currentUid, currentName, onC
                       {c.incorporated ? c.incorporated : "—"}
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteTarget(c);
-                        }}
-                        title="Delete comment"
-                        className="rounded-btn p-1.5 text-gray-400 hover:bg-red-50 hover:text-critical"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex items-center justify-end gap-0.5">
+                        {c.anchor && onJumpToAnchor && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onJumpToAnchor(c);
+                            }}
+                            title="Locate in document"
+                            className="rounded-btn p-1.5 text-gray-400 hover:bg-indigo/5 hover:text-indigo"
+                          >
+                            <MapPin size={14} />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(c);
+                          }}
+                          title="Delete comment"
+                          className="rounded-btn p-1.5 text-gray-400 hover:bg-red-50 hover:text-critical"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

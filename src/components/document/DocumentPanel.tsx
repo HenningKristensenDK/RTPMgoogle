@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { FileText, MessageSquare } from "lucide-react";
-import type { DocumentItem, DocumentStatus, RoleResponsibility } from "../../types";
+import type { CommentAnchor, DocumentComment, DocumentItem, DocumentStatus, RoleResponsibility } from "../../types";
 import DocumentHeader from "./DocumentHeader";
 import DocumentStatusBar from "./DocumentStatusBar";
 import DocumentMetadata from "./DocumentMetadata";
@@ -16,6 +16,10 @@ interface Props {
   roles: RoleResponsibility[];
   authorUid: string;
   authorName: string;
+  comments: DocumentComment[];
+  onCreateCommentFromAnchor: (anchor: CommentAnchor, quotedText: string) => void;
+  onOpenComment: (comment: DocumentComment) => void;
+  scrollTarget: { commentId: string; nonce: number } | null;
   onPatch: (patch: Partial<DocumentItem>) => void;
   onChangeStatus: (to: DocumentStatus) => void;
 }
@@ -27,6 +31,10 @@ export default function DocumentPanel({
   roles,
   authorUid,
   authorName,
+  comments,
+  onCreateCommentFromAnchor,
+  onOpenComment,
+  scrollTarget,
   onPatch,
   onChangeStatus,
 }: Props) {
@@ -46,7 +54,15 @@ export default function DocumentPanel({
             </div>
           }
         >
-          <DocumentViewer item={item} authorUid={authorUid} authorName={authorName} />
+          <DocumentViewer
+            item={item}
+            authorUid={authorUid}
+            authorName={authorName}
+            comments={comments}
+            onCreateCommentFromAnchor={onCreateCommentFromAnchor}
+            onOpenComment={onOpenComment}
+            scrollTarget={scrollTarget}
+          />
         </Suspense>
       </div>
 

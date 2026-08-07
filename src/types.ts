@@ -280,6 +280,16 @@ export interface CommentReply {
   createdAt: Timestamp | null;
 }
 
+/** Where on the document a comment points, so it can be shown/jumped-to in the viewer.
+ * Coords are 0..1 fractions of the rendered page — zoom/scroll independent. */
+export interface CommentAnchor {
+  page: number; // 1-based PDF page (1 for images)
+  xPct: number; // top-left of the anchored region
+  yPct: number;
+  x2Pct?: number; // bottom-right — present for a rect/area/text-highlight anchor
+  y2Pct?: number;
+}
+
 export interface DocumentComment {
   id: string;
   documentId: string;
@@ -296,6 +306,8 @@ export interface DocumentComment {
   replies: CommentReply[]; // alternating thread after the original
   status: CommentStatus;
   incorporated: IncorporatedFlag;
+  /** Set when the comment was raised from the viewer — lets it show as a marker on the page. */
+  anchor?: CommentAnchor;
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
 }

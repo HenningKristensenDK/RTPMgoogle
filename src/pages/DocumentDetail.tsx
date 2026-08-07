@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, X, MessageSquareText } from "lucide-react";
-import type { DocumentComment, DocumentItem, DocumentStatus } from "../types";
-import { watchDocumentItem, changeDocumentStatus, watchDocumentComments } from "../firebase/firestore";
+import type { CommentAnchor, DocumentComment, DocumentItem, DocumentStatus } from "../types";
+import {
+  watchDocumentItem,
+  changeDocumentStatus,
+  watchDocumentComments,
+  addDocumentComment,
+  nextCommentNo,
+} from "../firebase/firestore";
 import { useDocumentStore } from "../store/documentStore";
 import { useRiskStore } from "../store/riskStore";
 import { useAuthStore, currentIdentity } from "../store/authStore";
@@ -10,6 +16,7 @@ import { DOCUMENT_STATUS_LABEL } from "../lib/format";
 import { toast } from "../lib/toast";
 import DocumentPanel from "../components/document/DocumentPanel";
 import CommentSheet from "../components/document/CommentSheet";
+import NewCommentModal from "../components/document/NewCommentModal";
 
 export default function DocumentDetail() {
   const { docId } = useParams<{ docId: string }>();
@@ -23,6 +30,11 @@ export default function DocumentDetail() {
   const [notFound, setNotFound] = useState(false);
   const [comments, setComments] = useState<DocumentComment[]>([]);
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
+  const [sheetFocusId, setSheetFocusId] = useState<string | null>(null);
+  // A comment being raised from the viewer (highlight/area → comment), before it's saved.
+  const [pendingAnchor, setPendingAnchor] = useState<{ anchor: CommentAnchor; quotedText: string } | null>(null);
+  // Bump nonce to make the viewer jump to a comment's anchor and flash its marker.
+  const [scrollTarget, setScrollTarget] = useState<{ commentId: string; nonce: number } | null>(null);
 
   useEffect(() => {
     if (!docId) return;
@@ -53,6 +65,56 @@ export default function DocumentDetail() {
     } catch {
       toast.error("Failed to update status");
     }
+  }
+
+  // Viewer → "raise a comment here": open the composer prefilled with the anchor's page + text.
+  function handleCreateCommentFromAnchor(anchor: CommentAnchor, quotedText: string) {
+    setPendingAnchor({ anchor, quotedText });
+  }
+
+  async function handleSaveAnchoredComment(data: {
+    workstreamId: string;
+    section: string;
+    page: string;
+    responderName: string;
+    text: string;
+  }) {
+    if (!item || !pendingAnchor) return;
+    try {
+      const no = await nextCommentNo(item.id);
+      await addDocumentComment({
+        documentId: item.id,
+        projectId: item.projectId,
+        commentNo: no,
+        workstreamId: data.workstreamId,
+        section: data.section,
+        page: data.page,
+        commenterUid: me.uid,
+        commenterName: me.name,
+        responderName: data.responderName,
+        text: data.text,
+        replies: [],
+        status: "open",
+        incorporated: "",
+        anchor: pendingAnchor.anchor,
+      });
+      setPendingAnchor(null);
+      toast.success("Comment added to the sheet");
+    } catch {
+      toast.error("Could not add comment");
+    }
+  }
+
+  // Click an anchored marker in the viewer → open the sheet focused on that comment.
+  function handleOpenComment(comment: DocumentComment) {
+    setSheetFocusId(comment.id);
+    setCommentSheetOpen(true);
+  }
+
+  // Comment Sheet "locate in PDF" → close the sheet and jump the viewer to the anchor.
+  function handleJumpToAnchor(comment: DocumentComment) {
+    setCommentSheetOpen(false);
+    setScrollTarget({ commentId: comment.id, nonce: Date.now() });
   }
 
   return (
@@ -107,6 +169,10 @@ export default function DocumentDetail() {
                 roles={roles}
                 authorUid={me.uid}
                 authorName={me.name}
+                comments={comments}
+                onCreateCommentFromAnchor={handleCreateCommentFromAnchor}
+                onOpenComment={handleOpenComment}
+                scrollTarget={scrollTarget}
                 onPatch={(patch) => patchItem(item.id, patch)}
                 onChangeStatus={handleChangeStatus}
               />
@@ -117,7 +183,22 @@ export default function DocumentDetail() {
                 roles={roles}
                 currentUid={me.uid}
                 currentName={me.name}
-                onClose={() => setCommentSheetOpen(false)}
+                initialSelectedId={sheetFocusId}
+                onJumpToAnchor={handleJumpToAnchor}
+                onClose={() => {
+                  setCommentSheetOpen(false);
+                  setSheetFocusId(null);
+                }}
+              />
+            )}
+            {pendingAnchor && (
+              <NewCommentModal
+                roles={roles}
+                commenterName={me.name}
+                fromViewer
+                initial={{ page: String(pendingAnchor.anchor.page), text: pendingAnchor.quotedText }}
+                onCreate={handleSaveAnchoredComment}
+                onCancel={() => setPendingAnchor(null)}
               />
             )}
           </>

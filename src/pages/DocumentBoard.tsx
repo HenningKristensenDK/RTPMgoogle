@@ -51,6 +51,7 @@ export default function DocumentBoard() {
   const [fWorkstream, setFWorkstream] = useState("");
   const [fOrg, setFOrg] = useState("");
   const [fStatus, setFStatus] = useState<DocumentStatus | "">("");
+  const [barType, setBarType] = useState<DocumentType | null>(null);
   const [barWorkstream, setBarWorkstream] = useState<string | null>(null);
   const [barTodo, setBarTodo] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -79,6 +80,7 @@ export default function DocumentBoard() {
   const tableItems = useMemo(() => {
     return filtered.filter((item) => {
       const itemRoles = roles.filter((r) => item.workstreamIds.includes(r.id));
+      if (barType && item.type !== barType) return false;
       if (barWorkstream && !itemRoles.some((r) => r.workstream === barWorkstream)) return false;
       if (
         barTodo &&
@@ -89,7 +91,7 @@ export default function DocumentBoard() {
         return false;
       return true;
     });
-  }, [filtered, roles, barWorkstream, barTodo]);
+  }, [filtered, roles, barType, barWorkstream, barTodo]);
 
   async function handleCreateItem(data: {
     title: string;
@@ -190,6 +192,8 @@ export default function DocumentBoard() {
               items={filtered}
               roles={roles}
               orgs={orgs}
+              selectedType={barType}
+              onSelectType={setBarType}
               selectedWorkstream={barWorkstream}
               onSelectWorkstream={setBarWorkstream}
               selectedTodo={barTodo}
