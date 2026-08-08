@@ -9,6 +9,7 @@ import {
   Highlighter,
   ArrowUpRight,
   Square,
+  Eraser,
   ZoomIn,
   ZoomOut,
   Maximize2,
@@ -18,7 +19,7 @@ import {
   MessageSquareText,
   type LucideIcon,
 } from "lucide-react";
-import type { CommentAnchor, DocumentAnnotation, DocumentComment, DocumentItem } from "../../types";
+import type { AnnotationKind, CommentAnchor, DocumentAnnotation, DocumentComment, DocumentItem } from "../../types";
 import { watchDocumentAnnotations } from "../../firebase/firestore";
 import PageSurface, { KIND_COLOR, type Tool } from "./PageSurface";
 
@@ -47,6 +48,7 @@ const TOOLBAR: { tool: Tool; label: string; Icon: LucideIcon; group: "review" | 
   { tool: "highlight", label: "Highlight", Icon: Highlighter, group: "markup" },
   { tool: "arrow", label: "Arrow", Icon: ArrowUpRight, group: "markup" },
   { tool: "rectangle", label: "Box", Icon: Square, group: "markup" },
+  { tool: "eraser", label: "Eraser", Icon: Eraser, group: "markup" },
 ];
 
 const MIN_ZOOM = 0.3;
@@ -349,8 +351,20 @@ export default function DocumentViewer({
       </div>
 
       {activeTool !== "select" && (
-        <div className="mt-1.5 text-center text-[11px] font-medium" style={{ color: activeTool === "comment_area" ? "#0d08d2" : KIND_COLOR[activeTool === "comment" ? "comment" : activeTool] }}>
-          {activeTool === "comment_area"
+        <div
+          className="mt-1.5 text-center text-[11px] font-medium"
+          style={{
+            color:
+              activeTool === "eraser"
+                ? "#e63946"
+                : activeTool === "comment_area"
+                ? "#0d08d2"
+                : KIND_COLOR[activeTool === "comment" ? "comment" : (activeTool as AnnotationKind)],
+          }}
+        >
+          {activeTool === "eraser"
+            ? "Click any markup (pin, highlight, arrow, box) to remove it"
+            : activeTool === "comment_area"
             ? "Drag a box on the document to raise a comment"
             : activeTool === "comment"
             ? "Click to drop a note pin"

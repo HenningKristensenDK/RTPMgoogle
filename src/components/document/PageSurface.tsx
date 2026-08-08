@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Trash2, Highlighter, MessageSquarePlus } from "lucide-react";
 import type {
   AnnotationKind,
   CommentAnchor,
+  CommentRole,
   DocumentAnnotation,
   DocumentComment,
 } from "../../types";
@@ -25,7 +26,8 @@ export type Tool =
   | "highlight"
   | "arrow"
   | "rectangle"
-  | "comment_area";
+  | "comment_area"
+  | "eraser";
 
 export const KIND_COLOR: Record<AnnotationKind, string> = {
   comment: "#ff8b00",
@@ -34,6 +36,11 @@ export const KIND_COLOR: Record<AnnotationKind, string> = {
   rectangle: "#0d08d2",
 };
 const RESOLVED_COLOR = "#9CA3AF";
+const COMMENT_ROLE_LABEL: Record<CommentRole, string> = {
+  commenter: "Commenter",
+  responder: "Responder",
+  participant: "Participant",
+};
 const DRAG_THRESHOLD = 0.008;
 const DRAG_TOOLS: Tool[] = ["highlight", "arrow", "rectangle", "comment_area"];
 
@@ -163,10 +170,27 @@ export default function PageSurface({
   // Which anchored comment is "opened" on the page — intensifies its highlight
   // and shows an inline preview so you can read it without leaving the viewer.
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   const isSelectMode = activeTool === "select";
+  const isEraser = activeTool === "eraser";
+  // Marks (shapes + pins) capture clicks in Select (to open) and Eraser (to delete) modes.
+  const marksActive = isSelectMode || isEraser;
   const pins = annotations.filter((a) => effectiveKind(a) === "comment");
   const shapes = annotations.filter((a) => effectiveKind(a) !== "comment");
+
+  // Dismiss the open comment preview when clicking anywhere outside it (incl. the
+  // viewer gutter, toolbar or sidebar, which the page's own onClick can't catch).
+  useEffect(() => {
+    if (!activeCommentId) return;
+    const onDown = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setActiveCommentId(null);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [activeCommentId]);
 
   function pointFromEvent(e: React.MouseEvent): Point | null {
     if (!wrapRef.current) return null;
@@ -344,7 +368,13 @@ export default function PageSurface({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onClick={handleClick}
-      className={`relative ${activeTool === "comment" || activeTool === "comment_area" || DRAG_TOOLS.includes(activeTool) ? "cursor-crosshair" : ""}`}
+      className={`relative ${
+        isEraser
+          ? "cursor-pointer"
+          : activeTool === "comment" || activeTool === "comment_area" || DRAG_TOOLS.includes(activeTool)
+          ? "cursor-crosshair"
+          : ""
+      }`}
     >
       {children}
 
@@ -397,8 +427,8 @@ export default function PageSurface({
               x2={a.x2Pct ?? a.xPct}
               y2={a.y2Pct ?? a.yPct}
               color={a.resolved ? RESOLVED_COLOR : KIND_COLOR[kind]}
-              interactive={isSelectMode}
-              onClick={() => setOpenId(openId === a.id ? null : a.id)}
+              interactive={marksActive}
+              onClick={() => (isEraser ? removeAnnotation(a) : setOpenId(openId === a.id ? null : a.id))}
             />
           );
         })}
@@ -421,16 +451,17 @@ export default function PageSurface({
           key={a.id}
           onClick={(e) => {
             e.stopPropagation();
-            setOpenId(openId === a.id ? null : a.id);
+            if (isEraser) void removeAnnotation(a);
+            else setOpenId(openId === a.id ? null : a.id);
           }}
           className="absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-panel"
           style={{
             left: `${a.xPct * 100}%`,
             top: `${a.yPct * 100}%`,
             background: a.resolved ? RESOLVED_COLOR : KIND_COLOR.comment,
-            pointerEvents: isSelectMode ? "auto" : "none",
+            pointerEvents: marksActive ? "auto" : "none",
           }}
-          title={a.text}
+          title={isEraser ? "Click to erase" : a.text}
         >
           {i + 1}
         </button>
@@ -478,7 +509,7 @@ export default function PageSurface({
         );
       })}
 
-      {/* Inline preview of the opened comment — read it without leaving the document */}
+      {/* Inline preview of the opened comment — shows the latest message in its thread */}
       {comments.map((c) => {
         const a = c.anchor;
         if (!a || activeCommentId !== c.id) return null;
@@ -486,14 +517,22 @@ export default function PageSurface({
         const px = a.x2Pct !== undefined ? (a.xPct + a.x2Pct) / 2 : a.xPct;
         const py = a.y2Pct !== undefined ? Math.max(a.yPct, a.y2Pct) : a.yPct;
         const meta = COMMENT_STATUS_META[c.status];
+        const replies = c.replies ?? [];
+        const last = replies.length ? replies[replies.length - 1] : null;
+        const latestText = last ? last.text : c.text;
+        const latestAuthor = last ? last.authorName : c.commenterName;
+        const latestRole = last ? COMMENT_ROLE_LABEL[last.role] : "Commenter";
+        const latestTime = last ? last.createdAt : c.createdAt;
+        const total = replies.length + 1;
         return (
           <div
             key={`cpop-${c.id}`}
+            ref={popoverRef}
             onClick={(e) => e.stopPropagation()}
-            className="absolute z-30 w-60 -translate-x-1/2 rounded-card border bg-white p-3 shadow-panel"
+            className="absolute z-30 w-64 -translate-x-1/2 rounded-card border bg-white p-3 shadow-panel"
             style={{ left: `${px * 100}%`, top: `${py * 100}%`, marginTop: 10, borderColor: color, pointerEvents: "auto" }}
           >
-            <div className="mb-1.5 flex items-center justify-between gap-2">
+            <div className="mb-2 flex items-center justify-between gap-2">
               <span className="flex items-center gap-1.5 text-[11px] font-bold" style={{ color }}>
                 <span className="flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] text-white" style={{ background: color }}>
                   {c.commentNo}
@@ -504,10 +543,22 @@ export default function PageSurface({
                 {COMMENT_STATUS_LABEL[c.status]}
               </span>
             </div>
+
+            {/* Latest message + who wrote it */}
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="truncate text-[11px] font-semibold text-gray-700">
+                {latestAuthor}
+                <span className="ml-1 font-normal text-gray-400">· {latestRole}</span>
+              </span>
+              {latestTime && <span className="shrink-0 text-[10px] text-gray-400">{formatTime(latestTime)}</span>}
+            </div>
             <p className="text-[12px] text-ink" style={{ display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-              {c.text}
+              {latestText}
             </p>
-            {c.section && <p className="mt-1 text-[10.5px] text-gray-400">Section {c.section}</p>}
+            <p className="mt-1.5 text-[10px] text-gray-400">
+              {last ? `Latest of ${total} message${total === 1 ? "" : "s"}` : "No replies yet"}
+              {c.section ? ` · Section ${c.section}` : ""}
+            </p>
             <button
               onClick={() => onOpenComment(c)}
               className="mt-2.5 w-full rounded-btn py-1.5 text-[11px] font-semibold text-white hover:opacity-90"
