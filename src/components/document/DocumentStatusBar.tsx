@@ -43,7 +43,7 @@ export default function DocumentStatusBar({ item, roles, onChangeStatus }: Props
   const isReactivating = isObsolete && pending !== null && pending !== "obsolete";
 
   return (
-    <div className="mb-3 rounded-card bg-white px-6 py-4 shadow-card">
+    <div className="h-full rounded-card bg-white px-8 py-4 shadow-card">
       {isObsolete && (
         <div className="mb-3 flex items-center justify-between rounded-btn bg-red-50 px-3 py-2">
           <span className="flex items-center gap-2 text-[12px] font-medium text-critical">
@@ -61,7 +61,7 @@ export default function DocumentStatusBar({ item, roles, onChangeStatus }: Props
         </div>
       )}
 
-      <div className={`flex items-start ${isObsolete ? "opacity-40" : ""}`}>
+      <div className={`flex items-start gap-3 ${isObsolete ? "opacity-40" : ""}`}>
         {DOCUMENT_TRACK_STATUSES.map((status, idx) => {
           const isGreen = !isObsolete && idx <= currentIdx;
           const isNext = !isObsolete && idx === currentIdx + 1;
@@ -73,13 +73,13 @@ export default function DocumentStatusBar({ item, roles, onChangeStatus }: Props
           return (
             <div key={status} className="flex flex-1 flex-col items-center">
               <div
-                className="text-center text-[10px] font-semibold uppercase tracking-[0.05em]"
+                className="text-center text-[11.5px] font-semibold uppercase tracking-[0.05em]"
                 style={{ color: isGreen ? "#28a745" : isNext ? "#0d08d2" : "#8a8ca6" }}
               >
                 {STEP_LABEL[status]}
               </div>
 
-              <div className="mt-1.5 flex w-full items-center">
+              <div className="mt-2 flex w-full items-center">
                 <div className="flex-1">
                   {idx > 0 && (
                     <div
@@ -95,13 +95,13 @@ export default function DocumentStatusBar({ item, roles, onChangeStatus }: Props
                 <button
                   onClick={() => setPending(status)}
                   title={`Set status to ${STEP_LABEL[status]}`}
-                  className="flex h-[18px] w-[18px] shrink-0 cursor-pointer items-center justify-center rounded-full transition-transform hover:scale-110"
+                  className="flex h-[22px] w-[22px] shrink-0 cursor-pointer items-center justify-center rounded-full transition-transform hover:scale-110"
                   style={{
                     background: isGreen ? "#28a745" : "transparent",
                     border: isGreen ? "none" : isNext ? "2px solid #0d08d2" : "2px solid #D1D5DB",
                   }}
                 >
-                  {isGreen && <Check size={10} strokeWidth={3} color="#fff" />}
+                  {isGreen && <Check size={12} strokeWidth={3} color="#fff" />}
                 </button>
 
                 <div className="flex-1">
@@ -118,13 +118,13 @@ export default function DocumentStatusBar({ item, roles, onChangeStatus }: Props
               </div>
 
               <div
-                className="mt-0.5 text-center text-[11px] font-medium leading-snug"
+                className="mt-1.5 text-center text-[12.5px] font-medium leading-snug"
                 style={{ color: "#8a8ca6" }}
               >
                 {ownerLabel(status)}
               </div>
               {displayDate && (
-                <div className="mt-0.5 text-center text-[10px]" style={{ color: "#8a8ca6" }}>
+                <div className="mt-0.5 text-center text-[11px]" style={{ color: "#8a8ca6" }}>
                   {formatDateYMD(displayDate)}
                 </div>
               )}

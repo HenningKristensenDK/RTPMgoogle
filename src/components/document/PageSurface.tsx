@@ -11,7 +11,13 @@ import {
   updateDocumentAnnotation,
   deleteDocumentAnnotation,
 } from "../../firebase/firestore";
-import { COMMENT_STATUS_META, effectiveKind, formatTime } from "../../lib/format";
+import {
+  COMMENT_STATUS_LABEL,
+  COMMENT_STATUS_META,
+  commentColor,
+  effectiveKind,
+  formatTime,
+} from "../../lib/format";
 
 export type Tool =
   | "select"
@@ -154,6 +160,9 @@ export default function PageSurface({
   const [draft, setDraft] = useState<Draft | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [selection, setSelection] = useState<SelectionBox | null>(null);
+  // Which anchored comment is "opened" on the page — intensifies its highlight
+  // and shows an inline preview so you can read it without leaving the viewer.
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
 
   const isSelectMode = activeTool === "select";
   const pins = annotations.filter((a) => effectiveKind(a) === "comment");
@@ -204,15 +213,37 @@ export default function PageSurface({
     if (activeTool === "comment_area") {
       onCreateCommentFromAnchor({ page: pageNumber, xPct: x1, yPct: y1, x2Pct: x2, y2Pct: y2 }, "");
     } else if (activeTool === "arrow") {
-      setDraft({ kind: "arrow", xPct: dragStart.xPct, yPct: dragStart.yPct, x2Pct: dragCurrent.xPct, y2Pct: dragCurrent.yPct, text: "" });
+      // Markup shapes are quick visual marks now — save straight away, no note prompt.
+      void saveShape("arrow", dragStart.xPct, dragStart.yPct, dragCurrent.xPct, dragCurrent.yPct);
     } else {
-      setDraft({ kind: activeTool as AnnotationKind, xPct: x1, yPct: y1, x2Pct: x2, y2Pct: y2, text: "" });
+      void saveShape(activeTool as AnnotationKind, x1, y1, x2, y2);
     }
     setDragStart(null);
     setDragCurrent(null);
   }
 
+  async function saveShape(kind: AnnotationKind, x: number, y: number, x2: number, y2: number) {
+    await addDocumentAnnotation({
+      documentId,
+      page: pageNumber,
+      kind,
+      xPct: x,
+      yPct: y,
+      x2Pct: x2,
+      y2Pct: y2,
+      text: "",
+      authorUid,
+      authorName,
+      resolved: false,
+    });
+  }
+
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
+    // Clicking empty page area dismisses an open comment preview.
+    if (isSelectMode) {
+      if (activeCommentId) setActiveCommentId(null);
+      return;
+    }
     if (activeTool !== "comment") return;
     const p = pointFromEvent(e);
     if (!p) return;
@@ -328,6 +359,33 @@ export default function PageSurface({
             <path d="M0,0 L8,4 L0,8 Z" fill={KIND_COLOR.arrow} />
           </marker>
         </defs>
+
+        {/* Anchored-comment highlights — subtle tint always visible, brighter when active/flashing */}
+        {comments.map((c) => {
+          const a = c.anchor;
+          if (!a || a.x2Pct === undefined || a.y2Pct === undefined) return null;
+          const color = commentColor(c.commentNo);
+          const lit = activeCommentId === c.id || flashCommentId === c.id;
+          const left = Math.min(a.xPct, a.x2Pct);
+          const top = Math.min(a.yPct, a.y2Pct);
+          return (
+            <rect
+              key={`region-${c.id}`}
+              x={`${left * 100}%`}
+              y={`${top * 100}%`}
+              width={`${Math.abs(a.x2Pct - a.xPct) * 100}%`}
+              height={`${Math.abs(a.y2Pct - a.yPct) * 100}%`}
+              rx={3}
+              fill={color}
+              fillOpacity={lit ? 0.22 : 0.1}
+              stroke={color}
+              strokeOpacity={lit ? 0.9 : 0.28}
+              strokeWidth={lit ? 2 : 1}
+              style={{ pointerEvents: "none", transition: "fill-opacity 160ms ease, stroke-opacity 160ms ease" }}
+            />
+          );
+        })}
+
         {shapes.map((a) => {
           const kind = effectiveKind(a) as "highlight" | "arrow" | "rectangle";
           return (
@@ -378,33 +436,86 @@ export default function PageSurface({
         </button>
       ))}
 
-      {/* Anchored comment-sheet markers */}
+      {/* Anchored comment pins — a teardrop whose tip points at the region, in the comment's own colour */}
       {comments.map((c) => {
-        if (!c.anchor) return null;
-        const cx = ((c.anchor.x2Pct ?? c.anchor.xPct) + c.anchor.xPct) / 2;
-        const cy = ((c.anchor.y2Pct ?? c.anchor.yPct) + c.anchor.yPct) / 2;
-        const meta = COMMENT_STATUS_META[c.status];
+        const a = c.anchor;
+        if (!a) return null;
+        const color = commentColor(c.commentNo);
+        const tipX = a.x2Pct !== undefined ? (a.xPct + a.x2Pct) / 2 : a.xPct;
+        const tipY = a.y2Pct !== undefined ? Math.min(a.yPct, a.y2Pct) : a.yPct;
+        const active = activeCommentId === c.id;
         const flashing = flashCommentId === c.id;
+        const closed = c.status === "closed";
         return (
           <button
             key={c.id}
             onClick={(e) => {
               e.stopPropagation();
-              onOpenComment(c);
+              setActiveCommentId(active ? null : c.id);
             }}
-            className={`absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-[11px] font-bold shadow-panel transition-transform ${flashing ? "animate-bounce" : ""}`}
+            className={`absolute -translate-x-1/2 -translate-y-full transition-transform hover:scale-110 ${flashing ? "animate-pulse" : ""}`}
             style={{
-              left: `${cx * 100}%`,
-              top: `${cy * 100}%`,
-              background: meta.text,
-              color: "#fff",
+              left: `${tipX * 100}%`,
+              top: `${tipY * 100}%`,
               pointerEvents: isSelectMode ? "auto" : "none",
-              boxShadow: flashing ? `0 0 0 4px ${meta.bg}` : undefined,
+              opacity: closed && !active ? 0.65 : 1,
+              zIndex: active || flashing ? 25 : 10,
             }}
             title={`#${c.commentNo}: ${c.text}`}
           >
-            {c.commentNo}
+            <svg width="26" height="34" viewBox="0 0 26 34" style={{ display: "block", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.3))" }}>
+              <path
+                d="M13 33 C13 33 24 19 24 12 A11 11 0 1 0 2 12 C2 19 13 33 13 33 Z"
+                fill={color}
+                stroke="#fff"
+                strokeWidth="2"
+              />
+              <text x="13" y="16" textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff">
+                {c.commentNo}
+              </text>
+            </svg>
           </button>
+        );
+      })}
+
+      {/* Inline preview of the opened comment — read it without leaving the document */}
+      {comments.map((c) => {
+        const a = c.anchor;
+        if (!a || activeCommentId !== c.id) return null;
+        const color = commentColor(c.commentNo);
+        const px = a.x2Pct !== undefined ? (a.xPct + a.x2Pct) / 2 : a.xPct;
+        const py = a.y2Pct !== undefined ? Math.max(a.yPct, a.y2Pct) : a.yPct;
+        const meta = COMMENT_STATUS_META[c.status];
+        return (
+          <div
+            key={`cpop-${c.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute z-30 w-60 -translate-x-1/2 rounded-card border bg-white p-3 shadow-panel"
+            style={{ left: `${px * 100}%`, top: `${py * 100}%`, marginTop: 10, borderColor: color, pointerEvents: "auto" }}
+          >
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold" style={{ color }}>
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] text-white" style={{ background: color }}>
+                  {c.commentNo}
+                </span>
+                Comment {c.commentNo}
+              </span>
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ color: meta.text, background: meta.bg }}>
+                {COMMENT_STATUS_LABEL[c.status]}
+              </span>
+            </div>
+            <p className="text-[12px] text-ink" style={{ display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              {c.text}
+            </p>
+            {c.section && <p className="mt-1 text-[10.5px] text-gray-400">Section {c.section}</p>}
+            <button
+              onClick={() => onOpenComment(c)}
+              className="mt-2.5 w-full rounded-btn py-1.5 text-[11px] font-semibold text-white hover:opacity-90"
+              style={{ background: color }}
+            >
+              Open in Comment Sheet
+            </button>
+          </div>
         );
       })}
 

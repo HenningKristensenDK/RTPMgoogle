@@ -15,6 +15,7 @@ import {
   MoveVertical,
   FileText,
   ExternalLink,
+  MessageSquareText,
   type LucideIcon,
 } from "lucide-react";
 import type { CommentAnchor, DocumentAnnotation, DocumentComment, DocumentItem } from "../../types";
@@ -33,6 +34,8 @@ interface Props {
   comments: DocumentComment[];
   onCreateCommentFromAnchor: (anchor: CommentAnchor, quotedText: string) => void;
   onOpenComment: (comment: DocumentComment) => void;
+  /** Open the full Comment Sheet (from the on-page shortcut). */
+  onOpenSheet: () => void;
   /** Bump `nonce` to jump the viewer to a comment's anchor and flash its marker. */
   scrollTarget: { commentId: string; nonce: number } | null;
 }
@@ -57,6 +60,7 @@ export default function DocumentViewer({
   comments,
   onCreateCommentFromAnchor,
   onOpenComment,
+  onOpenSheet,
   scrollTarget,
 }: Props) {
   const isPdf = item.fileType === "application/pdf";
@@ -165,6 +169,8 @@ export default function DocumentViewer({
     return map;
   }, [comments]);
 
+  const anchoredCount = useMemo(() => comments.filter((c) => c.anchor).length, [comments]);
+
   // ---- Non-previewable fallback ----
   if (!isPdf && !isImage) {
     return (
@@ -200,7 +206,21 @@ export default function DocumentViewer({
   );
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
+      {/* On-page shortcut into the Comment Sheet — shows how many comments live on this document */}
+      {anchoredCount > 0 && (
+        <button
+          onClick={onOpenSheet}
+          title={`View ${anchoredCount} comment${anchoredCount === 1 ? "" : "s"} on this document`}
+          className="absolute right-2 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-1 rounded-full border border-bordergray bg-white px-2 py-3 shadow-panel transition-colors hover:bg-gray-50"
+        >
+          <MessageSquareText size={17} style={{ color: "#0d08d2" }} />
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo px-1 text-[10px] font-bold text-white">
+            {anchoredCount}
+          </span>
+        </button>
+      )}
+
       {/* Toolbar */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">

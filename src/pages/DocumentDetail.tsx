@@ -111,6 +111,12 @@ export default function DocumentDetail() {
     setCommentSheetOpen(true);
   }
 
+  // On-page shortcut → open the full Comment Sheet (no specific row focused).
+  function handleOpenSheet() {
+    setSheetFocusId(null);
+    setCommentSheetOpen(true);
+  }
+
   // Comment Sheet "locate in PDF" → close the sheet and jump the viewer to the anchor.
   function handleJumpToAnchor(comment: DocumentComment) {
     setCommentSheetOpen(false);
@@ -172,6 +178,7 @@ export default function DocumentDetail() {
                 comments={comments}
                 onCreateCommentFromAnchor={handleCreateCommentFromAnchor}
                 onOpenComment={handleOpenComment}
+                onOpenSheet={handleOpenSheet}
                 scrollTarget={scrollTarget}
                 onPatch={(patch) => patchItem(item.id, patch)}
                 onChangeStatus={handleChangeStatus}

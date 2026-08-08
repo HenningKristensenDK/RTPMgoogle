@@ -19,6 +19,7 @@ interface Props {
   comments: DocumentComment[];
   onCreateCommentFromAnchor: (anchor: CommentAnchor, quotedText: string) => void;
   onOpenComment: (comment: DocumentComment) => void;
+  onOpenSheet: () => void;
   scrollTarget: { commentId: string; nonce: number } | null;
   onPatch: (patch: Partial<DocumentItem>) => void;
   onChangeStatus: (to: DocumentStatus) => void;
@@ -34,6 +35,7 @@ export default function DocumentPanel({
   comments,
   onCreateCommentFromAnchor,
   onOpenComment,
+  onOpenSheet,
   scrollTarget,
   onPatch,
   onChangeStatus,
@@ -44,62 +46,73 @@ export default function DocumentPanel({
     "flex flex-1 items-center justify-center gap-1.5 rounded-btn py-1.5 text-xs font-semibold transition-colors";
 
   return (
-    <div className="flex h-full gap-4 p-5">
-      {/* Viewer — dominant column */}
-      <div className="min-w-0 flex-[1.6]">
-        <Suspense
-          fallback={
-            <div className="flex h-full items-center justify-center text-sm text-gray-400">
-              Loading viewer…
-            </div>
-          }
-        >
-          <DocumentViewer
-            item={item}
-            authorUid={authorUid}
-            authorName={authorName}
-            comments={comments}
-            onCreateCommentFromAnchor={onCreateCommentFromAnchor}
-            onOpenComment={onOpenComment}
-            scrollTarget={scrollTarget}
-          />
-        </Suspense>
+    <div className="flex h-full flex-col gap-4 p-5">
+      {/* Header + status tracker — full width, so the tracker has room to breathe */}
+      <div className="flex shrink-0 items-stretch gap-4">
+        <div className="w-[360px] shrink-0">
+          <DocumentHeader item={item} onTitleChange={(title) => onPatch({ title })} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <DocumentStatusBar item={item} roles={roles} onChangeStatus={onChangeStatus} />
+        </div>
       </div>
 
-      {/* Sidebar — Details / Chat */}
-      <div className="scroll-thin flex w-[380px] shrink-0 flex-col gap-3 overflow-auto">
-        <div className="flex gap-1 rounded-btn border border-bordergray bg-white p-1">
-          <button
-            onClick={() => setTab("details")}
-            className={`${tabBase} ${
-              tab === "details" ? "bg-indigo text-white" : "text-gray-500 hover:bg-gray-50"
-            }`}
+      <div className="flex min-h-0 flex-1 gap-4">
+        {/* Viewer — dominant column */}
+        <div className="min-w-0 flex-[1.6]">
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center text-sm text-gray-400">
+                Loading viewer…
+              </div>
+            }
           >
-            <FileText size={13} /> Details
-          </button>
-          <button
-            onClick={() => setTab("chat")}
-            className={`${tabBase} ${
-              tab === "chat" ? "bg-indigo text-white" : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            <MessageSquare size={13} /> Chat
-          </button>
+            <DocumentViewer
+              item={item}
+              authorUid={authorUid}
+              authorName={authorName}
+              comments={comments}
+              onCreateCommentFromAnchor={onCreateCommentFromAnchor}
+              onOpenComment={onOpenComment}
+              onOpenSheet={onOpenSheet}
+              scrollTarget={scrollTarget}
+            />
+          </Suspense>
         </div>
 
-        {tab === "details" ? (
-          <>
-            <DocumentHeader item={item} onTitleChange={(title) => onPatch({ title })} />
-            <DocumentStatusBar item={item} roles={roles} onChangeStatus={onChangeStatus} />
-            <DocumentMetadata item={item} roles={roles} onPatch={onPatch} />
-            <InvolvedPartiesCard roles={roles} selectedIds={item.workstreamIds} />
-            <DocumentNotes item={item} onPatch={onPatch} />
-          </>
-        ) : (
-          <div className="h-full min-h-[500px] overflow-hidden rounded-card border border-bordergray">
-            <DocumentChatPanel item={item} roles={roles} />
+        {/* Sidebar — Details / Chat */}
+        <div className="scroll-thin flex w-[340px] shrink-0 flex-col gap-3 overflow-auto">
+          <div className="flex gap-1 rounded-btn border border-bordergray bg-white p-1">
+            <button
+              onClick={() => setTab("details")}
+              className={`${tabBase} ${
+                tab === "details" ? "bg-indigo text-white" : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              <FileText size={13} /> Details
+            </button>
+            <button
+              onClick={() => setTab("chat")}
+              className={`${tabBase} ${
+                tab === "chat" ? "bg-indigo text-white" : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              <MessageSquare size={13} /> Chat
+            </button>
           </div>
-        )}
+
+          {tab === "details" ? (
+            <>
+              <DocumentMetadata item={item} roles={roles} onPatch={onPatch} />
+              <InvolvedPartiesCard roles={roles} selectedIds={item.workstreamIds} />
+              <DocumentNotes item={item} onPatch={onPatch} />
+            </>
+          ) : (
+            <div className="h-full min-h-[500px] overflow-hidden rounded-card border border-bordergray">
+              <DocumentChatPanel item={item} roles={roles} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

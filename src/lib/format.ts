@@ -103,6 +103,28 @@ export const COMMENT_STATUS_META: Record<CommentStatus, { text: string; bg: stri
   closed: { text: "#1b7a34", bg: "#e6f6ea" }, // green
 };
 
+/**
+ * A soft, pleasant palette so each anchored comment gets its own recognisable
+ * colour on the document — used for the pin marker and its highlight tint.
+ * Medium saturation reads clearly as a pin yet stays gentle at low fill-opacity.
+ */
+export const COMMENT_COLORS = [
+  "#6366f1", // indigo
+  "#14b8a6", // teal
+  "#f59e0b", // amber
+  "#ec4899", // pink
+  "#8b5cf6", // violet
+  "#0ea5e9", // sky
+  "#10b981", // emerald
+  "#f97316", // orange
+] as const;
+
+/** Stable colour for a comment, cycling through the palette by its number. */
+export function commentColor(commentNo: number): string {
+  const n = COMMENT_COLORS.length;
+  return COMMENT_COLORS[(((commentNo - 1) % n) + n) % n];
+}
+
 /** Whoever has the ball for a risk's current status. No entry for "resolved" — nothing left to own. */
 export const NEXT_STEP_OWNER: Record<string, string> = {
   identified: "Package PM",
