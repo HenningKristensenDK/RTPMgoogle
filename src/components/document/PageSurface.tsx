@@ -382,7 +382,10 @@ export default function PageSurface({
           markers/pins/shapes set their own pointer-events. */}
       <svg
         className="absolute inset-0 h-full w-full"
-        style={{ pointerEvents: "none" }}
+        // Sit above react-pdf's text layer (z-index 2) so markup shapes are
+        // clickable (select/erase) over text; pointer-events:none still lets
+        // text selection pass through wherever there's no shape.
+        style={{ pointerEvents: "none", zIndex: 5 }}
       >
         <defs>
           <marker id="rtpm-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="userSpaceOnUse">
@@ -460,6 +463,7 @@ export default function PageSurface({
             top: `${a.yPct * 100}%`,
             background: a.resolved ? RESOLVED_COLOR : KIND_COLOR.comment,
             pointerEvents: marksActive ? "auto" : "none",
+            zIndex: 6,
           }}
           title={isEraser ? "Click to erase" : a.text}
         >
