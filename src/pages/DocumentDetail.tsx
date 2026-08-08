@@ -129,7 +129,7 @@ export default function DocumentDetail() {
       style={{ background: "rgba(7, 4, 116, 0.45)" }}
       onClick={(e) => e.target === e.currentTarget && close()}
     >
-      <div className="flex h-[94vh] w-[97vw] max-w-[1800px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="flex h-[96vh] w-[98vw] max-w-[1850px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         {notFound ? (
           <div className="p-8 text-sm text-gray-500">
             Document not found.{" "}

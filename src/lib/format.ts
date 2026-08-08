@@ -1,5 +1,5 @@
 import type { Timestamp } from "firebase/firestore";
-import type { AnnotationKind, CommentStatus, CorrespondenceStatus, DocumentAnnotation, DocumentStatus, Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
+import type { AnnotationKind, CommentRole, CommentStatus, CorrespondenceStatus, DocumentAnnotation, DocumentComment, DocumentStatus, Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
 
 /** Pre-existing docs have no `kind` field — treat those as plain risks. */
 export function riskKind(risk: Pick<Risk, "kind">): RiskKind {
@@ -135,6 +135,49 @@ export const NEXT_STEP_OWNER: Record<string, string> = {
 /** The single "responsible" party to show where only one avatar fits (Risk Card, Risk Register table). */
 export function pickResponsible(role: RoleResponsibility): Party | null {
   return role.responsibleContractor ?? role.responsibleCustomer;
+}
+
+/**
+ * Everyone in the RACI who could be @-tagged into a comment thread — accountable,
+ * both responsibles, consulted and informed — deduped by name. Scoped to one
+ * workstream when given, otherwise across all roles.
+ */
+export function raciPeople(roles: RoleResponsibility[], workstreamId?: string): Party[] {
+  const scoped = workstreamId ? roles.filter((r) => r.id === workstreamId) : roles;
+  const pool = scoped.length ? scoped : roles; // fall back to all if the workstream matched nothing
+  const out: Party[] = [];
+  const seen = new Set<string>();
+  const add = (p: Party | null | undefined) => {
+    if (!p?.name || seen.has(p.name)) return;
+    seen.add(p.name);
+    out.push(p);
+  };
+  pool.forEach((r) => {
+    add(r.accountable);
+    add(r.responsibleCustomer);
+    add(r.responsibleContractor);
+    r.consulted.forEach(add);
+    r.informedCustomer.forEach(add);
+    r.informedContractor.forEach(add);
+  });
+  return out;
+}
+
+/**
+ * Which side of a comment the signed-in user is on, so we never let them post as
+ * the wrong party. Commenter is matched by uid (or name); responder and tagged
+ * participants by display name. `null` means they're not a participant yet.
+ */
+export function resolveMyRole(
+  comment: Pick<DocumentComment, "commenterUid" | "commenterName" | "responderName" | "participants">,
+  currentUid: string,
+  currentName: string
+): CommentRole | null {
+  if (currentUid && currentUid === comment.commenterUid) return "commenter";
+  if (currentName && currentName === comment.commenterName) return "commenter";
+  if (currentName && currentName === comment.responderName) return "responder";
+  if ((comment.participants ?? []).some((p) => p.name === currentName)) return "participant";
+  return null;
 }
 
 export function initials(name: string): string {

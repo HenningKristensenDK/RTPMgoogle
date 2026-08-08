@@ -7,10 +7,12 @@ function csvCell(value: string | number): string {
   return `"${s.replace(/"/g, '""')}"`;
 }
 
+const ROLE_LABEL = { commenter: "Commenter", responder: "Responder", participant: "Participant" } as const;
+
 /** Flatten a comment's reply thread into one human-readable cell. */
 function threadText(comment: DocumentComment): string {
   return (comment.replies || [])
-    .map((r) => `[${r.role === "responder" ? "Responder" : "Commenter"}] ${r.authorName}: ${r.text}`)
+    .map((r) => `[${ROLE_LABEL[r.role] ?? "Commenter"}] ${r.authorName}: ${r.text}`)
     .join("\n");
 }
 

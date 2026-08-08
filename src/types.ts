@@ -271,9 +271,13 @@ export const COMMENT_STATUSES: CommentStatus[] = ["open", "answered", "closed"];
 export type IncorporatedFlag = "yes" | "no" | "";
 
 /** One entry in a comment's back-and-forth thread (after the original comment). */
+/** commenter = customer/reviewer who raised it; responder = assigned contractor;
+ * participant = someone else on the project @-tagged into the thread to weigh in. */
+export type CommentRole = "commenter" | "responder" | "participant";
+
 export interface CommentReply {
   id: string;
-  role: "commenter" | "responder"; // commenter = customer/reviewer side, responder = contractor
+  role: CommentRole;
   authorUid: string;
   authorName: string;
   text: string;
@@ -303,7 +307,9 @@ export interface DocumentComment {
   commenterName: string;
   responderName: string; // display name of the assigned responder (defaults from R&R)
   text: string; // the original comment (commenter's)
-  replies: CommentReply[]; // alternating thread after the original
+  replies: CommentReply[]; // multi-party thread after the original
+  /** Extra project people @-tagged into the thread (beyond commenter/responder) who may then reply. */
+  participants?: Party[];
   status: CommentStatus;
   incorporated: IncorporatedFlag;
   /** Set when the comment was raised from the viewer — lets it show as a marker on the page. */

@@ -42,44 +42,57 @@ export default function DocumentStatusBar({ item, roles, onChangeStatus }: Props
   const obsoleteEntry = lastEntry("obsolete");
   const isReactivating = isObsolete && pending !== null && pending !== "obsolete";
 
-  return (
-    <div className="h-full rounded-card bg-white px-8 py-4 shadow-card">
-      {isObsolete && (
-        <div className="mb-3 flex items-center justify-between rounded-btn bg-red-50 px-3 py-2">
-          <span className="flex items-center gap-2 text-[12px] font-medium text-critical">
-            <Ban size={14} />
-            Marked obsolete
-            {obsoleteEntry?.changedBy ? ` by ${obsoleteEntry.changedBy}` : ""}
-            {obsoleteEntry?.changedAt ? ` on ${formatDateYMD(obsoleteEntry.changedAt)}` : ""}
-          </span>
-          <button
-            onClick={() => setPending("registered")}
-            className="flex items-center gap-1 rounded-btn border border-critical px-2 py-1 text-[11px] font-semibold text-critical hover:bg-red-100"
-          >
-            <RotateCcw size={12} /> Reactivate
-          </button>
-        </div>
-      )}
+  if (isObsolete) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-btn bg-red-50 px-3 py-2">
+        <span className="flex items-center gap-2 text-[12px] font-medium text-critical">
+          <Ban size={14} />
+          Marked obsolete
+          {obsoleteEntry?.changedBy ? ` by ${obsoleteEntry.changedBy}` : ""}
+          {obsoleteEntry?.changedAt ? ` on ${formatDateYMD(obsoleteEntry.changedAt)}` : ""}
+        </span>
+        <button
+          onClick={() => setPending("registered")}
+          className="flex shrink-0 items-center gap-1 rounded-btn border border-critical px-2 py-1 text-[11px] font-semibold text-critical hover:bg-red-100"
+        >
+          <RotateCcw size={12} /> Reactivate
+        </button>
+        {pending && (
+          <ConfirmDialog
+            label={STEP_LABEL[pending]}
+            title={isReactivating ? "Reactivate this document?" : "Change status?"}
+            danger={false}
+            onCancel={() => setPending(null)}
+            onConfirm={() => {
+              onChangeStatus(pending);
+              setPending(null);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
-      <div className={`flex items-start gap-3 ${isObsolete ? "opacity-40" : ""}`}>
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex flex-1 items-start">
         {DOCUMENT_TRACK_STATUSES.map((status, idx) => {
-          const isGreen = !isObsolete && idx <= currentIdx;
-          const isNext = !isObsolete && idx === currentIdx + 1;
+          const isGreen = idx <= currentIdx;
+          const isNext = idx === currentIdx + 1;
           const isLast = idx === DOCUMENT_TRACK_STATUSES.length - 1;
           const leftLineSolid = isGreen;
-          const rightLineSolid = !isObsolete && idx < currentIdx;
-          const displayDate = isGreen ? lastEntry(status)?.changedAt : null;
+          const rightLineSolid = idx < currentIdx;
 
           return (
             <div key={status} className="flex flex-1 flex-col items-center">
               <div
-                className="text-center text-[11.5px] font-semibold uppercase tracking-[0.05em]"
+                className="text-center text-[10px] font-semibold uppercase tracking-[0.04em]"
                 style={{ color: isGreen ? "#28a745" : isNext ? "#0d08d2" : "#8a8ca6" }}
               >
                 {STEP_LABEL[status]}
               </div>
 
-              <div className="mt-2 flex w-full items-center">
+              <div className="mt-1 flex w-full items-center">
                 <div className="flex-1">
                   {idx > 0 && (
                     <div
@@ -95,13 +108,13 @@ export default function DocumentStatusBar({ item, roles, onChangeStatus }: Props
                 <button
                   onClick={() => setPending(status)}
                   title={`Set status to ${STEP_LABEL[status]}`}
-                  className="flex h-[22px] w-[22px] shrink-0 cursor-pointer items-center justify-center rounded-full transition-transform hover:scale-110"
+                  className="flex h-[16px] w-[16px] shrink-0 cursor-pointer items-center justify-center rounded-full transition-transform hover:scale-110"
                   style={{
                     background: isGreen ? "#28a745" : "transparent",
                     border: isGreen ? "none" : isNext ? "2px solid #0d08d2" : "2px solid #D1D5DB",
                   }}
                 >
-                  {isGreen && <Check size={12} strokeWidth={3} color="#fff" />}
+                  {isGreen && <Check size={10} strokeWidth={3} color="#fff" />}
                 </button>
 
                 <div className="flex-1">
@@ -118,67 +131,77 @@ export default function DocumentStatusBar({ item, roles, onChangeStatus }: Props
               </div>
 
               <div
-                className="mt-1.5 text-center text-[12.5px] font-medium leading-snug"
+                className="mt-0.5 max-w-full truncate px-1 text-center text-[10.5px] font-medium leading-tight"
                 style={{ color: "#8a8ca6" }}
+                title={ownerLabel(status)}
               >
                 {ownerLabel(status)}
               </div>
-              {displayDate && (
-                <div className="mt-0.5 text-center text-[11px]" style={{ color: "#8a8ca6" }}>
-                  {formatDateYMD(displayDate)}
-                </div>
-              )}
             </div>
           );
         })}
       </div>
 
-      {!isObsolete && (
-        <div className="mt-3 flex justify-end border-t border-bordergray pt-3">
-          <button
-            onClick={() => setPending("obsolete")}
-            className="flex items-center gap-1.5 rounded-btn border border-bordergray px-2.5 py-1 text-[11px] font-medium text-gray-500 hover:border-critical hover:text-critical"
-          >
-            <Ban size={13} /> Mark Obsolete
-          </button>
-        </div>
-      )}
+      <button
+        onClick={() => setPending("obsolete")}
+        title="Mark obsolete"
+        className="flex shrink-0 items-center gap-1 rounded-btn border border-bordergray px-2 py-1 text-[10.5px] font-medium text-gray-500 hover:border-critical hover:text-critical"
+      >
+        <Ban size={12} /> Obsolete
+      </button>
 
       {pending && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30">
-          <div className="w-[320px] rounded-card bg-white p-5 shadow-panel">
-            <p className="text-sm font-semibold text-ink">
-              {pending === "obsolete"
-                ? "Mark this document obsolete?"
-                : isReactivating
-                ? "Reactivate this document?"
-                : "Change status?"}
-            </p>
-            <p className="mt-1 text-sm text-gray-500">
-              Set this document to{" "}
-              <span className="font-medium text-ink">{STEP_LABEL[pending]}</span>?
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setPending(null)}
-                className="rounded-btn border border-bordergray px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  onChangeStatus(pending);
-                  setPending(null);
-                }}
-                className="rounded-btn px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90"
-                style={{ background: pending === "obsolete" ? "#e63946" : "#0d08d2" }}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          label={STEP_LABEL[pending]}
+          title={pending === "obsolete" ? "Mark this document obsolete?" : "Change status?"}
+          danger={pending === "obsolete"}
+          onCancel={() => setPending(null)}
+          onConfirm={() => {
+            onChangeStatus(pending);
+            setPending(null);
+          }}
+        />
       )}
+    </div>
+  );
+}
+
+function ConfirmDialog({
+  label,
+  title,
+  danger,
+  onCancel,
+  onConfirm,
+}: {
+  label: string;
+  title: string;
+  danger: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30">
+      <div className="w-[320px] rounded-card bg-white p-5 shadow-panel">
+        <p className="text-sm font-semibold text-ink">{title}</p>
+        <p className="mt-1 text-sm text-gray-500">
+          Set this document to <span className="font-medium text-ink">{label}</span>?
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="rounded-btn border border-bordergray px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="rounded-btn px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90"
+            style={{ background: danger ? "#e63946" : "#0d08d2" }}
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

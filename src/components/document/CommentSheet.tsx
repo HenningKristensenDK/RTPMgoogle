@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Timestamp } from "firebase/firestore";
-import { X, Plus, Download, Trash2, Send, MapPin } from "lucide-react";
+import { X, Plus, Download, Trash2, Send, MapPin, AtSign, Lock } from "lucide-react";
 import {
   COMMENT_STATUSES,
   type CommentReply,
+  type CommentRole,
   type CommentStatus,
   type DocumentComment,
   type DocumentItem,
   type IncorporatedFlag,
+  type Party,
   type RoleResponsibility,
 } from "../../types";
 import {
@@ -17,7 +19,7 @@ import {
   updateDocumentComment,
   deleteDocumentComment,
 } from "../../firebase/firestore";
-import { COMMENT_STATUS_LABEL, COMMENT_STATUS_META, formatTime } from "../../lib/format";
+import { COMMENT_STATUS_LABEL, COMMENT_STATUS_META, formatTime, raciPeople, resolveMyRole } from "../../lib/format";
 import { commentsToCsv, downloadCsv } from "../../lib/commentCsv";
 import { toast } from "../../lib/toast";
 import NewCommentModal from "./NewCommentModal";
@@ -234,7 +236,7 @@ export default function CommentSheet({ item, roles, currentUid, currentName, ini
           {/* Thread pane */}
           <div className="min-w-0 flex-1">
             {selected ? (
-              <CommentThread key={selected.id} comment={selected} currentUid={currentUid} currentName={currentName} />
+              <CommentThread key={selected.id} comment={selected} roles={roles} currentUid={currentUid} currentName={currentName} />
             ) : (
               <div className="flex h-full items-center justify-center px-6 text-center text-sm text-gray-400">
                 Select a comment to view and respond to its thread.
@@ -286,28 +288,102 @@ export default function CommentSheet({ item, roles, currentUid, currentName, ini
 }
 
 // ---------------------------------------------------------------------------
-// Thread pane for the selected comment
+// Thread pane for the selected comment — a multi-party chat
 // ---------------------------------------------------------------------------
+const ROLE_CHIP: Record<CommentRole, { label: string; style: React.CSSProperties }> = {
+  commenter: { label: "Commenter", style: { background: "#e7e6fa", color: "#0d08d2" } },
+  responder: { label: "Responder", style: { background: "#fff3e0", color: "#cc7000" } },
+  participant: { label: "Participant", style: { background: "#ede9fe", color: "#6d28d9" } },
+};
+
+function RoleChip({ role }: { role: CommentRole }) {
+  const m = ROLE_CHIP[role];
+  return (
+    <span className="rounded-full px-1.5 py-px text-[9px] font-bold uppercase" style={m.style}>
+      {m.label}
+    </span>
+  );
+}
+
 function CommentThread({
   comment,
+  roles,
   currentUid,
   currentName,
 }: {
   comment: DocumentComment;
+  roles: RoleResponsibility[];
   currentUid: string;
   currentName: string;
 }) {
   const [replyText, setReplyText] = useState("");
-  const [replyRole, setReplyRole] = useState<"commenter" | "responder">("responder");
   const [sending, setSending] = useState(false);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  // The signed-in user's fixed role on this comment — never a free choice.
+  const myRole = resolveMyRole(comment, currentUid, currentName);
+  const canPost = myRole !== null;
+  const canTag = myRole === "commenter" || myRole === "responder";
+
+  const participants = comment.participants ?? [];
+
+  // People who could still be tagged: the workstream's RACI, minus those already involved.
+  const involvedNames = useMemo(
+    () => new Set([comment.commenterName, comment.responderName, ...participants.map((p) => p.name)]),
+    [comment.commenterName, comment.responderName, participants]
+  );
+  const taggable = useMemo(
+    () => raciPeople(roles, comment.workstreamId).filter((p) => !involvedNames.has(p.name)),
+    [roles, comment.workstreamId, involvedNames]
+  );
+  const mentionMatches = useMemo(() => {
+    const q = mentionQuery.trim().toLowerCase();
+    return (q ? taggable.filter((p) => p.name.toLowerCase().includes(q)) : taggable).slice(0, 6);
+  }, [taggable, mentionQuery]);
+
+  async function tagPerson(p: Party, opts: { fromMention?: boolean } = {}) {
+    if (involvedNames.has(p.name)) return;
+    try {
+      await updateDocumentComment(comment.id, { participants: [...participants, p] });
+      if (opts.fromMention) {
+        // Replace the trailing "@query" with the chosen name.
+        setReplyText((t) => t.replace(/@(\w*)$/, `@${p.name} `));
+      } else {
+        setReplyText((t) => (t ? `${t} @${p.name} ` : `@${p.name} `));
+      }
+      toast.success(`${p.name} tagged`);
+    } catch {
+      toast.error("Could not tag");
+    } finally {
+      setMentionOpen(false);
+      setMentionQuery("");
+      taRef.current?.focus();
+    }
+  }
+
+  function onReplyChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const v = e.target.value;
+    setReplyText(v);
+    // Open the mention picker while typing an "@word" at the caret (tagging only).
+    const upToCaret = v.slice(0, e.target.selectionStart ?? v.length);
+    const m = /(?:^|\s)@(\w*)$/.exec(upToCaret);
+    if (canTag && m) {
+      setMentionQuery(m[1]);
+      setMentionOpen(true);
+    } else {
+      setMentionOpen(false);
+    }
+  }
 
   async function sendReply() {
     const text = replyText.trim();
-    if (!text) return;
+    if (!text || !myRole) return;
     setSending(true);
     const reply: CommentReply = {
       id: `r-${Date.now()}`,
-      role: replyRole,
+      role: myRole,
       authorUid: currentUid,
       authorName: currentName,
       text,
@@ -318,9 +394,10 @@ function CommentThread({
       const nextReplies = [...(comment.replies || []), reply];
       // A responder answering moves an open comment to "answered".
       const nextStatus =
-        replyRole === "responder" && comment.status === "open" ? "answered" : comment.status;
+        myRole === "responder" && comment.status === "open" ? "answered" : comment.status;
       await updateDocumentComment(comment.id, { replies: nextReplies, status: nextStatus });
       setReplyText("");
+      setMentionOpen(false);
     } catch {
       toast.error("Could not post reply");
     } finally {
@@ -345,17 +422,6 @@ function CommentThread({
     }
   }
 
-  const roleChip = (role: "commenter" | "responder") =>
-    role === "commenter" ? (
-      <span className="rounded-full bg-indigo/10 px-1.5 py-px text-[9px] font-bold uppercase text-indigo">
-        Commenter
-      </span>
-    ) : (
-      <span className="rounded-full bg-amber-100 px-1.5 py-px text-[9px] font-bold uppercase text-amber-700">
-        Responder
-      </span>
-    );
-
   return (
     <div className="flex h-full flex-col">
       {/* Thread header */}
@@ -369,6 +435,21 @@ function CommentThread({
           {comment.page && `Page ${comment.page} · `}
           {comment.commenterName} → {comment.responderName || "unassigned"}
         </p>
+        {participants.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            <span className="text-[10px] font-semibold uppercase text-gray-400">Tagged:</span>
+            {participants.map((p) => (
+              <span
+                key={p.name}
+                className="rounded-full px-1.5 py-px text-[10px] font-medium"
+                style={{ background: "#ede9fe", color: "#6d28d9" }}
+                title={`${p.role} — ${p.organization}`}
+              >
+                @{p.name}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Messages */}
@@ -376,7 +457,7 @@ function CommentThread({
         {/* Original comment */}
         <div className="mb-3">
           <div className="mb-1 flex items-center gap-2">
-            {roleChip("commenter")}
+            <RoleChip role="commenter" />
             <span className="text-[11px] font-medium text-gray-600">{comment.commenterName}</span>
           </div>
           <div className="rounded-card border border-bordergray bg-fog px-3 py-2 text-[13px] text-ink">
@@ -386,20 +467,23 @@ function CommentThread({
 
         {/* Replies */}
         {(comment.replies || []).map((r) => (
-          <div key={r.id} className={`mb-3 ${r.role === "responder" ? "pl-6" : ""}`}>
+          <div key={r.id} className={`mb-3 ${r.role !== "commenter" ? "pl-6" : ""}`}>
             <div className="mb-1 flex items-center gap-2">
-              {roleChip(r.role)}
+              <RoleChip role={r.role} />
               <span className="text-[11px] font-medium text-gray-600">{r.authorName}</span>
               {r.createdAt && (
                 <span className="text-[10px] text-gray-400">{formatTime(r.createdAt)}</span>
               )}
             </div>
             <div
-              className={`rounded-card px-3 py-2 text-[13px] ${
+              className="rounded-card px-3 py-2 text-[13px] text-ink"
+              style={
                 r.role === "responder"
-                  ? "bg-amber-50 text-ink"
-                  : "border border-bordergray bg-white text-ink"
-              }`}
+                  ? { background: "#fff8ef" }
+                  : r.role === "participant"
+                  ? { background: "#f5f3ff" }
+                  : { background: "#fff", border: "1px solid #e6e6f0" }
+              }
             >
               {r.text}
             </div>
@@ -409,47 +493,74 @@ function CommentThread({
 
       {/* Controls */}
       <div className="border-t border-bordergray px-5 py-3">
-        {/* Reply composer */}
-        <div className="mb-3">
-          <div className="mb-1.5 flex items-center gap-1 text-[11px]">
-            <span className="text-gray-400">Reply as:</span>
-            {(["responder", "commenter"] as const).map((role) => (
+        {/* Reply composer — role is fixed by who's signed in; non-participants can't post */}
+        {canPost ? (
+          <div className="mb-3">
+            <div className="mb-1.5 flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1.5 text-gray-400">
+                Posting as <RoleChip role={myRole} />
+                <span className="font-medium text-gray-600">{currentName}</span>
+              </span>
+              {canTag && (
+                <span className="flex items-center gap-1 text-gray-400">
+                  <AtSign size={11} /> type @ to tag someone
+                </span>
+              )}
+            </div>
+            <div className="relative flex items-end gap-2">
+              {/* Mention picker */}
+              {mentionOpen && mentionMatches.length > 0 && (
+                <div className="absolute bottom-full left-0 z-10 mb-1 w-64 overflow-hidden rounded-card border border-bordergray bg-white shadow-panel">
+                  <p className="border-b border-bordergray px-3 py-1.5 text-[10px] font-semibold uppercase text-gray-400">
+                    Tag from RACI
+                  </p>
+                  {mentionMatches.map((p) => (
+                    <button
+                      key={p.name}
+                      onClick={() => tagPerson(p, { fromMention: true })}
+                      className="flex w-full flex-col items-start px-3 py-1.5 text-left hover:bg-gray-50"
+                    >
+                      <span className="text-[12px] font-medium text-ink">{p.name}</span>
+                      <span className="text-[10px] text-gray-400">
+                        {p.role} · {p.organization}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <textarea
+                ref={taRef}
+                value={replyText}
+                onChange={onReplyChange}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !mentionOpen) {
+                    e.preventDefault();
+                    void sendReply();
+                  }
+                  if (e.key === "Escape") setMentionOpen(false);
+                }}
+                placeholder="Write a reply…"
+                rows={2}
+                className="scroll-thin flex-1 resize-none rounded-input border border-bordergray px-3 py-2 text-[13px] outline-none focus:border-indigo"
+              />
               <button
-                key={role}
-                onClick={() => setReplyRole(role)}
-                className={`rounded-full px-2 py-0.5 font-semibold capitalize ${
-                  replyRole === role
-                    ? "bg-indigo text-white"
-                    : "border border-bordergray text-gray-500 hover:bg-gray-50"
-                }`}
+                onClick={sendReply}
+                disabled={sending || !replyText.trim()}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn bg-indigo text-white disabled:opacity-40"
               >
-                {role}
+                <Send size={15} />
               </button>
-            ))}
+            </div>
           </div>
-          <div className="flex items-end gap-2">
-            <textarea
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void sendReply();
-                }
-              }}
-              placeholder="Write a reply…"
-              rows={2}
-              className="scroll-thin flex-1 resize-none rounded-input border border-bordergray px-3 py-2 text-[13px] outline-none focus:border-indigo"
-            />
-            <button
-              onClick={sendReply}
-              disabled={sending || !replyText.trim()}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn bg-indigo text-white disabled:opacity-40"
-            >
-              <Send size={15} />
-            </button>
+        ) : (
+          <div className="mb-3 flex items-start gap-2 rounded-card border border-bordergray bg-fog px-3 py-2.5 text-[12px] text-gray-500">
+            <Lock size={14} className="mt-0.5 shrink-0 text-gray-400" />
+            <span>
+              You're viewing this thread. Only the commenter, responder, or a tagged person can reply —
+              ask the commenter or responder to <span className="font-medium">@-mention</span> you to join.
+            </span>
           </div>
-        </div>
+        )}
 
         {/* Status + incorporated */}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">

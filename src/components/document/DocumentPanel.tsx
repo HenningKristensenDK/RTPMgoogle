@@ -47,11 +47,12 @@ export default function DocumentPanel({
 
   return (
     <div className="flex h-full flex-col gap-4 p-5">
-      {/* Header + status tracker — full width, so the tracker has room to breathe */}
-      <div className="flex shrink-0 items-stretch gap-4">
-        <div className="w-[360px] shrink-0">
+      {/* Header + status tracker — one slim bar so the document keeps maximum height */}
+      <div className="flex shrink-0 items-center gap-4 rounded-card border border-bordergray bg-white px-4 py-2.5 shadow-card">
+        <div className="w-[240px] shrink-0">
           <DocumentHeader item={item} onTitleChange={(title) => onPatch({ title })} />
         </div>
+        <div className="h-9 w-px shrink-0 bg-bordergray" />
         <div className="min-w-0 flex-1">
           <DocumentStatusBar item={item} roles={roles} onChangeStatus={onChangeStatus} />
         </div>

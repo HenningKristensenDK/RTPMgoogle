@@ -7,40 +7,35 @@ interface Props {
   onTitleChange: (title: string) => void;
 }
 
+/** Compact document identity — sits inline in the detail top bar (no card of its own). */
 export default function DocumentHeader({ item, onTitleChange }: Props) {
   const [title, setTitle] = useState(item.title);
 
   return (
-    <div
-      className="rounded-card px-6 py-4 shadow-card"
-      style={{ background: "#e7e6fa" }}
-    >
-      <div className="flex items-start justify-between gap-4">
+    <div className="flex min-w-0 flex-col justify-center">
+      <div className="flex items-center gap-2">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => title !== item.title && onTitleChange(title)}
-          className="min-w-0 flex-1 border-b border-transparent bg-transparent text-[18px] font-semibold text-ink outline-none focus:border-indigo"
+          title={title}
+          className="min-w-0 max-w-[220px] truncate border-b border-transparent bg-transparent text-[14px] font-semibold text-ink outline-none focus:border-indigo"
         />
         <span
-          className="mt-1 shrink-0 rounded-full px-2.5 py-0.5 text-[12px] font-bold"
-          style={{ background: "#fff", color: "#0d08d2" }}
+          className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold"
+          style={{ background: "#e7e6fa", color: "#0d08d2" }}
         >
           {item.docId}
         </span>
       </div>
-
-      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[12px]" style={{ color: "#595b78" }}>
+      <div className="mt-0.5 flex items-center gap-1.5 text-[10.5px]" style={{ color: "#8a8ca6" }}>
         <span
-          className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-          style={{ background: "#fff", color: "#0d08d2" }}
+          className="rounded-full px-1.5 py-px text-[10px] font-semibold"
+          style={{ background: "#f0f0f5", color: "#595b78" }}
         >
           {item.type}
         </span>
-        <span>
-          Created {formatDateYMD(item.createdAt)} · Last edited{" "}
-          {formatDateYMD(item.updatedAt)}
-        </span>
+        <span>· Edited {formatDateYMD(item.updatedAt)}</span>
       </div>
     </div>
   );
