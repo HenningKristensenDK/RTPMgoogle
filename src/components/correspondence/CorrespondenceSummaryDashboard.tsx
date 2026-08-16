@@ -1,5 +1,6 @@
-import type { Organization, Risk, RoleResponsibility } from "../../types";
+import type { CorrespondenceItem, Organization, RoleResponsibility } from "../../types";
 import { TIER_COLORS, DEFAULT_TIER_COLOR } from "../../lib/tiers";
+import { pickResponsible } from "../../lib/format";
 
 const MUTED = "#8a8ca6";
 const SECONDARY = "#595b78";
@@ -32,15 +33,7 @@ function Ring({ pct, color }: { pct: number; color: string }) {
         strokeDashoffset={c * (1 - pct / 100)}
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
       />
-      <text
-        x="50%"
-        y="50%"
-        dy="0.35em"
-        textAnchor="middle"
-        fontSize={13}
-        fontWeight={700}
-        fill={color}
-      >
+      <text x="50%" y="50%" dy="0.35em" textAnchor="middle" fontSize={13} fontWeight={700} fill={color}>
         {pct}%
       </text>
     </svg>
@@ -49,17 +42,14 @@ function Ring({ pct, color }: { pct: number; color: string }) {
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <span
-      className="text-[11px] font-semibold uppercase tracking-wider"
-      style={{ color: MUTED }}
-    >
+    <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
       {children}
     </span>
   );
 }
 
-export default function RiskSummaryDashboard({
-  risks,
+export default function CorrespondenceSummaryDashboard({
+  items,
   roles,
   orgs,
   selectedWorkstream,
@@ -67,7 +57,7 @@ export default function RiskSummaryDashboard({
   selectedTodo,
   onSelectTodo,
 }: {
-  risks: Risk[];
+  items: CorrespondenceItem[];
   roles: RoleResponsibility[];
   orgs: Organization[];
   selectedWorkstream: string | null;
@@ -75,9 +65,10 @@ export default function RiskSummaryDashboard({
   selectedTodo: string | null;
   onSelectTodo: (key: string | null) => void;
 }) {
-  const total = risks.length;
-  const completed = risks.filter((r) => r.status === "resolved").length;
-  const pending = total - completed;
+  const total = items.length;
+  const completed = items.filter((i) => i.status === "completed").length;
+  const obsolete = items.filter((i) => i.status === "obsolete").length;
+  const pending = Math.max(0, total - completed - obsolete);
   const completedPct = total ? Math.round((completed / total) * 100) : 0;
   const pendingPct = total ? 100 - completedPct : 0;
 
@@ -86,24 +77,27 @@ export default function RiskSummaryDashboard({
   roles.forEach((role) => {
     if (seen.has(role.workstream)) return;
     seen.add(role.workstream);
-    const count = risks.filter((r) => r.workstreamIds.includes(role.id)).length;
+    const count = items.filter((i) => i.workstreamIds.includes(role.id)).length;
     workstream.push({ label: role.workstream, count });
   });
   const maxWs = Math.max(...workstream.map((w) => w.count), 1);
 
+  // Whoever currently holds the ball: "sent_accountable" -> that workstream's
+  // Accountable org, "sent_responsible" -> that workstream's Responsible org.
   const orgsByTier = [...orgs].sort((a, b) => a.tier - b.tier);
   const todo: { key: string; label: string; count: number; color: string }[] = orgsByTier.map((org) => ({
     key: org.name,
     label: org.name,
-    count: risks.filter((r) =>
-      roles
-        .filter((role) => r.workstreamIds.includes(role.id))
-        .some(
-          (role) =>
-            role.responsibleCustomer?.organization === org.name ||
-            role.responsibleContractor?.organization === org.name
-        )
-    ).length,
+    count: items.filter((i) => {
+      const itemRoles = roles.filter((role) => i.workstreamIds.includes(role.id));
+      if (i.status === "sent_accountable") {
+        return itemRoles.some((role) => role.accountable.organization === org.name);
+      }
+      if (i.status === "sent_responsible") {
+        return itemRoles.some((role) => pickResponsible(role)?.organization === org.name);
+      }
+      return false;
+    }).length,
     color: TIER_COLORS[org.tier] ?? DEFAULT_TIER_COLOR,
   }));
   const maxTodo = Math.max(...todo.map((t) => t.count), 1);
@@ -112,7 +106,7 @@ export default function RiskSummaryDashboard({
     <div className="mb-4 flex items-stretch gap-4">
       {/* Total */}
       <div className="flex min-w-[210px] flex-col justify-between rounded-card border border-bordergray bg-white px-6 py-5 shadow-card">
-        <Label>Total risks</Label>
+        <Label>Total items</Label>
         <div className="my-2 flex items-baseline gap-2">
           <span className="text-[40px] font-bold leading-none text-ink">{total}</span>
           <span className="text-[13px] font-semibold" style={{ color: GREEN }}>
@@ -124,7 +118,7 @@ export default function RiskSummaryDashboard({
             <div style={{ width: `${completedPct}%`, background: GREEN }} />
             <div style={{ width: `${pendingPct}%`, background: ORANGE }} />
           </div>
-          <div className="mt-2.5 flex gap-4">
+          <div className="mt-2.5 flex flex-wrap gap-4">
             <span className="flex items-center gap-1.5 text-[12px]" style={{ color: SECONDARY }}>
               <span className="h-2 w-2 rounded-sm" style={{ background: GREEN }} />
               {completed} completed
@@ -133,6 +127,12 @@ export default function RiskSummaryDashboard({
               <span className="h-2 w-2 rounded-sm" style={{ background: ORANGE }} />
               {pending} pending
             </span>
+            {obsolete > 0 && (
+              <span className="flex items-center gap-1.5 text-[12px]" style={{ color: MUTED }}>
+                <span className="h-2 w-2 rounded-sm bg-gray-300" />
+                {obsolete} obsolete
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -194,10 +194,7 @@ export default function RiskSummaryDashboard({
                     </span>
                     <div
                       className="w-full max-w-[40px] rounded-t-md"
-                      style={{
-                        background: INDIGO,
-                        height: `${barHeight(w.count, maxWs)}px`,
-                      }}
+                      style={{ background: INDIGO, height: `${barHeight(w.count, maxWs)}px` }}
                     />
                   </div>
                 );

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Bot, SmilePlus, X } from "lucide-react";
-import type { ChatMode, RiskMessage } from "../../types";
+import type { BaseMessage, ChatMode } from "../../types";
 import { formatTime, initials } from "../../lib/format";
 
 interface Props {
-  messages: RiskMessage[];
+  messages: BaseMessage[];
   mode: ChatMode;
   currentUid: string;
   typing?: boolean;

@@ -67,7 +67,7 @@ export default function InvolvedPartiesCard({ roles, selectedIds }: Props) {
   return (
     <div className="rounded-card border border-bordergray bg-white p-4 shadow-card">
       <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-gray-700">
-        <Users size={15} /> Involved in this risk
+        <Users size={15} /> Involved parties
       </div>
       {involved.length === 0 ? (
         <p className="text-xs text-gray-400">

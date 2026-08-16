@@ -17,6 +17,7 @@ import {
   SEED_ROLES,
   SEED_ORGANIZATIONS,
   SEED_RISKS,
+  SEED_CORRESPONDENCE,
 } from "../src/lib/seedData.ts";
 import { backfillScoring } from "../src/lib/riskScoring.ts";
 
@@ -104,6 +105,29 @@ async function main() {
     });
   }
   console.log(`  ${SEED_RISKS.length} risks written`);
+
+  // Correspondence
+  for (const item of SEED_CORRESPONDENCE) {
+    await db.collection("correspondence").add({
+      projectId: SEED_PROJECT.id,
+      itemId: item.itemId,
+      type: item.type,
+      title: item.title,
+      status: item.status,
+      priority: item.priority,
+      startDate: Timestamp.fromMillis(now),
+      dueDate: Timestamp.fromMillis(now + item.dueOffsetDays * 86400000),
+      workstreamIds: item.workstreamIds,
+      checklist: item.checklist,
+      notes: item.notes,
+      attachments: [],
+      statusHistory: [],
+      createdBy: "seed-script",
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  }
+  console.log(`  ${SEED_CORRESPONDENCE.length} correspondence items written`);
   console.log("Done.");
 }
 
