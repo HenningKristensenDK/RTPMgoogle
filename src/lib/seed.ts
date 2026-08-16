@@ -15,6 +15,7 @@ import {
   SEED_ORGANIZATIONS,
   SEED_RISKS,
 } from "./seedData";
+import { backfillScoring } from "./riskScoring";
 
 let seedingPromise: Promise<void> | null = null;
 
@@ -73,18 +74,26 @@ async function run(createdBy: string): Promise<void> {
   const now = Date.now();
   for (const risk of SEED_RISKS) {
     const ref = doc(collection(db, "risks"));
+    const scoring = backfillScoring(risk.priority, `${risk.title} ${risk.notes}`);
     batch.set(ref, {
       projectId: SEED_PROJECT.id,
       riskId: risk.riskId,
+      kind: "risk",
       title: risk.title,
       status: risk.status,
-      priority: risk.priority,
+      likelihood: scoring.likelihood,
+      impactScore: scoring.impactScore,
+      riskScore: scoring.riskScore,
+      priority: scoring.priority,
+      impactDriver: scoring.impactDriver,
+      trend: scoring.trend,
       startDate: Timestamp.fromMillis(now),
       dueDate: Timestamp.fromMillis(now + risk.dueOffsetDays * 86400000),
       recurrence: risk.recurrence,
       collection: SEED_PROJECT.name,
       workstreamIds: risk.workstreamIds,
       checklist: risk.checklist,
+      mitigationPlan: "",
       notes: risk.notes,
       attachments: [],
       statusHistory: [],

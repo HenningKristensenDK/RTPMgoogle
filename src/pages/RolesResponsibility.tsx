@@ -86,20 +86,8 @@ function PersonCard({
   );
 }
 
-function LegendBar({
-  orgs,
-  raci,
-  setRaci,
-}: {
-  orgs: Organization[];
-  raci: boolean;
-  setRaci: (v: boolean) => void;
-}) {
+function LegendBar({ orgs }: { orgs: Organization[] }) {
   const tiersPresent = [...new Set(orgs.map((o) => o.tier))].sort((a, b) => a - b);
-  const pillCls = (active: boolean) =>
-    `px-2 py-0.5 text-[10.5px] transition-colors ${
-      active ? "bg-indigo/10 font-medium text-indigo" : "text-gray-400 hover:bg-gray-50"
-    }`;
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-7 gap-y-2.5 rounded-card border border-bordergray bg-white px-4 py-3 shadow-card">
@@ -124,18 +112,6 @@ function LegendBar({
             </div>
           );
         })}
-      </div>
-      <div className="hidden h-5 w-px self-stretch bg-bordergray sm:block" />
-      <div className="flex items-center gap-2">
-        <span className="text-[10.5px] font-medium uppercase tracking-wide text-gray-400">Group by</span>
-        <div className="flex overflow-hidden rounded-full border border-gray-200">
-          <button onClick={() => setRaci(false)} className={pillCls(!raci)}>
-            Tier
-          </button>
-          <button onClick={() => setRaci(true)} className={pillCls(raci)}>
-            RACI
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -252,6 +228,26 @@ export default function RolesResponsibility() {
             </button>
           </div>
           {view === "table" && (
+            <div className="flex h-9 overflow-hidden rounded-btn border border-bordergray">
+              <button
+                onClick={() => setRaci(false)}
+                className={`flex h-full items-center whitespace-nowrap px-3 text-sm ${
+                  !raci ? "bg-indigo text-white" : "bg-white text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                Tier
+              </button>
+              <button
+                onClick={() => setRaci(true)}
+                className={`flex h-full items-center whitespace-nowrap px-3 text-sm ${
+                  raci ? "bg-indigo text-white" : "bg-white text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                RACI
+              </button>
+            </div>
+          )}
+          {view === "table" && (
             <button
               onClick={openCreateDrawer}
               className="flex h-9 items-center gap-1.5 rounded-btn bg-indigo px-3 text-sm font-semibold text-white hover:bg-indigo/90"
@@ -265,7 +261,7 @@ export default function RolesResponsibility() {
       <div className="scroll-thin flex-1 overflow-auto p-6">
         {view === "table" ? (
           <>
-            <LegendBar orgs={orgs} raci={raci} setRaci={setRaci} />
+            <LegendBar orgs={orgs} />
             <div className="overflow-x-auto rounded-card border border-bordergray bg-white shadow-card">
               {raci ? (
                 <RaciFlatTable roles={roles} orgs={orgs} onEdit={openEditDrawer} />

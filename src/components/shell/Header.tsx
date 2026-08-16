@@ -18,13 +18,17 @@ export default function Header() {
       className="flex h-12 flex-shrink-0 items-center justify-between border-b px-4"
       style={{ background: "#ffffff", borderColor: "#e6e6f0" }}
     >
-      <div className="flex items-center gap-2.5">
+      <button
+        onClick={() => navigate("/")}
+        title="Go to dashboard"
+        className="flex items-center gap-2.5 rounded-btn transition hover:opacity-80"
+      >
         <img src="/rtpm-logo.svg" style={{ height: "32px", width: "auto" }} alt="RTPM" />
-        <div className="flex flex-col leading-tight">
+        <div className="flex flex-col text-left leading-tight">
           <span style={{ fontSize: "15px", fontWeight: 600, color: "#070474" }}>Viking Project</span>
           <span style={{ fontSize: "11px", fontWeight: 400, color: "#8a8ca6" }}>RTPM Platform</span>
         </div>
-      </div>
+      </button>
 
       <div className="flex items-center gap-1">
         <button

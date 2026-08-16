@@ -1,21 +1,22 @@
 import { useState } from "react";
 import { Timestamp } from "firebase/firestore";
-import type { RiskKind, RiskPriority, RoleResponsibility } from "../../types";
-import { PRIORITY_META } from "../../lib/format";
+import type { RiskImpactDriver, RiskKind, RoleResponsibility } from "../../types";
+import { SCORE_LEVELS, LIKELIHOOD_LABELS, IMPACT_LABELS, IMPACT_DRIVERS } from "../../lib/riskScoring";
 
 interface Props {
   roles: RoleResponsibility[];
   onCreate: (data: {
     kind: RiskKind;
     title: string;
-    priority: RiskPriority;
+    likelihood: number;
+    impactScore: number;
+    impactDriver: RiskImpactDriver;
     dueDate: Timestamp | null;
     workstreamIds: string[];
   }) => void;
   onCancel: () => void;
 }
 
-const PRIORITIES: RiskPriority[] = ["low", "medium", "high", "critical"];
 const labelCls = "mb-1 block text-[12px] font-medium text-gray-500";
 const fieldCls =
   "w-full rounded-input border border-bordergray bg-white px-2.5 py-2 text-sm text-ink outline-none focus:border-indigo focus:ring-1 focus:ring-indigo";
@@ -38,7 +39,9 @@ const KIND_COPY: Record<RiskKind, { heading: string; placeholder: string; create
 export default function NewRiskModal({ roles, onCreate, onCancel }: Props) {
   const [kind, setKind] = useState<RiskKind>("risk");
   const [title, setTitle] = useState("");
-  const [priority, setPriority] = useState<RiskPriority>("medium");
+  const [likelihood, setLikelihood] = useState(3);
+  const [impactScore, setImpactScore] = useState(3);
+  const [impactDriver, setImpactDriver] = useState<RiskImpactDriver>("Schedule");
   const [dueDate, setDueDate] = useState("");
   const [workstreamIds, setWorkstreamIds] = useState<string[]>([]);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -46,7 +49,9 @@ export default function NewRiskModal({ roles, onCreate, onCancel }: Props) {
 
   const dirty =
     title.trim() !== "" ||
-    priority !== "medium" ||
+    likelihood !== 3 ||
+    impactScore !== 3 ||
+    impactDriver !== "Schedule" ||
     dueDate !== "" ||
     workstreamIds.length > 0;
 
@@ -65,7 +70,9 @@ export default function NewRiskModal({ roles, onCreate, onCancel }: Props) {
     onCreate({
       kind,
       title: title.trim() || (kind === "opportunity" ? "New opportunity" : "New risk"),
-      priority,
+      likelihood,
+      impactScore,
+      impactDriver,
       dueDate: dueDate ? Timestamp.fromDate(new Date(dueDate)) : null,
       workstreamIds,
     });
@@ -115,15 +122,46 @@ export default function NewRiskModal({ roles, onCreate, onCancel }: Props) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Priority</label>
+              <label className={labelCls}>Likelihood</label>
               <select
                 className={fieldCls}
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as RiskPriority)}
+                value={likelihood}
+                onChange={(e) => setLikelihood(Number(e.target.value))}
               >
-                {PRIORITIES.map((p) => (
-                  <option key={p} value={p}>
-                    {PRIORITY_META[p].label}
+                {SCORE_LEVELS.map((n) => (
+                  <option key={n} value={n}>
+                    {n} — {LIKELIHOOD_LABELS[n]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Impact</label>
+              <select
+                className={fieldCls}
+                value={impactScore}
+                onChange={(e) => setImpactScore(Number(e.target.value))}
+              >
+                {SCORE_LEVELS.map((n) => (
+                  <option key={n} value={n}>
+                    {n} — {IMPACT_LABELS[n]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Impact driver</label>
+              <select
+                className={fieldCls}
+                value={impactDriver}
+                onChange={(e) => setImpactDriver(e.target.value as RiskImpactDriver)}
+              >
+                {IMPACT_DRIVERS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
                   </option>
                 ))}
               </select>

@@ -4,6 +4,8 @@ export type RiskStatus = "identified" | "assessed" | "mitigated" | "resolved";
 export type RiskPriority = "low" | "medium" | "high" | "critical";
 export type Recurrence = "none" | "daily" | "weekly" | "monthly";
 export type RiskKind = "risk" | "opportunity";
+export type RiskImpactDriver = "Cost" | "Schedule" | "Safety" | "Quality";
+export type RiskTrend = "up" | "flat" | "down";
 
 export const RISK_KIND_LABEL: Record<RiskKind, string> = {
   risk: "Risk",
@@ -82,13 +84,19 @@ export interface Risk {
   kind?: RiskKind; // absent on pre-existing docs — treat as "risk", see riskKind() in lib/format.ts
   title: string;
   status: RiskStatus;
-  priority: RiskPriority;
+  priority: RiskPriority; // ALWAYS derived from riskScore — never set this directly, see lib/riskScoring.ts
+  likelihood: number; // 1-5
+  impactScore: number; // 1-5
+  impactDriver: RiskImpactDriver;
+  riskScore: number; // likelihood * impactScore, 1-25
+  trend: RiskTrend;
   startDate: Timestamp | null;
   dueDate: Timestamp | null;
   recurrence: Recurrence;
   collection?: string;
   workstreamIds: string[];
   checklist: ChecklistItem[];
+  mitigationPlan: string;
   notes: string;
   attachments: Attachment[];
   statusHistory: StatusHistoryEntry[];

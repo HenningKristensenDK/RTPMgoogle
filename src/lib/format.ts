@@ -52,14 +52,18 @@ export function formatTime(ts: Timestamp | null | undefined): string {
   return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
+// dot/text = small colored dot + adjacent label text-on-white, used in tables
+// and cards. Hues match the binding RAG law (KNW-038 §6.2 / lib/rag.ts);
+// `text` is a darkened variant of the same hue for readability on white —
+// for a solid colored chip/badge use lib/rag.ts's bandChip() instead.
 export const PRIORITY_META: Record<
   RiskPriority,
   { label: string; dot: string; text: string }
 > = {
-  low: { label: "Low", dot: "#10B981", text: "#047857" },
-  medium: { label: "Medium", dot: "#F59E0B", text: "#B45309" },
-  high: { label: "High", dot: "#EF4444", text: "#B91C1C" },
-  critical: { label: "Critical", dot: "#DC2626", text: "#7F1D1D" },
+  low: { label: "Low", dot: "#27AE60", text: "#1E7E4A" },
+  medium: { label: "Medium", dot: "#F39C12", text: "#8A5A08" },
+  high: { label: "High", dot: "#C0392B", text: "#8E2C21" },
+  critical: { label: "Critical", dot: "#962D22", text: "#6B1F17" },
 };
 
 export const STATUS_LABEL: Record<RiskStatus, string> = {

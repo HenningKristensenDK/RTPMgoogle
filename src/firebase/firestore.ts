@@ -28,6 +28,7 @@ import type {
   RiskStatus,
   StatusHistoryEntry,
 } from "../types";
+import { computeRiskScore, priorityFromScore } from "../lib/riskScoring";
 
 // ---------------------------------------------------------------------------
 // Collection references
@@ -150,19 +151,30 @@ export async function createRisk(
 ): Promise<string> {
   const kind = partial.kind || "risk";
   const code = await nextRiskCode(projectId, kind);
+  // Priority is ALWAYS derived from likelihood x impact — never accept a
+  // manually-passed priority, even if one sneaks into `partial`.
+  const likelihood = partial.likelihood || 3;
+  const impactScore = partial.impactScore || 3;
+  const score = computeRiskScore(likelihood, impactScore);
   const payload: DocumentData = {
     projectId,
     riskId: code,
     kind,
     title: partial.title || "Untitled risk",
     status: partial.status || "identified",
-    priority: partial.priority || "medium",
+    likelihood,
+    impactScore,
+    riskScore: score,
+    priority: priorityFromScore(score),
+    impactDriver: partial.impactDriver || "Schedule",
+    trend: partial.trend || "flat",
     startDate: partial.startDate ?? null,
     dueDate: partial.dueDate ?? null,
     recurrence: partial.recurrence || "none",
     collection: partial.collection || "",
     workstreamIds: partial.workstreamIds || [],
     checklist: partial.checklist || [],
+    mitigationPlan: partial.mitigationPlan || "",
     notes: partial.notes || "",
     attachments: partial.attachments || [],
     statusHistory: partial.statusHistory || [],
