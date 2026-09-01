@@ -26,7 +26,7 @@ const NAV: { to: string; end?: boolean; Icon: LucideIcon; label: string }[] = [
   { to: "/permit-compliance",            Icon: BadgeCheck,      label: "Permit & Compliance" },
   { to: "/change-management",            Icon: GitPullRequest,  label: "Change Management" },
   { to: "/project-economics",            Icon: Wallet,          label: "Project Economics" },
-  { to: "/roles",                        Icon: Users,           label: "Roles & Responsibility" },
+  { to: "/roles",                        Icon: Users,           label: "Responsibility Engine" },
 ];
 
 export default function Sidebar() {

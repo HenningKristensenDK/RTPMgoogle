@@ -6,6 +6,7 @@ import RiskHeader from "./RiskHeader";
 import RiskStatusBar from "./RiskStatusBar";
 import RiskMetadata from "./RiskMetadata";
 import RiskMitigationPlan from "./RiskMitigationPlan";
+import RelatedChangeCard from "./RelatedChangeCard";
 import InvolvedPartiesCard from "./InvolvedPartiesCard";
 import RiskChecklist from "./RiskChecklist";
 import RiskNotes from "./RiskNotes";
@@ -87,6 +88,7 @@ export default function RiskPanel({
             <>
               <RiskMetadata risk={risk} roles={roles} onPatch={onPatch} />
               <RiskMitigationPlan risk={risk} onPatch={onPatch} />
+              <RelatedChangeCard riskId={risk.riskId} />
               <InvolvedPartiesCard
                 roles={roles}
                 selectedIds={risk.workstreamIds}

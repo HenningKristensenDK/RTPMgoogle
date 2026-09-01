@@ -38,6 +38,7 @@ import type {
   DocumentComment,
 } from "../types";
 import { computeRiskScore, priorityFromScore } from "../lib/riskScoring";
+import type { HseWeek, CommercialWeek, QualityWeek, ScheduleWeek } from "../lib/dashboardMetrics";
 
 // ---------------------------------------------------------------------------
 // Collection references
@@ -53,6 +54,13 @@ const documentsCol = collection(db, "documents");
 const documentMessagesCol = collection(db, "document_messages");
 const documentAnnotationsCol = collection(db, "document_annotations");
 const documentCommentsCol = collection(db, "document_comments");
+// Dashboard Tier-2 seeded metric collections (spec Section 4). Queried by
+// projectId only and sorted client-side by `week`, so — like
+// document_annotations/document_comments — they need no composite index.
+const hseEntriesCol = collection(db, "hse_entries");
+const commercialSummaryCol = collection(db, "commercial_summary");
+const qualitySummaryCol = collection(db, "quality_summary");
+const scheduleEvmCol = collection(db, "schedule_evm_weekly");
 
 function mapDoc<T>(id: string, data: DocumentData): T {
   return { id, ...data } as T;
@@ -727,6 +735,37 @@ export async function updateDocumentComment(
 
 export async function deleteDocumentComment(commentId: string): Promise<void> {
   await deleteDoc(doc(documentCommentsCol, commentId));
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard Tier-2 seeded metrics — read-only weekly datasets. Each is queried
+// by projectId only and sorted client-side by `week` (ascending), so none needs
+// a composite index.
+// ---------------------------------------------------------------------------
+function watchWeeklyMetric<T extends { week: string }>(
+  col: ReturnType<typeof collection>,
+  projectId: string,
+  cb: (rows: T[]) => void
+) {
+  const q = query(col, where("projectId", "==", projectId));
+  return onSnapshot(q, (snap) => {
+    const rows = snap.docs.map((d) => mapDoc<T>(d.id, d.data()));
+    rows.sort((a, b) => a.week.localeCompare(b.week));
+    cb(rows);
+  });
+}
+
+export function watchHseEntries(projectId: string, cb: (rows: HseWeek[]) => void) {
+  return watchWeeklyMetric<HseWeek>(hseEntriesCol, projectId, cb);
+}
+export function watchCommercialSummary(projectId: string, cb: (rows: CommercialWeek[]) => void) {
+  return watchWeeklyMetric<CommercialWeek>(commercialSummaryCol, projectId, cb);
+}
+export function watchQualitySummary(projectId: string, cb: (rows: QualityWeek[]) => void) {
+  return watchWeeklyMetric<QualityWeek>(qualitySummaryCol, projectId, cb);
+}
+export function watchScheduleEvm(projectId: string, cb: (rows: ScheduleWeek[]) => void) {
+  return watchWeeklyMetric<ScheduleWeek>(scheduleEvmCol, projectId, cb);
 }
 
 // ---------------------------------------------------------------------------

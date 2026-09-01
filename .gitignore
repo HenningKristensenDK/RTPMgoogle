@@ -29,6 +29,8 @@ CLAUDE.local.md
 
 # Editor / OS
 .DS_Store
+Thumbs.db
+desktop.ini
 *.log
 .vscode/
 .idea/

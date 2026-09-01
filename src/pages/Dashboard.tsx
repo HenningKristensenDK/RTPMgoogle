@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, FileText, Mail, GitPullRequest, CheckSquare, Sparkles, ArrowRight } from "lucide-react";
+import { FileText, Mail, GitPullRequest, CheckSquare, Sparkles, ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Timestamp } from "firebase/firestore";
 import type { Organization, Risk, RiskPriority } from "../types";
@@ -14,6 +14,11 @@ import { bandChip } from "../lib/rag";
 import { SCORE_LEVELS, LIKELIHOOD_LABELS, IMPACT_LABELS, priorityFromScore } from "../lib/riskScoring";
 import { toast } from "../lib/toast";
 import PersonAvatar from "../components/common/PersonAvatar";
+import PhaseMilestoneTimeline from "../components/dashboard/PhaseMilestoneTimeline";
+import Tier2CategoryCards from "../components/dashboard/Tier2CategoryCards";
+import RiskWorkstreamBreakdown from "../components/dashboard/RiskWorkstreamBreakdown";
+import { useDashboardMetrics } from "../lib/useDashboardMetrics";
+import { contingencyPct, contingencyRag, ragDot } from "../lib/dashboardMetrics";
 import {
   PROJECT_HEALTH,
   MY_TODO_MOCK,
@@ -24,15 +29,6 @@ import {
   CHANGE_EXPOSURE_MOCK,
 } from "../lib/dashboardMock";
 import type { RiskStatus } from "../types";
-
-const MILESTONES = [
-  { label: "NTP",                  date: "2026.03.01", iso: "2026-03-01" },
-  { label: "Design Freeze",        date: "2026.06.15", iso: "2026-06-15" },
-  { label: "MEP Procurement",      date: "2026.09.01", iso: "2026-09-01" },
-  { label: "Civil Complete",       date: "2026.12.01", iso: "2026-12-01" },
-  { label: "Commissioning Start",  date: "2027.03.01", iso: "2027-03-01" },
-  { label: "COD",                  date: "2027.09.30", iso: "2027-09-30" },
-];
 
 type ActivityEntry = {
   riskId: string;
@@ -57,6 +53,10 @@ export default function Dashboard() {
     return watchOrganizations(projectId, setOrgs);
   }, [projectId]);
 
+  const metrics = useDashboardMetrics(projectId);
+  const commercialLatest = metrics.commercial[metrics.commercial.length - 1];
+  const contingencyRemainingPct = contingencyPct(commercialLatest);
+
   const today = new Date();
   const openRisks = useMemo(() => risks.filter((r) => r.status !== "resolved"), [risks]);
   const criticalCount = useMemo(
@@ -64,10 +64,6 @@ export default function Dashboard() {
     [openRisks]
   );
   const overdueCount = useMemo(() => openRisks.filter((r) => isOverdue(r, today)).length, [openRisks]);
-
-  // Milestone state: index of first upcoming milestone (-1 if all past)
-  const firstUpcomingIdx = MILESTONES.findIndex((m) => new Date(m.iso) > today);
-  const fu = firstUpcomingIdx === -1 ? MILESTONES.length : firstUpcomingIdx;
 
   function ownerOf(risk: Risk) {
     return roles
@@ -206,90 +202,23 @@ export default function Dashboard() {
             onClick={() => notBuiltYet("Decisions & Approvals")}
           />
           <KpiCard
-            label="Documents Waiting"
-            value={DOCUMENTS_WAITING_MOCK.waiting}
-            subtext={`${DOCUMENTS_WAITING_MOCK.overdue} overdue reviews`}
-            valueColor="#ff8b00"
-            onClick={() => navigate("/documents")}
+            label="Contingency Remaining"
+            value={`${contingencyRemainingPct.toFixed(0)}%`}
+            subtext={`DKK ${(commercialLatest.contingencyRemainingDkk / 1_000_000).toFixed(1)}M of ${(commercialLatest.totalContingencyDkk / 1_000_000).toFixed(0)}M`}
+            valueColor={ragDot(contingencyRag(contingencyRemainingPct))}
           />
         </div>
 
-        {/* Milestone timeline */}
-        <div className="rounded-card bg-white px-6 py-5 shadow-card">
-          <h2
-            className="mb-4 text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: "#8a8ca6" }}
-          >
-            Milestone timeline
-          </h2>
-          <div className="flex items-start">
-            {MILESTONES.map((ms, idx) => {
-              const isDone = idx < fu;
-              const isCurrent = idx === firstUpcomingIdx;
-              const isLast = idx === MILESTONES.length - 1;
-              const lineSolid = isDone;
-
-              return (
-                <div key={ms.label} className="flex flex-1 flex-col items-center">
-                  <div className="flex w-full items-center">
-                    <div className="flex-1">
-                      {idx > 0 && (
-                        <div
-                          className="h-[2px] w-full"
-                          style={{
-                            background: lineSolid ? "#28a745" : "transparent",
-                            borderTop: lineSolid ? "none" : "2px dashed #D1D5DB",
-                          }}
-                        />
-                      )}
-                    </div>
-                    <div
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-                      style={{
-                        background: isDone ? "#28a745" : "transparent",
-                        border: isDone
-                          ? "none"
-                          : isCurrent
-                          ? "2px solid #0d08d2"
-                          : "2px solid #D1D5DB",
-                      }}
-                    >
-                      {isDone && <Check size={11} strokeWidth={3} color="#fff" />}
-                    </div>
-                    <div className="flex-1">
-                      {!isLast && (
-                        <div
-                          className="h-[2px] w-full"
-                          style={{
-                            background: lineSolid ? "#28a745" : "transparent",
-                            borderTop: lineSolid ? "none" : "2px dashed #D1D5DB",
-                          }}
-                        />
-                      )}
-                    </div>
-                  </div>
-                  <div
-                    className="mt-2 text-center text-[11px] font-semibold"
-                    style={{
-                      color: isDone ? "#28a745" : isCurrent ? "#0d08d2" : "#8a8ca6",
-                    }}
-                  >
-                    {ms.label}
-                  </div>
-                  <div className="mt-0.5 text-center text-[10px]" style={{ color: "#8a8ca6" }}>
-                    {ms.date}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Phase & milestone timeline (Step 1 — spec Section 6) */}
+        <PhaseMilestoneTimeline />
 
         {/* Main cockpit grid: risk matrix + top risks | project control queues | AI insights */}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
 
-          {/* Left: risk matrix + top critical risks */}
+          {/* Left: workstream/contractor breakdown + risk matrix + top critical risks */}
           <div className="flex flex-col gap-4">
+            {/* Step 3 — Workstream/Contractor pivot, above the Risk Matrix */}
+            <RiskWorkstreamBreakdown />
             <div className="flex flex-1 flex-col rounded-card bg-white px-6 py-5 shadow-card">
               <h2
                 className="text-[11px] font-semibold uppercase tracking-wider"
@@ -515,6 +444,9 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
+
+        {/* Tier 2 — control-queue category cards (Step 2 — spec Section 2) */}
+        <Tier2CategoryCards metrics={metrics} />
 
         {/* Recent activity + ownership hotspots */}
         <div className="grid grid-cols-3 gap-4">

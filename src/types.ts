@@ -124,6 +124,8 @@ export interface CorrespondenceItem {
   priority: RiskPriority;
   startDate: Timestamp | null;
   dueDate: Timestamp | null;
+  /** Business id ("RK-004") of a Risk this item stems from — links Change ↔ Risk. */
+  relatedRiskId?: string;
   workstreamIds: string[];
   checklist: ChecklistItem[];
   notes: string;

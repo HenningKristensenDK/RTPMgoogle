@@ -11,9 +11,11 @@
     "lint": "tsc --noEmit",
     "seed": "ts-node --esm scripts/seed.ts",
     "seed:correspondence": "ts-node --esm scripts/seed-correspondence.ts",
+    "seed:dashboard-metrics": "ts-node --esm scripts/seed-dashboard-metrics.ts",
     "migrate:customer-rr": "ts-node --esm scripts/migrate-customer-rr.ts",
     "migrate:raci-orgs": "ts-node --esm scripts/migrate-raci-orgs.ts",
     "migrate:tier-model": "ts-node --esm scripts/migrate-tier-model.ts",
+    "migrate:project-partner": "ts-node --esm scripts/migrate-project-partner.ts",
     "backup:firestore": "ts-node --esm scripts/backup-firestore.ts",
     "fix:storage-cors": "ts-node --esm scripts/fix-storage-cors.ts"
   },
@@ -27,6 +29,7 @@
     "react-markdown": "^10.1.0",
     "react-pdf": "^10.4.1",
     "react-router-dom": "^6.24.0",
+    "rtpm-design-system": "github:HenningKristensenDK/rtpm-brand-system",
     "zustand": "^4.5.2"
   },
   "devDependencies": {

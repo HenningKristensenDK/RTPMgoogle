@@ -16,6 +16,12 @@ import {
   SEED_RISKS,
   SEED_CORRESPONDENCE,
 } from "./seedData";
+import {
+  SEED_HSE_ENTRIES,
+  SEED_COMMERCIAL_SUMMARY,
+  SEED_QUALITY_SUMMARY,
+  SEED_SCHEDULE_EVM,
+} from "./dashboardMetrics";
 import { backfillScoring } from "./riskScoring";
 
 let seedingPromise: Promise<void> | null = null;
@@ -116,6 +122,7 @@ async function run(createdBy: string): Promise<void> {
       priority: item.priority,
       startDate: Timestamp.fromMillis(now),
       dueDate: Timestamp.fromMillis(now + item.dueOffsetDays * 86400000),
+      ...(item.relatedRiskId ? { relatedRiskId: item.relatedRiskId } : {}),
       workstreamIds: item.workstreamIds,
       checklist: item.checklist,
       notes: item.notes,
@@ -125,6 +132,20 @@ async function run(createdBy: string): Promise<void> {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+  }
+
+  // Dashboard Tier-2 seeded metrics (spec Section 4)
+  for (const w of SEED_HSE_ENTRIES) {
+    batch.set(doc(collection(db, "hse_entries")), { projectId: SEED_PROJECT.id, ...w });
+  }
+  for (const w of SEED_COMMERCIAL_SUMMARY) {
+    batch.set(doc(collection(db, "commercial_summary")), { projectId: SEED_PROJECT.id, ...w });
+  }
+  for (const w of SEED_QUALITY_SUMMARY) {
+    batch.set(doc(collection(db, "quality_summary")), { projectId: SEED_PROJECT.id, ...w });
+  }
+  for (const w of SEED_SCHEDULE_EVM) {
+    batch.set(doc(collection(db, "schedule_evm_weekly")), { projectId: SEED_PROJECT.id, ...w });
   }
 
   await batch.commit();

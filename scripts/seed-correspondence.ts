@@ -51,6 +51,7 @@ async function main() {
       priority: item.priority,
       startDate: Timestamp.fromMillis(now),
       dueDate: Timestamp.fromMillis(now + item.dueOffsetDays * 86400000),
+      ...(item.relatedRiskId ? { relatedRiskId: item.relatedRiskId } : {}),
       workstreamIds: item.workstreamIds,
       checklist: item.checklist,
       notes: item.notes,
