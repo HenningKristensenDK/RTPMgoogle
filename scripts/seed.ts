@@ -19,6 +19,7 @@ import {
   SEED_RISKS,
   SEED_CORRESPONDENCE,
 } from "../src/lib/seedData.ts";
+import { backfillScoring } from "../src/lib/riskScoring.ts";
 
 const KEY_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS || "./serviceAccountKey.json";
 
@@ -75,18 +76,26 @@ async function main() {
   // Risks
   const now = Date.now();
   for (const risk of SEED_RISKS) {
+    const scoring = backfillScoring(risk.priority, `${risk.title} ${risk.notes}`);
     await db.collection("risks").add({
       projectId: SEED_PROJECT.id,
       riskId: risk.riskId,
+      kind: "risk",
       title: risk.title,
       status: risk.status,
-      priority: risk.priority,
+      likelihood: scoring.likelihood,
+      impactScore: scoring.impactScore,
+      riskScore: scoring.riskScore,
+      priority: scoring.priority,
+      impactDriver: scoring.impactDriver,
+      trend: scoring.trend,
       startDate: Timestamp.fromMillis(now),
       dueDate: Timestamp.fromMillis(now + risk.dueOffsetDays * 86400000),
       recurrence: risk.recurrence,
       collection: SEED_PROJECT.name,
       workstreamIds: risk.workstreamIds,
       checklist: risk.checklist,
+      mitigationPlan: "",
       notes: risk.notes,
       attachments: [],
       statusHistory: [],

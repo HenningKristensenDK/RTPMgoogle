@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Plus, Table2, Network, Pencil } from "lucide-react";
+import { Plus, Table2, Network, Grid3x3, Pencil } from "lucide-react";
 import type { Organization, Party, RoleResponsibility } from "../types";
 import { useRiskStore } from "../store/riskStore";
 import { upsertRole, watchOrganizations } from "../firebase/firestore";
@@ -10,7 +10,8 @@ import PersonAvatar from "../components/common/PersonAvatar";
 import OrgChart from "../components/roles/OrgChart";
 import RoleDrawer from "../components/roles/RoleDrawer";
 
-type View = "table" | "orgchart";
+// The three integrated views of the Responsibility Engine.
+type View = "obs" | "raci" | "tier";
 
 interface TierMeta {
   color: string;
@@ -86,20 +87,8 @@ function PersonCard({
   );
 }
 
-function LegendBar({
-  orgs,
-  raci,
-  setRaci,
-}: {
-  orgs: Organization[];
-  raci: boolean;
-  setRaci: (v: boolean) => void;
-}) {
+function LegendBar({ orgs }: { orgs: Organization[] }) {
   const tiersPresent = [...new Set(orgs.map((o) => o.tier))].sort((a, b) => a - b);
-  const pillCls = (active: boolean) =>
-    `px-2 py-0.5 text-[10.5px] transition-colors ${
-      active ? "bg-indigo/10 font-medium text-indigo" : "text-gray-400 hover:bg-gray-50"
-    }`;
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-7 gap-y-2.5 rounded-card border border-bordergray bg-white px-4 py-3 shadow-card">
@@ -124,18 +113,6 @@ function LegendBar({
             </div>
           );
         })}
-      </div>
-      <div className="hidden h-5 w-px self-stretch bg-bordergray sm:block" />
-      <div className="flex items-center gap-2">
-        <span className="text-[10.5px] font-medium uppercase tracking-wide text-gray-400">Group by</span>
-        <div className="flex overflow-hidden rounded-full border border-gray-200">
-          <button onClick={() => setRaci(false)} className={pillCls(!raci)}>
-            Tier
-          </button>
-          <button onClick={() => setRaci(true)} className={pillCls(raci)}>
-            RACI
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -168,8 +145,7 @@ function WorkstreamCell({
 export default function RolesResponsibility() {
   const { roles, projectId } = useRiskStore();
   const [orgs, setOrgs] = useState<Organization[]>([]);
-  const [view, setView] = useState<View>("table");
-  const [raci, setRaci] = useState(false);
+  const [view, setView] = useState<View>("tier");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleResponsibility | null>(null);
   const location = useLocation();
@@ -216,45 +192,48 @@ export default function RolesResponsibility() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-bordergray bg-white px-6 py-4">
-        <div>
-          <h1 className="text-lg font-bold text-ink">
-            {view === "orgchart" ? "OBS diagram" : raci ? "RACI" : "Roles & Responsibility"}
-          </h1>
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold text-ink">Responsibility Engine</h1>
           <p className="text-[12px] text-gray-400">
-            {view === "orgchart"
-              ? "A real-time map of who does the work. Displays the project organization in detail and structures all contractors by contract tiers—making responsibilities, boundaries, and hierarchy immediately visible."
-              : raci
-              ? "Defines the project team and ownership across workstreams. Each workstream drives responsibility and automatically assigns all tasks, documents, and communication to the right people while informing stakeholders in real time."
-              : "Who is engaged at each contractual tier, and in what RACI capacity."}
+            {view === "obs"
+              ? "OBS Chart — a real-time map of who does the work, structuring all contractors by contract tier so responsibilities, boundaries, and hierarchy are immediately visible."
+              : view === "raci"
+              ? "RACI Matrix — every workstream drives responsibility and automatically assigns tasks, documents, and communication to the right people while informing stakeholders in real time."
+              : "Tier View — who is engaged at each contractual tier, and in what RACI capacity."}
           </p>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="flex h-9 overflow-hidden rounded-btn border border-bordergray">
+        <div className="flex shrink-0 items-center gap-3">
+          {/* Three integrated views of the engine — one source of data, three lenses */}
+          <div className="flex h-9 shrink-0 overflow-hidden rounded-btn border border-bordergray">
             <button
-              onClick={() => setView("table")}
+              onClick={() => setView("obs")}
               className={`flex h-full items-center gap-1.5 whitespace-nowrap px-3 text-sm ${
-                view === "table"
-                  ? "bg-indigo text-white"
-                  : "bg-white text-gray-500 hover:bg-gray-50"
+                view === "obs" ? "bg-indigo text-white" : "bg-white text-gray-500 hover:bg-gray-50"
               }`}
             >
-              <Table2 size={15} /> Table
+              <Network size={15} /> OBS Chart
             </button>
             <button
-              onClick={() => setView("orgchart")}
+              onClick={() => setView("raci")}
               className={`flex h-full items-center gap-1.5 whitespace-nowrap px-3 text-sm ${
-                view === "orgchart"
-                  ? "bg-indigo text-white"
-                  : "bg-white text-gray-500 hover:bg-gray-50"
+                view === "raci" ? "bg-indigo text-white" : "bg-white text-gray-500 hover:bg-gray-50"
               }`}
             >
-              <Network size={15} /> OBS diagram
+              <Grid3x3 size={15} /> RACI Matrix
+            </button>
+            <button
+              onClick={() => setView("tier")}
+              className={`flex h-full items-center gap-1.5 whitespace-nowrap px-3 text-sm ${
+                view === "tier" ? "bg-indigo text-white" : "bg-white text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              <Table2 size={15} /> Tier View
             </button>
           </div>
-          {view === "table" && (
+          {view !== "obs" && (
             <button
               onClick={openCreateDrawer}
-              className="flex h-9 items-center gap-1.5 rounded-btn bg-indigo px-3 text-sm font-semibold text-white hover:bg-indigo/90"
+              className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-btn bg-indigo px-3 text-sm font-semibold text-white hover:bg-indigo/90"
             >
               <Plus size={16} /> Add workstream
             </button>
@@ -263,21 +242,21 @@ export default function RolesResponsibility() {
       </div>
 
       <div className="scroll-thin flex-1 overflow-auto p-6">
-        {view === "table" ? (
+        {view === "obs" ? (
+          <div className="mx-auto max-w-[1200px] overflow-hidden rounded-card border border-bordergray shadow-card">
+            <OrgChart projectId={projectId} roles={roles} />
+          </div>
+        ) : (
           <>
-            <LegendBar orgs={orgs} raci={raci} setRaci={setRaci} />
+            <LegendBar orgs={orgs} />
             <div className="overflow-x-auto rounded-card border border-bordergray bg-white shadow-card">
-              {raci ? (
+              {view === "raci" ? (
                 <RaciFlatTable roles={roles} orgs={orgs} onEdit={openEditDrawer} />
               ) : (
                 <OrgGroupedTable roles={roles} orgs={orgs} onEdit={openEditDrawer} />
               )}
             </div>
           </>
-        ) : (
-          <div className="mx-auto max-w-[1200px] overflow-hidden rounded-card border border-bordergray shadow-card">
-            <OrgChart projectId={projectId} roles={roles} />
-          </div>
         )}
       </div>
 

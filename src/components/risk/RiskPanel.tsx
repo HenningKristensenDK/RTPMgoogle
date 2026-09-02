@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { ClipboardList, Paperclip } from "lucide-react";
-import type { Risk, RiskStatus, RoleResponsibility } from "../../types";
+import type { Risk, RiskKind, RiskStatus, RoleResponsibility } from "../../types";
 import { useChatStore } from "../../store/chatStore";
 import RiskHeader from "./RiskHeader";
 import RiskStatusBar from "./RiskStatusBar";
 import RiskMetadata from "./RiskMetadata";
+import RiskMitigationPlan from "./RiskMitigationPlan";
+import RelatedChangeCard from "./RelatedChangeCard";
 import InvolvedPartiesCard from "./InvolvedPartiesCard";
 import RiskChecklist from "./RiskChecklist";
 import RiskNotes from "./RiskNotes";
@@ -17,6 +19,7 @@ interface Props {
   authorName: string;
   onPatch: (patch: Partial<Risk>) => void;
   onChangeStatus: (to: RiskStatus) => void;
+  onChangeKind: (kind: RiskKind) => void;
 }
 
 type Tab = "details" | "attachments";
@@ -27,6 +30,7 @@ export default function RiskPanel({
   authorName,
   onPatch,
   onChangeStatus,
+  onChangeKind,
 }: Props) {
   const [tab, setTab] = useState<Tab>("details");
   const { open, toggleOpen } = useChatStore();
@@ -46,9 +50,14 @@ export default function RiskPanel({
           <RiskHeader
             risk={risk}
             onTitleChange={(title) => onPatch({ title })}
+            onChangeKind={onChangeKind}
           />
 
-          <RiskStatusBar risk={risk} onChangeStatus={onChangeStatus} />
+          <RiskStatusBar
+            risk={risk}
+            onChangeStatus={onChangeStatus}
+            onCycleTrend={(trend) => onPatch({ trend })}
+          />
 
           {/* Tabs */}
           <div className="flex gap-2">
@@ -78,6 +87,8 @@ export default function RiskPanel({
           {tab === "details" ? (
             <>
               <RiskMetadata risk={risk} roles={roles} onPatch={onPatch} />
+              <RiskMitigationPlan risk={risk} onPatch={onPatch} />
+              <RelatedChangeCard riskId={risk.riskId} />
               <InvolvedPartiesCard
                 roles={roles}
                 selectedIds={risk.workstreamIds}

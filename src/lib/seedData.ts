@@ -43,7 +43,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "civil-works",
     workstream: "Civil Works",
     accountable: ACCOUNTABLE,
-    consulted: [{ name: "Anna López", organization: "NT Advisor", role: "Structural advisor" }],
+    consulted: [{ name: "Anna López", organization: "Project Partner A/S", role: "Structural advisor" }],
     responsibleCustomer: null,
     responsibleContractor: { name: "Jens Larsen", organization: "HD Contractor", role: "Site manager" },
     informedCustomer: [],
@@ -58,7 +58,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "mep-infrastructure",
     workstream: "MEP Infrastructure",
     accountable: ACCOUNTABLE,
-    consulted: [{ name: "Thomas Olsen", organization: "NT Advisor", role: "MEP advisor" }],
+    consulted: [{ name: "Thomas Olsen", organization: "Project Partner A/S", role: "MEP advisor" }],
     responsibleCustomer: null,
     responsibleContractor: { name: "Peter Koch", organization: "HD Contractor", role: "MEP lead" },
     informedCustomer: [{ name: "Sindhu K", organization: "Customer", role: "PMO lead" }],
@@ -70,7 +70,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "it-data-infrastructure",
     workstream: "IT/Data Infrastructure",
     accountable: ACCOUNTABLE,
-    consulted: [{ name: "Anna López", organization: "NT Advisor", role: "Structural advisor" }],
+    consulted: [{ name: "Anna López", organization: "Project Partner A/S", role: "Structural advisor" }],
     responsibleCustomer: { name: "Sindhu K", organization: "Customer", role: "PMO lead" },
     responsibleContractor: { name: "Ming Zhang", organization: "FO Sub-Contractor", role: "IT infrastructure lead" },
     informedCustomer: [],
@@ -87,7 +87,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "quality",
     workstream: "Quality",
     accountable: ACCOUNTABLE,
-    consulted: [{ name: "Thomas Olsen", organization: "NT Advisor", role: "MEP advisor" }],
+    consulted: [{ name: "Thomas Olsen", organization: "Project Partner A/S", role: "MEP advisor" }],
     responsibleCustomer: null,
     responsibleContractor: { name: "Bharat Khunti", organization: "HD Contractor", role: "QA/QC manager" },
     informedCustomer: [{ name: "Sindhu K", organization: "Customer", role: "PMO lead" }],
@@ -99,7 +99,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "hse",
     workstream: "HSE",
     accountable: ACCOUNTABLE,
-    consulted: [{ name: "Thomas Olsen", organization: "NT Advisor", role: "HSE advisor" }],
+    consulted: [{ name: "Thomas Olsen", organization: "Project Partner A/S", role: "HSE advisor" }],
     responsibleCustomer: { name: "Sindhu K", organization: "Customer", role: "PMO lead" },
     responsibleContractor: { name: "Jens Lorenzen", organization: "HD Contractor", role: "HSE coordinator" },
     informedCustomer: [],
@@ -111,7 +111,7 @@ export const SEED_ROLES: SeedRole[] = [
     id: "permit-and-authorities",
     workstream: "Permit and Authorities",
     accountable: ACCOUNTABLE,
-    consulted: [{ name: "Rohan Sameer", organization: "NT Advisor", role: "Permitting advisor" }],
+    consulted: [{ name: "Rohan Sameer", organization: "Project Partner A/S", role: "Permitting advisor" }],
     responsibleCustomer: { name: "Sindhu K", organization: "Customer", role: "PMO lead" },
     responsibleContractor: null,
     informedCustomer: [],
@@ -131,7 +131,7 @@ export interface SeedOrganization {
 
 export const SEED_ORGANIZATIONS: SeedOrganization[] = [
   { orgId: "customer", name: "Customer", tier: 0, parentOrgId: null, roleType: "Home organization" },
-  { orgId: "wsp-denmark", name: "NT Advisor", tier: 0, parentOrgId: "customer", roleType: "Advisor" },
+  { orgId: "wsp-denmark", name: "Project Partner A/S", tier: 0, parentOrgId: "customer", roleType: "Customer Representative" },
   { orgId: "mt-hojgaard", name: "HD Contractor", tier: 1, parentOrgId: "customer", roleType: "Main contractor" },
   { orgId: "nordic-fitout", name: "FO Sub-Contractor", tier: 2, parentOrgId: "mt-hojgaard", roleType: "Sub-contractor" },
   { orgId: "eq-supplier", name: "EQ Supplier", tier: 3, parentOrgId: "nordic-fitout", roleType: "Vendor" },
@@ -154,6 +154,8 @@ export interface SeedCorrespondence {
   notes: string;
   checklist: { id: string; text: string; completed: boolean }[];
   dueOffsetDays: number;
+  /** Links this Change order back to a Risk (by riskId) so the two modules read as one system. */
+  relatedRiskId?: string;
 }
 
 export const SEED_CORRESPONDENCE: SeedCorrespondence[] = [
@@ -214,6 +216,39 @@ export const SEED_CORRESPONDENCE: SeedCorrespondence[] = [
       { id: "c2", text: "Request contractor quotation", completed: false },
     ],
     dueOffsetDays: 10,
+  },
+  {
+    itemId: "VR-002",
+    type: "Variation Request",
+    title: "Temporary transformer rental to protect energisation milestone",
+    status: "sent_accountable",
+    priority: "critical",
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
+    notes:
+      "Mitigation for the 60MVA transformer lead-time exposure (see linked risk RK-004): rent a temporary unit to hold the energisation date while the permanent transformer is manufactured. Cost and connection-scope impact under review.",
+    checklist: [
+      { id: "c1", text: "Obtain temporary transformer rental quotation", completed: true },
+      { id: "c2", text: "Confirm temporary connection scope with DSO", completed: false },
+      { id: "c3", text: "Price permanent-to-temporary changeover works", completed: false },
+    ],
+    dueOffsetDays: 12,
+    relatedRiskId: "RK-004",
+  },
+  {
+    itemId: "VR-003",
+    type: "Variation Request",
+    title: "Alternative piling subcontractor mobilisation to recover programme",
+    status: "registered",
+    priority: "high",
+    workstreamIds: ["civil-works"],
+    notes:
+      "Mitigation for the piling crew shortage (see linked risk RK-010): mobilise a second piling subcontractor to recover the 4–6 week foundation delay. Additional mobilisation and rate differential under review.",
+    checklist: [
+      { id: "c1", text: "Confirm availability of alternative piling subcontractor", completed: true },
+      { id: "c2", text: "Price mobilisation and rate differential", completed: false },
+    ],
+    dueOffsetDays: 8,
+    relatedRiskId: "RK-010",
   },
   {
     itemId: "SI-001",
@@ -330,7 +365,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-004",
-    title: "HV Transformer delivery � 110 week lead time",
+    title: "HV Transformer delivery - 110 week lead time",
     status: "assessed",
     priority: "critical",
     recurrence: "weekly",
@@ -345,12 +380,12 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-005",
-    title: "MV Switchgear FAT failure � NCR raised",
+    title: "MV Switchgear FAT failure - NCR raised",
     status: "mitigated",
     priority: "high",
     recurrence: "weekly",
     workstreamIds: ["mep-infrastructure"],
-    notes: "Protection relay injection test failed on first witness. NCR raised. Cure period active � 18 days remaining before contractor installation window opens.",
+    notes: "Protection relay injection test failed on first witness. NCR raised. Cure period active - 18 days remaining before contractor installation window opens.",
     checklist: [
       { id: "c1", text: "NCR resolution plan accepted by vendor", completed: true },
       { id: "c2", text: "Re-test scheduled with QM witness", completed: false },
@@ -374,7 +409,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-007",
-    title: "MEP / OFCI interface scope gap � HV cable termination",
+    title: "MEP / OFCI interface scope gap - HV cable termination",
     status: "identified",
     priority: "medium",
     recurrence: "none",
@@ -388,7 +423,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-008",
-    title: "Generator set delivery � port congestion Hamburg",
+    title: "Generator set delivery - port congestion Hamburg",
     status: "assessed",
     priority: "medium",
     recurrence: "weekly",
@@ -402,7 +437,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-009",
-    title: "Level 4 commissioning sequence conflict � UPS delay",
+    title: "Level 4 commissioning sequence conflict - UPS delay",
     status: "resolved",
     priority: "high",
     recurrence: "none",
@@ -430,7 +465,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-011",
-    title: "Building permit amendment required � data hall height increase",
+    title: "Building permit amendment required - data hall height increase",
     status: "assessed",
     priority: "high",
     recurrence: "none",
@@ -444,7 +479,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-012",
-    title: "Chilled water plant delivery delay � custom manifolds",
+    title: "Chilled water plant delivery delay - custom manifolds",
     status: "identified",
     priority: "high",
     recurrence: "weekly",
@@ -458,7 +493,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-013",
-    title: "IT infrastructure scope change � liquid cooling upgrade",
+    title: "IT infrastructure scope change - liquid cooling upgrade",
     status: "assessed",
     priority: "medium",
     recurrence: "none",
@@ -487,7 +522,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-015",
-    title: "Crane access route � weight restriction on local road",
+    title: "Crane access route - weight restriction on local road",
     status: "mitigated",
     priority: "low",
     recurrence: "none",
@@ -501,7 +536,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-016",
-    title: "BMS integration scope � contractor interface not defined",
+    title: "BMS integration scope - contractor interface not defined",
     status: "identified",
     priority: "high",
     recurrence: "weekly",
@@ -515,12 +550,12 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-017",
-    title: "Concrete pour quality � cold weather risk",
+    title: "Concrete pour quality - cold weather risk",
     status: "mitigated",
     priority: "medium",
     recurrence: "none",
     workstreamIds: ["civil-works"],
-    notes: "Foundation slab pour scheduled for January. Risk of concrete quality issues if temperature drops below -5�C. Cold weather concreting plan prepared and approved.",
+    notes: "Foundation slab pour scheduled for January. Risk of concrete quality issues if temperature drops below -5°C. Cold weather concreting plan prepared and approved.",
     checklist: [
       { id: "c1", text: "Cold weather concreting plan approved", completed: true },
       { id: "c2", text: "Heated enclosure procurement confirmed", completed: true },
@@ -530,7 +565,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-018",
-    title: "Substation land title � boundary dispute with adjacent owner",
+    title: "Substation land title - boundary dispute with adjacent owner",
     status: "assessed",
     priority: "high",
     recurrence: "none",
@@ -545,12 +580,12 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-019",
-    title: "EIA environmental monitoring � protected species survey",
+    title: "EIA environmental monitoring - protected species survey",
     status: "resolved",
     priority: "medium",
     recurrence: "none",
     workstreamIds: ["civil-works", "it-data-infrastructure"],
-    notes: "Environmental Impact Assessment required protected species survey before ground clearance. Survey completed � no protected species found. Clearance to proceed issued.",
+    notes: "Environmental Impact Assessment required protected species survey before ground clearance. Survey completed - no protected species found. Clearance to proceed issued.",
     checklist: [
       { id: "c1", text: "Protected species survey completed", completed: true },
       { id: "c2", text: "Environmental clearance issued", completed: true },
@@ -559,7 +594,7 @@ export const SEED_RISKS: SeedRisk[] = [
   },
   {
     riskId: "RK-020",
-    title: "Workforce HSE � contractor safety culture audit failed",
+    title: "Workforce HSE - contractor safety culture audit failed",
     status: "assessed",
     priority: "high",
     recurrence: "weekly",

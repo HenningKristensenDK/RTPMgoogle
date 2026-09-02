@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutGrid, Table2, Plus, Trash2 } from "lucide-react";
+import { LayoutGrid, Table2, Plus, Trash2, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
 import {
   RISK_STATUSES,
   type Organization,
   type Risk,
+  type RiskImpactDriver,
   type RiskKind,
   type RiskPriority,
   type RiskStatus,
+  type RiskTrend,
 } from "../types";
 import { useRiskStore } from "../store/riskStore";
 import { useAuthStore, currentIdentity } from "../store/authStore";
@@ -28,6 +30,13 @@ import NewRiskModal from "../components/risk/NewRiskModal";
 import PersonAvatar from "../components/common/PersonAvatar";
 
 type View = "board" | "table";
+
+// "up" = getting worse (red), "down" = improving (green) — same convention as RiskStatusBar.
+const TREND_ICON: Record<RiskTrend, { Icon: typeof TrendingUp; color: string; label: string }> = {
+  up: { Icon: TrendingUp, color: "#C0392B", label: "Trending up — getting worse" },
+  flat: { Icon: Minus, color: "#8a8ca6", label: "Flat — unchanged" },
+  down: { Icon: TrendingDown, color: "#27AE60", label: "Trending down — improving" },
+};
 
 interface PresetFilters {
   presetWorkstream?: string;
@@ -111,7 +120,9 @@ export default function RiskBoard() {
   async function handleCreateRisk(data: {
     kind: RiskKind;
     title: string;
-    priority: RiskPriority;
+    likelihood: number;
+    impactScore: number;
+    impactDriver: RiskImpactDriver;
     dueDate: Timestamp | null;
     workstreamIds: string[];
   }) {
@@ -336,6 +347,7 @@ function TableView({
         <tbody>
           {risks.map((risk) => {
             const prio = PRIORITY_META[risk.priority];
+            const trendMeta = TREND_ICON[risk.trend || "flat"];
             const responsible = roles
               .filter((r) => risk.workstreamIds.includes(r.id))
               .map(pickResponsible)
@@ -372,6 +384,9 @@ function TableView({
                       style={{ background: prio.dot }}
                     />
                     {prio.label}
+                    <span title={trendMeta.label} className="inline-flex">
+                      <trendMeta.Icon size={13} style={{ color: trendMeta.color }} />
+                    </span>
                   </span>
                 </td>
                 <td className="px-4 py-2.5 text-gray-500">

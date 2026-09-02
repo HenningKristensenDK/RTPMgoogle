@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, FileText, Mail, GitPullRequest, CheckSquare, Sparkles, ArrowRight } from "lucide-react";
+import { FileText, Mail, GitPullRequest, CheckSquare, Sparkles, ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Timestamp } from "firebase/firestore";
 import type { Organization, Risk, RiskPriority } from "../types";
@@ -10,8 +10,15 @@ import { useAgentPanelStore } from "../store/agentPanelStore";
 import { watchOrganizations } from "../firebase/firestore";
 import { STATUS_LABEL, NEXT_STEP_OWNER, PRIORITY_META, formatDate, pickResponsible } from "../lib/format";
 import { tierColor } from "../lib/tiers";
+import { bandChip } from "../lib/rag";
+import { SCORE_LEVELS, LIKELIHOOD_LABELS, IMPACT_LABELS, priorityFromScore } from "../lib/riskScoring";
 import { toast } from "../lib/toast";
 import PersonAvatar from "../components/common/PersonAvatar";
+import PhaseMilestoneTimeline from "../components/dashboard/PhaseMilestoneTimeline";
+import Tier2CategoryCards from "../components/dashboard/Tier2CategoryCards";
+import RiskWorkstreamBreakdown from "../components/dashboard/RiskWorkstreamBreakdown";
+import { useDashboardMetrics } from "../lib/useDashboardMetrics";
+import { contingencyPct, contingencyRag, ragDot } from "../lib/dashboardMetrics";
 import {
   PROJECT_HEALTH,
   MY_TODO_MOCK,
@@ -22,17 +29,6 @@ import {
   CHANGE_EXPOSURE_MOCK,
 } from "../lib/dashboardMock";
 import type { RiskStatus } from "../types";
-
-const MILESTONES = [
-  { label: "NTP",                  date: "2026.03.01", iso: "2026-03-01" },
-  { label: "Design Freeze",        date: "2026.06.15", iso: "2026-06-15" },
-  { label: "MEP Procurement",      date: "2026.09.01", iso: "2026-09-01" },
-  { label: "Civil Complete",       date: "2026.12.01", iso: "2026-12-01" },
-  { label: "Commissioning Start",  date: "2027.03.01", iso: "2027-03-01" },
-  { label: "COD",                  date: "2027.09.30", iso: "2027-09-30" },
-];
-
-const MATRIX_PRIORITIES: RiskPriority[] = ["critical", "high", "medium", "low"];
 
 type ActivityEntry = {
   riskId: string;
@@ -57,6 +53,10 @@ export default function Dashboard() {
     return watchOrganizations(projectId, setOrgs);
   }, [projectId]);
 
+  const metrics = useDashboardMetrics(projectId);
+  const commercialLatest = metrics.commercial[metrics.commercial.length - 1];
+  const contingencyRemainingPct = contingencyPct(commercialLatest);
+
   const today = new Date();
   const openRisks = useMemo(() => risks.filter((r) => r.status !== "resolved"), [risks]);
   const criticalCount = useMemo(
@@ -65,10 +65,6 @@ export default function Dashboard() {
   );
   const overdueCount = useMemo(() => openRisks.filter((r) => isOverdue(r, today)).length, [openRisks]);
 
-  // Milestone state: index of first upcoming milestone (-1 if all past)
-  const firstUpcomingIdx = MILESTONES.findIndex((m) => new Date(m.iso) > today);
-  const fu = firstUpcomingIdx === -1 ? MILESTONES.length : firstUpcomingIdx;
-
   function ownerOf(risk: Risk) {
     return roles
       .filter((r) => risk.workstreamIds.includes(r.id))
@@ -76,24 +72,19 @@ export default function Dashboard() {
       .find((p) => p !== null);
   }
 
-  // Risk matrix: workstream x priority, entirely real (both fields already
-  // exist on Risk/RoleResponsibility) — no fabricated likelihood axis.
-  const riskMatrix = useMemo(() => {
-    const workstreamNames = [...new Set(roles.map((r) => r.workstream))];
-    return workstreamNames
-      .map((ws) => {
-        const wsRoleIds = roles.filter((r) => r.workstream === ws).map((r) => r.id);
-        const counts = MATRIX_PRIORITIES.map(
-          (p) =>
-            openRisks.filter(
-              (r) => r.priority === p && r.workstreamIds.some((id) => wsRoleIds.includes(id))
-            ).length
-        );
-        return { workstream: ws, counts, total: counts.reduce((a, b) => a + b, 0) };
-      })
-      .filter((row) => row.total > 0)
-      .sort((a, b) => b.total - a.total);
-  }, [roles, openRisks]);
+  // Risk matrix: real Likelihood x Impact grid — each open risk plotted at
+  // its (likelihood, impactScore) cell. Rows = likelihood 5 (top) to 1
+  // (bottom), columns = impact 1 (left) to 5 (right).
+  const matrixCells = useMemo(() => {
+    const cells = new Map<string, Risk[]>();
+    openRisks.forEach((r) => {
+      const key = `${r.likelihood}-${r.impactScore}`;
+      const bucket = cells.get(key) ?? [];
+      bucket.push(r);
+      cells.set(key, bucket);
+    });
+    return cells;
+  }, [openRisks]);
 
   // Top critical risks — real, overdue first then earliest due date.
   const topCriticalRisks = useMemo(() => {
@@ -211,91 +202,24 @@ export default function Dashboard() {
             onClick={() => notBuiltYet("Decisions & Approvals")}
           />
           <KpiCard
-            label="Documents Waiting"
-            value={DOCUMENTS_WAITING_MOCK.waiting}
-            subtext={`${DOCUMENTS_WAITING_MOCK.overdue} overdue reviews`}
-            valueColor="#ff8b00"
-            onClick={() => navigate("/documents")}
+            label="Contingency Remaining"
+            value={`${contingencyRemainingPct.toFixed(0)}%`}
+            subtext={`DKK ${(commercialLatest.contingencyRemainingDkk / 1_000_000).toFixed(1)}M of ${(commercialLatest.totalContingencyDkk / 1_000_000).toFixed(0)}M`}
+            valueColor={ragDot(contingencyRag(contingencyRemainingPct))}
           />
         </div>
 
-        {/* Milestone timeline */}
-        <div className="rounded-card bg-white px-6 py-5 shadow-card">
-          <h2
-            className="mb-4 text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: "#8a8ca6" }}
-          >
-            Milestone timeline
-          </h2>
-          <div className="flex items-start">
-            {MILESTONES.map((ms, idx) => {
-              const isDone = idx < fu;
-              const isCurrent = idx === firstUpcomingIdx;
-              const isLast = idx === MILESTONES.length - 1;
-              const lineSolid = isDone;
-
-              return (
-                <div key={ms.label} className="flex flex-1 flex-col items-center">
-                  <div className="flex w-full items-center">
-                    <div className="flex-1">
-                      {idx > 0 && (
-                        <div
-                          className="h-[2px] w-full"
-                          style={{
-                            background: lineSolid ? "#28a745" : "transparent",
-                            borderTop: lineSolid ? "none" : "2px dashed #D1D5DB",
-                          }}
-                        />
-                      )}
-                    </div>
-                    <div
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-                      style={{
-                        background: isDone ? "#28a745" : "transparent",
-                        border: isDone
-                          ? "none"
-                          : isCurrent
-                          ? "2px solid #0d08d2"
-                          : "2px solid #D1D5DB",
-                      }}
-                    >
-                      {isDone && <Check size={11} strokeWidth={3} color="#fff" />}
-                    </div>
-                    <div className="flex-1">
-                      {!isLast && (
-                        <div
-                          className="h-[2px] w-full"
-                          style={{
-                            background: lineSolid ? "#28a745" : "transparent",
-                            borderTop: lineSolid ? "none" : "2px dashed #D1D5DB",
-                          }}
-                        />
-                      )}
-                    </div>
-                  </div>
-                  <div
-                    className="mt-2 text-center text-[11px] font-semibold"
-                    style={{
-                      color: isDone ? "#28a745" : isCurrent ? "#0d08d2" : "#8a8ca6",
-                    }}
-                  >
-                    {ms.label}
-                  </div>
-                  <div className="mt-0.5 text-center text-[10px]" style={{ color: "#8a8ca6" }}>
-                    {ms.date}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Phase & milestone timeline (Step 1 — spec Section 6) */}
+        <PhaseMilestoneTimeline />
 
         {/* Main cockpit grid: risk matrix + top risks | project control queues | AI insights */}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
 
-          {/* Left: risk matrix + top critical risks */}
+          {/* Left: workstream/contractor breakdown + risk matrix + top critical risks */}
           <div className="flex flex-col gap-4">
-            <div className="rounded-card bg-white px-6 py-5 shadow-card">
+            {/* Step 3 — Workstream/Contractor pivot, above the Risk Matrix */}
+            <RiskWorkstreamBreakdown />
+            <div className="flex flex-1 flex-col rounded-card bg-white px-6 py-5 shadow-card">
               <h2
                 className="text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: "#8a8ca6" }}
@@ -303,57 +227,81 @@ export default function Dashboard() {
                 Risk matrix
               </h2>
               <p className="mb-3 mt-1 text-[11px]" style={{ color: "#b8b9c9" }}>
-                Open risks by workstream and priority — click a count to filter the Risk Register.
+                Likelihood × impact — click a cell to filter the Risk Register.
               </p>
-              {riskMatrix.length === 0 ? (
-                <p className="text-sm text-gray-400">No open risks.</p>
-              ) : (
-                <div className="scroll-thin overflow-x-auto">
-                  <table className="w-full text-left text-[12px]">
-                    <thead>
-                      <tr>
-                        <th className="pb-2 pr-3 font-medium text-gray-400">Workstream</th>
-                        {MATRIX_PRIORITIES.map((p) => (
-                          <th
-                            key={p}
-                            className="px-1.5 pb-2 text-center font-medium"
-                            style={{ color: PRIORITY_META[p].text }}
-                          >
-                            {PRIORITY_META[p].label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {riskMatrix.map((row) => (
-                        <tr key={row.workstream} className="border-t border-bordergray">
-                          <td className="whitespace-nowrap py-2 pr-3 font-medium text-ink">
-                            {row.workstream}
-                          </td>
-                          {row.counts.map((count, i) => {
-                            const p = MATRIX_PRIORITIES[i];
-                            return (
-                              <td key={p} className="px-1.5 py-2 text-center">
-                                {count === 0 ? (
-                                  <span className="text-gray-300">—</span>
-                                ) : (
-                                  <button
-                                    onClick={() => goToRisks({ presetWorkstream: row.workstream, presetPriority: p })}
-                                    className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold text-white transition hover:opacity-80"
-                                    style={{ background: PRIORITY_META[p].dot }}
-                                  >
-                                    {count}
-                                  </button>
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <div className="flex flex-1 items-stretch gap-2">
+                <div
+                  className="shrink-0 self-stretch text-center text-[10px] font-medium text-gray-400"
+                  style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                >
+                  Likelihood
                 </div>
-              )}
+                <div className="flex-1">
+                  <div
+                    className="grid items-stretch gap-1.5"
+                    style={{ gridTemplateColumns: "20px repeat(5, 1fr)" }}
+                  >
+                    {[5, 4, 3, 2, 1].map((L) => (
+                      <Fragment key={L}>
+                        <div className="flex items-center justify-center text-[11px] font-medium text-gray-400">
+                          {L}
+                        </div>
+                        {SCORE_LEVELS.map((I) => {
+                          const cellRisks = matrixCells.get(`${L}-${I}`) ?? [];
+                          const band = priorityFromScore(L * I);
+                          const chip = bandChip(band);
+                          return (
+                            <button
+                              key={I}
+                              onClick={() => goToRisks({ presetPriority: band })}
+                              title={`Likelihood ${L} × Impact ${I} — ${PRIORITY_META[band].label}${cellRisks.length ? `, ${cellRisks.length} risk${cellRisks.length === 1 ? "" : "s"}` : ""}`}
+                              className="flex w-full items-center justify-center rounded transition hover:opacity-75"
+                              style={{
+                                aspectRatio: "1",
+                                background: `${chip.bg}22`,
+                                border: band === "critical" ? `2px solid ${chip.bg}` : `1px solid ${chip.bg}55`,
+                              }}
+                            >
+                              {cellRisks.length > 0 && (
+                                <span
+                                  className="flex h-6 min-w-[24px] items-center justify-center rounded-full px-1.5 text-[12px] font-bold"
+                                  style={{ background: chip.bg, color: chip.text }}
+                                >
+                                  {cellRisks.length}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </Fragment>
+                    ))}
+                    <div />
+                    {SCORE_LEVELS.map((I) => (
+                      <div key={I} className="text-center text-[11px] font-medium text-gray-400">
+                        {I}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-1 pl-4 text-center text-[10px] font-medium text-gray-400">Impact</div>
+                </div>
+              </div>
+
+              {/* Caption + color-band legend — secondary in weight to the matrix itself */}
+              <p className="mt-3 text-center text-[11px]" style={{ color: "#595b78" }}>
+                Likelihood: 1 {LIKELIHOOD_LABELS[1]} – 5 {LIKELIHOOD_LABELS[5]} &nbsp;|&nbsp; Impact: 1{" "}
+                {IMPACT_LABELS[1]} – 5 {IMPACT_LABELS[5]} (cost / schedule / safety)
+              </p>
+              <div className="mt-1.5 flex items-center justify-center gap-3 text-[11px]" style={{ color: "#595b78" }}>
+                {(["low", "medium", "high", "critical"] as RiskPriority[]).map((band) => {
+                  const chip = bandChip(band);
+                  return (
+                    <span key={band} className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full" style={{ background: chip.bg }} />
+                      {PRIORITY_META[band].label}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="overflow-hidden rounded-card bg-white shadow-card">
@@ -497,6 +445,9 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Tier 2 — control-queue category cards (Step 2 — spec Section 2) */}
+        <Tier2CategoryCards metrics={metrics} />
+
         {/* Recent activity + ownership hotspots */}
         <div className="grid grid-cols-3 gap-4">
 
@@ -541,7 +492,7 @@ export default function Dashboard() {
                         {act.riskId}
                       </td>
                       <td className="px-6 py-2.5 text-[13px] font-medium text-ink">
-                        {act.title.replace(/◆/g, " - ")}
+                        {act.title}
                       </td>
                       <td className="px-6 py-2.5">
                         <span

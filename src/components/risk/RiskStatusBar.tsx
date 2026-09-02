@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Check } from "lucide-react";
-import { RISK_STATUSES, type Risk, type RiskStatus } from "../../types";
+import { Check, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { RISK_STATUSES, type Risk, type RiskStatus, type RiskTrend } from "../../types";
 import { STATUS_LABEL, formatDateYMD } from "../../lib/format";
 
 const STEP_OWNER: Record<RiskStatus, string> = {
@@ -10,15 +10,31 @@ const STEP_OWNER: Record<RiskStatus, string> = {
   resolved:   "Commissioning Authority",
 };
 
+const TREND_ORDER: RiskTrend[] = ["down", "flat", "up"];
+// "up" = getting worse (red), "down" = improving (green) — matches risk-severity convention.
+const TREND_META: Record<RiskTrend, { Icon: typeof TrendingUp; color: string; label: string }> = {
+  up: { Icon: TrendingUp, color: "#C0392B", label: "Trending up — getting worse" },
+  flat: { Icon: Minus, color: "#8a8ca6", label: "Flat — unchanged since last review" },
+  down: { Icon: TrendingDown, color: "#27AE60", label: "Trending down — improving" },
+};
+
 interface Props {
   risk: Risk;
   onChangeStatus: (to: RiskStatus) => void;
+  onCycleTrend: (next: RiskTrend) => void;
 }
 
-export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
+export default function RiskStatusBar({ risk, onChangeStatus, onCycleTrend }: Props) {
   const [pending, setPending] = useState<RiskStatus | null>(null);
   const currentIdx = RISK_STATUSES.indexOf(risk.status);
   const history = risk.statusHistory || [];
+  const trend = risk.trend || "flat";
+  const trendMeta = TREND_META[trend];
+
+  function cycleTrend() {
+    const next = TREND_ORDER[(TREND_ORDER.indexOf(trend) + 1) % TREND_ORDER.length];
+    onCycleTrend(next);
+  }
 
   function stepDate(status: RiskStatus): string | null {
     const entry = history.find((h) => h.to === status);
@@ -32,7 +48,16 @@ export default function RiskStatusBar({ risk, onChangeStatus }: Props) {
   }
 
   return (
-    <div className="mb-3 rounded-card bg-white px-6 py-4 shadow-card">
+    <div className="relative mb-3 rounded-card bg-white px-6 py-4 shadow-card">
+      <button
+        onClick={cycleTrend}
+        title={trendMeta.label}
+        className="absolute right-4 top-3 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-fog"
+        style={{ color: trendMeta.color }}
+      >
+        <trendMeta.Icon size={13} />
+        {trend}
+      </button>
       <div className="flex items-start">
         {RISK_STATUSES.map((status, idx) => {
           // Green ✓ if risk is AT or PAST this step

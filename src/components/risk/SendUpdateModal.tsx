@@ -45,9 +45,7 @@ export default function SendUpdateModal({ risk, roles, onClose }: Props) {
   const [ccIds, setCcIds] = useState<Set<string>>(
     () => new Set(informed.map((r) => r.key))
   );
-  const [subject, setSubject] = useState(
-    `Update: ${risk.riskId} — ${risk.title.replace(/◆/g, " - ")}`
-  );
+  const [subject, setSubject] = useState(`Update: ${risk.riskId} — ${risk.title}`);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
 

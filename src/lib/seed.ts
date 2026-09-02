@@ -17,6 +17,13 @@ import {
   SEED_CORRESPONDENCE,
   SEED_TIME_ENTRIES,
 } from "./seedData";
+import {
+  SEED_HSE_ENTRIES,
+  SEED_COMMERCIAL_SUMMARY,
+  SEED_QUALITY_SUMMARY,
+  SEED_SCHEDULE_EVM,
+} from "./dashboardMetrics";
+import { backfillScoring } from "./riskScoring";
 
 let seedingPromise: Promise<void> | null = null;
 
@@ -75,18 +82,26 @@ async function run(createdBy: string): Promise<void> {
   const now = Date.now();
   for (const risk of SEED_RISKS) {
     const ref = doc(collection(db, "risks"));
+    const scoring = backfillScoring(risk.priority, `${risk.title} ${risk.notes}`);
     batch.set(ref, {
       projectId: SEED_PROJECT.id,
       riskId: risk.riskId,
+      kind: "risk",
       title: risk.title,
       status: risk.status,
-      priority: risk.priority,
+      likelihood: scoring.likelihood,
+      impactScore: scoring.impactScore,
+      riskScore: scoring.riskScore,
+      priority: scoring.priority,
+      impactDriver: scoring.impactDriver,
+      trend: scoring.trend,
       startDate: Timestamp.fromMillis(now),
       dueDate: Timestamp.fromMillis(now + risk.dueOffsetDays * 86400000),
       recurrence: risk.recurrence,
       collection: SEED_PROJECT.name,
       workstreamIds: risk.workstreamIds,
       checklist: risk.checklist,
+      mitigationPlan: "",
       notes: risk.notes,
       attachments: [],
       statusHistory: [],
@@ -108,6 +123,7 @@ async function run(createdBy: string): Promise<void> {
       priority: item.priority,
       startDate: Timestamp.fromMillis(now),
       dueDate: Timestamp.fromMillis(now + item.dueOffsetDays * 86400000),
+      ...(item.relatedRiskId ? { relatedRiskId: item.relatedRiskId } : {}),
       workstreamIds: item.workstreamIds,
       checklist: item.checklist,
       notes: item.notes,
@@ -139,6 +155,20 @@ async function run(createdBy: string): Promise<void> {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+  }
+
+  // Dashboard Tier-2 seeded metrics (spec Section 4)
+  for (const w of SEED_HSE_ENTRIES) {
+    batch.set(doc(collection(db, "hse_entries")), { projectId: SEED_PROJECT.id, ...w });
+  }
+  for (const w of SEED_COMMERCIAL_SUMMARY) {
+    batch.set(doc(collection(db, "commercial_summary")), { projectId: SEED_PROJECT.id, ...w });
+  }
+  for (const w of SEED_QUALITY_SUMMARY) {
+    batch.set(doc(collection(db, "quality_summary")), { projectId: SEED_PROJECT.id, ...w });
+  }
+  for (const w of SEED_SCHEDULE_EVM) {
+    batch.set(doc(collection(db, "schedule_evm_weekly")), { projectId: SEED_PROJECT.id, ...w });
   }
 
   await batch.commit();

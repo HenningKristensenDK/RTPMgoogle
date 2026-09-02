@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageSquare, X } from "lucide-react";
 import { useChatStore } from "../store/chatStore";
-import type { Risk, RiskStatus } from "../types";
-import { watchRisk, changeRiskStatus } from "../firebase/firestore";
+import type { Risk, RiskKind, RiskStatus } from "../types";
+import { watchRisk, changeRiskStatus, nextRiskCode } from "../firebase/firestore";
 import { useRiskStore } from "../store/riskStore";
 import { useAuthStore, currentIdentity } from "../store/authStore";
-import { STATUS_LABEL } from "../lib/format";
+import { STATUS_LABEL, riskKind } from "../lib/format";
 import { toast } from "../lib/toast";
 import RiskPanel from "../components/risk/RiskPanel";
 import SendUpdateModal from "../components/risk/SendUpdateModal";
@@ -15,6 +15,7 @@ export default function RiskDetail() {
   const { riskId } = useParams<{ riskId: string }>();
   const navigate = useNavigate();
   const roles = useRiskStore((s) => s.roles);
+  const projectId = useRiskStore((s) => s.projectId);
   const patchRisk = useRiskStore((s) => s.patchRisk);
   const user = useAuthStore((s) => s.user);
   const me = currentIdentity(user);
@@ -45,6 +46,18 @@ export default function RiskDetail() {
       toast.success(`Status set to ${STATUS_LABEL[to]}`);
     } catch {
       toast.error("Failed to update status");
+    }
+  }
+
+  // Re-issues the RK-/OP- code along with the kind so the badge never shows a
+  // mismatched prefix (e.g. an Opportunity still labeled "RK-011").
+  async function handleChangeKind(kind: RiskKind) {
+    if (!risk || riskKind(risk) === kind) return;
+    try {
+      const newCode = await nextRiskCode(projectId, kind);
+      await patchRisk(risk.id, { kind, riskId: newCode });
+    } catch {
+      toast.error("Could not change type");
     }
   }
 
@@ -104,6 +117,7 @@ export default function RiskDetail() {
                 authorName={me.name}
                 onPatch={(patch) => patchRisk(risk.id, patch)}
                 onChangeStatus={handleChangeStatus}
+                onChangeKind={handleChangeKind}
               />
             </div>
           </>
