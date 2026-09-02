@@ -573,3 +573,29 @@ export const SEED_RISKS: SeedRisk[] = [
     dueOffsetDays: 28,
   },
 ];
+
+export interface SeedTimeEntry {
+  entryId: string;
+  dateOffsetDays: number; // negative = past days
+  personName: string;
+  personOrg: string;
+  workstreamId: string;
+  activity: string;
+  category: "Labour" | "Supervision" | "Plant & Equipment" | "Engineering" | "Travel" | "Other";
+  hours: number;
+  billable: boolean;
+  status: "draft" | "submitted" | "approved";
+  notes: string;
+}
+
+export const SEED_TIME_ENTRIES: SeedTimeEntry[] = [
+  { entryId: "TL-001", dateOffsetDays: 0, personName: "Jens Larsen", personOrg: "HD Contractor", workstreamId: "civil-works", activity: "Rebar fixing to Grid C foundation", category: "Labour", hours: 8, billable: true, status: "approved", notes: "Gang of 4 on the north-east pour prep." },
+  { entryId: "TL-002", dateOffsetDays: -1, personName: "Bharat Khunti", personOrg: "HD Contractor", workstreamId: "quality", activity: "ITP witness — concrete cover checks", category: "Supervision", hours: 4, billable: true, status: "submitted", notes: "" },
+  { entryId: "TL-003", dateOffsetDays: -1, personName: "Peter Koch", personOrg: "HD Contractor", workstreamId: "mep-infrastructure", activity: "MEP coordination review with design authority", category: "Engineering", hours: 6, billable: true, status: "approved", notes: "" },
+  { entryId: "TL-004", dateOffsetDays: -2, personName: "Ming Zhang", personOrg: "FO Sub-Contractor", workstreamId: "it-data-infrastructure", activity: "Raised floor installation — IT room", category: "Labour", hours: 9, billable: true, status: "approved", notes: "Ahead of rack delivery." },
+  { entryId: "TL-005", dateOffsetDays: -2, personName: "Anna López", personOrg: "NT Advisor", workstreamId: "civil-works", activity: "Foundation inspection and reporting", category: "Supervision", hours: 3, billable: false, status: "approved", notes: "Advisor inspection before pour." },
+  { entryId: "TL-006", dateOffsetDays: -3, personName: "Jens Lorenzen", personOrg: "HD Contractor", workstreamId: "hse", activity: "Weekly HSE walk and toolbox talk", category: "Supervision", hours: 2.5, billable: false, status: "submitted", notes: "" },
+  { entryId: "TL-007", dateOffsetDays: -3, personName: "Jens Larsen", personOrg: "HD Contractor", workstreamId: "civil-works", activity: "Crane operation — structural steel lifts", category: "Plant & Equipment", hours: 7, billable: true, status: "draft", notes: "Weather window used for calm lifts." },
+  { entryId: "TL-008", dateOffsetDays: -4, personName: "Sindhu K", personOrg: "Customer", workstreamId: "permit-and-authorities", activity: "Permit amendment submission coordination", category: "Engineering", hours: 5, billable: false, status: "approved", notes: "" },
+  { entryId: "TL-009", dateOffsetDays: -4, personName: "Thomas Olsen", personOrg: "NT Advisor", workstreamId: "mep-infrastructure", activity: "Travel to vendor FAT witness — Germany", category: "Travel", hours: 4, billable: true, status: "submitted", notes: "" },
+];

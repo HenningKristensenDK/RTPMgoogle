@@ -15,6 +15,7 @@ import {
   SEED_ORGANIZATIONS,
   SEED_RISKS,
   SEED_CORRESPONDENCE,
+  SEED_TIME_ENTRIES,
 } from "./seedData";
 
 let seedingPromise: Promise<void> | null = null;
@@ -112,6 +113,28 @@ async function run(createdBy: string): Promise<void> {
       notes: item.notes,
       attachments: [],
       statusHistory: [],
+      createdBy,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  // Time entries
+  for (const entry of SEED_TIME_ENTRIES) {
+    const ref = doc(collection(db, "time_entries"));
+    batch.set(ref, {
+      projectId: SEED_PROJECT.id,
+      entryId: entry.entryId,
+      date: Timestamp.fromMillis(now + entry.dateOffsetDays * 86400000),
+      personName: entry.personName,
+      personOrg: entry.personOrg,
+      workstreamId: entry.workstreamId,
+      activity: entry.activity,
+      category: entry.category,
+      hours: entry.hours,
+      billable: entry.billable,
+      status: entry.status,
+      notes: entry.notes,
       createdBy,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useLocation, type Location } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import {
-  Clock,
   ClipboardCheck,
   AlertTriangle,
   BadgeCheck,
@@ -13,6 +12,7 @@ import { useAuthStore, currentIdentity } from "./store/authStore";
 import { useRiskStore } from "./store/riskStore";
 import { useCorrespondenceStore } from "./store/correspondenceStore";
 import { useDocumentStore } from "./store/documentStore";
+import { useTimeStore } from "./store/timeStore";
 import { seedIfEmpty } from "./lib/seed";
 import { SEED_PROJECT } from "./lib/seedData";
 import Login from "./pages/Login";
@@ -24,6 +24,7 @@ import CorrespondenceBoard from "./pages/CorrespondenceBoard";
 import CorrespondenceDetail from "./pages/CorrespondenceDetail";
 import DocumentBoard from "./pages/DocumentBoard";
 import DocumentDetail from "./pages/DocumentDetail";
+import TimeLog from "./pages/TimeLog";
 import ModulePlaceholder from "./pages/ModulePlaceholder";
 import AppShell from "./components/AppShell";
 
@@ -43,7 +44,6 @@ const IS_HARD_RELOAD =
     ?.type === "reload";
 
 const PLACEHOLDERS: PlaceholderDef[] = [
-  { path: "/time-log",          moduleName: "Time Log",             Icon: Clock },
   { path: "/site-inspection",   moduleName: "Site Inspection",      Icon: ClipboardCheck },
   { path: "/ncr",               moduleName: "Nonconformance (NCR)", Icon: AlertTriangle },
   { path: "/permit-compliance", moduleName: "Permit & Compliance",  Icon: BadgeCheck },
@@ -59,6 +59,8 @@ export default function App() {
   const subscribeCorrespondence = useCorrespondenceStore((s) => s.subscribe);
   const setDocumentProject = useDocumentStore((s) => s.setProject);
   const subscribeDocuments = useDocumentStore((s) => s.subscribe);
+  const setTimeProject = useTimeStore((s) => s.setProject);
+  const subscribeTime = useTimeStore((s) => s.subscribe);
   const location = useLocation();
   // Only the history entry that was already active when this reload happened should
   // have its stale background state ignored — any navigation after that is a fresh
@@ -78,8 +80,9 @@ export default function App() {
       setProject(SEED_PROJECT.id);
       setCorrespondenceProject(SEED_PROJECT.id);
       setDocumentProject(SEED_PROJECT.id);
+      setTimeProject(SEED_PROJECT.id);
     });
-  }, [user, setProject, setCorrespondenceProject, setDocumentProject]);
+  }, [user, setProject, setCorrespondenceProject, setDocumentProject, setTimeProject]);
 
   useEffect(() => {
     if (!user) return;
@@ -98,6 +101,12 @@ export default function App() {
     const unsub = subscribeDocuments();
     return unsub;
   }, [user, subscribeDocuments]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = subscribeTime();
+    return unsub;
+  }, [user, subscribeTime]);
 
   if (loading) {
     return (
@@ -129,6 +138,7 @@ export default function App() {
           <Route path="/documents" element={<DocumentBoard />} />
           {/* Direct load / refresh on a document URL (no background state) — send back to the table. */}
           <Route path="/documents/:docId" element={<Navigate to="/documents" replace />} />
+          <Route path="/time-log" element={<TimeLog />} />
           <Route path="/roles" element={<RolesResponsibility />} />
           {PLACEHOLDERS.map(({ path, moduleName, Icon }) => (
             <Route

@@ -132,6 +132,48 @@ export interface CorrespondenceItem {
   updatedAt: Timestamp | null;
 }
 
+// ---------------------------------------------------------------------------
+// Time Log (time registration)
+// ---------------------------------------------------------------------------
+export type TimeCategory =
+  | "Labour"
+  | "Supervision"
+  | "Plant & Equipment"
+  | "Engineering"
+  | "Travel"
+  | "Other";
+
+export const TIME_CATEGORIES: TimeCategory[] = [
+  "Labour",
+  "Supervision",
+  "Plant & Equipment",
+  "Engineering",
+  "Travel",
+  "Other",
+];
+
+export type TimeEntryStatus = "draft" | "submitted" | "approved";
+export const TIME_ENTRY_STATUSES: TimeEntryStatus[] = ["draft", "submitted", "approved"];
+
+export interface TimeEntry {
+  id: string;
+  projectId: string;
+  entryId: string; // "TL-001", see nextTimeCode()
+  date: Timestamp | null; // the work date
+  personName: string;
+  personOrg: string;
+  workstreamId: string; // linked workstream ("" if none)
+  activity: string;
+  category: TimeCategory;
+  hours: number;
+  billable: boolean;
+  status: TimeEntryStatus;
+  notes: string;
+  createdBy: string;
+  createdAt: Timestamp | null;
+  updatedAt: Timestamp | null;
+}
+
 export interface Risk {
   id: string;
   projectId: string;

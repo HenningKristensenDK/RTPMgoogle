@@ -36,6 +36,7 @@ import type {
   DocumentStatus,
   DocumentAnnotation,
   DocumentComment,
+  TimeEntry,
 } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -52,6 +53,7 @@ const documentsCol = collection(db, "documents");
 const documentMessagesCol = collection(db, "document_messages");
 const documentAnnotationsCol = collection(db, "document_annotations");
 const documentCommentsCol = collection(db, "document_comments");
+const timeEntriesCol = collection(db, "time_entries");
 
 function mapDoc<T>(id: string, data: DocumentData): T {
   return { id, ...data } as T;
@@ -381,6 +383,78 @@ export async function createCorrespondence(
 
 export async function deleteCorrespondence(itemId: string): Promise<void> {
   await deleteDoc(doc(correspondenceCol, itemId));
+}
+
+// ---------------------------------------------------------------------------
+// Time Log (time registration)
+// Queried by projectId only (no orderBy) so it needs no composite index —
+// sorted client-side by work date. Same approach as document_annotations.
+// ---------------------------------------------------------------------------
+export function watchTimeEntries(
+  projectId: string,
+  cb: (entries: TimeEntry[]) => void
+) {
+  const q = query(timeEntriesCol, where("projectId", "==", projectId));
+  return onSnapshot(q, (snap) => {
+    const entries = snap.docs.map((d) => mapDoc<TimeEntry>(d.id, d.data()));
+    entries.sort((a, b) => (b.date?.toMillis() ?? 0) - (a.date?.toMillis() ?? 0));
+    cb(entries);
+  });
+}
+
+export async function nextTimeCode(projectId: string): Promise<string> {
+  const q = query(timeEntriesCol, where("projectId", "==", projectId));
+  const snap = await getDocs(q);
+  let max = 0;
+  snap.docs.forEach((d) => {
+    const code: string = d.data().entryId || "";
+    if (!code.startsWith("TL-")) return;
+    const n = parseInt(code.slice(3), 10);
+    if (!Number.isNaN(n) && n > max) max = n;
+  });
+  return `TL-${String(max + 1).padStart(3, "0")}`;
+}
+
+export async function createTimeEntry(
+  projectId: string,
+  createdBy: string,
+  partial: Partial<TimeEntry> = {}
+): Promise<string> {
+  const code = await nextTimeCode(projectId);
+  const payload: DocumentData = {
+    projectId,
+    entryId: code,
+    date: partial.date ?? Timestamp.now(),
+    personName: partial.personName || createdBy,
+    personOrg: partial.personOrg || "",
+    workstreamId: partial.workstreamId || "",
+    activity: partial.activity || "",
+    category: partial.category || "Labour",
+    hours: partial.hours ?? 0,
+    billable: partial.billable ?? true,
+    status: partial.status || "draft",
+    notes: partial.notes || "",
+    createdBy,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  const ref = await addDoc(timeEntriesCol, payload);
+  return ref.id;
+}
+
+export async function updateTimeEntry(
+  entryId: string,
+  patch: Partial<TimeEntry>
+): Promise<void> {
+  const { id, ...rest } = patch as DocumentData;
+  await updateDoc(doc(timeEntriesCol, entryId), {
+    ...rest,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteTimeEntry(entryId: string): Promise<void> {
+  await deleteDoc(doc(timeEntriesCol, entryId));
 }
 
 export async function updateCorrespondence(
