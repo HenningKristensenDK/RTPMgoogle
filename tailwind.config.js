@@ -4,22 +4,28 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: "#111827",
+        ink: "#15162b",
         indigo: {
-          DEFAULT: "#4F46E5",
-          600: "#4F46E5",
+          DEFAULT: "#0d08d2",
+          600: "#0d08d2",
         },
         emerald: {
-          DEFAULT: "#10B981",
+          DEFAULT: "#28a745",
         },
         amber: {
-          DEFAULT: "#F59E0B",
+          DEFAULT: "#ff8b00",
         },
-        fog: "#F3F4F6",
-        bordergray: "#E5E7EB",
+        fog: "#f7f7fb",
+        bordergray: "#e6e6f0",
+        "text-secondary": "#595b78",
+        "text-muted": "#8a8ca6",
+        critical: "#e63946",
+        info: "#00acff",
+        "accent-yellow": "#ffcc00",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
+        headline: ["'Barlow Semi Condensed'", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       boxShadow: {
@@ -27,11 +33,11 @@ export default {
         panel: "0 2px 8px rgba(0,0,0,0.08)",
       },
       borderRadius: {
-        card: "8px",
-        btn: "6px",
-        input: "4px",
+        card: "14px",
+        btn: "8px",
+        input: "8px",
       },
     },
   },
-  plugins: [],
+  plugins: [require("@tailwindcss/typography")],
 };

@@ -8,6 +8,7 @@ import {
   sendMessage,
   toggleReaction,
 } from "../../firebase/firestore";
+import { uploadChatImage } from "../../firebase/storage";
 import { askRiskManager, buildRiskContext, type AgentMessage } from "../../firebase/agent";
 import { toast } from "../../lib/toast";
 import ChatModeToggle from "./ChatModeToggle";
@@ -40,18 +41,20 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
   function switchMode() {
     const next = isAgent ? "chat" : "agent";
     setMode(next);
-    // Drop a subtle system note into the mode we are entering.
-    void sendMessage({
-      riskId: risk.id,
-      mode: next,
-      role: "system",
-      content: `Switched to ${next === "agent" ? "Risk Manager (AI)" : "Risk Resolve Chat"}`,
-      authorUid: me.uid,
-      authorName: me.name,
-    });
   }
 
-  async function handleSend(text: string) {
+  async function handleSend(text: string, images: File[]) {
+    let imageUrls: string[] = [];
+    if (images.length > 0) {
+      try {
+        imageUrls = await Promise.all(
+          images.map((file) => uploadChatImage(risk.id, file))
+        );
+      } catch {
+        toast.error("Could not upload image");
+      }
+    }
+
     // Persist the user's message in the active thread.
     await sendMessage({
       riskId: risk.id,
@@ -60,7 +63,8 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
       content: text,
       authorUid: me.uid,
       authorName: me.name,
-      authorAvatar: me.avatar,
+      authorAvatar: me.avatar ?? "",
+      images: imageUrls,
     });
 
     if (!isAgent) return; // team chat is just multi-user persistence
@@ -95,13 +99,13 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
         riskId: risk.id,
         mode: "agent",
         role: "assistant",
-        content: reply || "Risk Manager could not generate a response.",
+        content: reply || "Risk Management Agent could not generate a response.",
         authorUid: "risk-manager-agent",
-        authorName: "Risk Manager",
+        authorName: "Risk Management Agent",
       });
     } catch (err) {
       console.error(err);
-      toast.error("Risk Manager is unavailable right now.");
+      toast.error("Risk Management Agent is unavailable right now.");
     } finally {
       setTyping(false);
     }
@@ -118,8 +122,8 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
       <div
         className="flex items-center justify-between border-b px-4 py-3"
         style={{
-          borderColor: "#E5E7EB",
-          borderTop: `3px solid ${isAgent ? "#F59E0B" : "#4F46E5"}`,
+          borderColor: "#e6e6f0",
+          borderTop: `3px solid ${isAgent ? "#ff8b00" : "#0d08d2"}`,
         }}
       >
         <div className="flex items-center gap-2">
@@ -130,9 +134,9 @@ export default function ChatPanel({ risk, roles, onClose }: Props) {
           )}
           <span
             className="text-sm font-bold"
-            style={{ color: isAgent ? "#B45309" : "#4F46E5" }}
+            style={{ color: isAgent ? "#cc5500" : "#0d08d2" }}
           >
-            {isAgent ? "Risk Manager" : "Risk Resolve Chat"}
+            {isAgent ? "Risk Management Agent" : `${risk.riskId} Chat Log`}
           </span>
         </div>
         <div className="flex items-center gap-1">

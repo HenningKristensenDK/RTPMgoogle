@@ -3,7 +3,7 @@
 
 export const SEED_PROJECT = {
   id: "datacenter-vejle-phase-1",
-  name: "DataCenter Vejle — Phase 1",
+  name: "Viking Project",
   description:
     "Greenfield hyperscale data center build in Vejle, Denmark. Phase 1 covers civil works, MEP infrastructure and IT/data fit-out.",
 };
@@ -12,64 +12,297 @@ export const WORKSTREAMS = [
   "Civil Works",
   "MEP Infrastructure",
   "IT/Data Infrastructure",
+  "Quality",
+  "HSE",
+  "Permit and Authorities",
 ];
 
-// Each role gets a stable id so risks can reference them deterministically.
+export interface SeedParty {
+  name: string;
+  organization: string;
+  role: string;
+}
+
 export interface SeedRole {
   id: string;
   workstream: string;
-  organization: string;
-  organizationName: string;
-  role: string;
-  person: { name: string; email: string };
-  type: "responsible" | "informed";
+  accountable: SeedParty;
+  consulted: SeedParty[];
+  responsibleCustomer: SeedParty | null;
+  responsibleContractor: SeedParty | null;
+  informedCustomer: SeedParty[];
+  informedContractor: SeedParty[];
+  description: string;
+  interactionSummary: string;
 }
+
+const ACCOUNTABLE = { name: "Henning Kristensen", organization: "Customer", role: "Project director" };
 
 export const SEED_ROLES: SeedRole[] = [
   {
-    id: "rr-001",
+    id: "civil-works",
     workstream: "Civil Works",
-    organization: "Main Contractor",
-    organizationName: "MT Højgaard",
-    role: "Site Manager",
-    person: { name: "Jens Larsen", email: "jens.larsen@mth.dk" },
-    type: "responsible",
+    accountable: ACCOUNTABLE,
+    consulted: [{ name: "Anna López", organization: "Project Partner A/S", role: "Structural advisor" }],
+    responsibleCustomer: null,
+    responsibleContractor: { name: "Jens Larsen", organization: "HD Contractor", role: "Site manager" },
+    informedCustomer: [],
+    informedContractor: [
+      { name: "Peter Koch", organization: "HD Contractor", role: "MEP lead" },
+      { name: "Bharat Khunti", organization: "HD Contractor", role: "QA/QC manager" },
+    ],
+    description: "Foundations, structural concrete and building envelope works.",
+    interactionSummary: "Contractor executes the works, Customer's advisor inspects before pour.",
   },
   {
-    id: "rr-002",
+    id: "mep-infrastructure",
     workstream: "MEP Infrastructure",
-    organization: "Main Contractor",
-    organizationName: "MT Højgaard",
-    role: "MEP Lead",
-    person: { name: "Peter Koch", email: "peter.koch@mth.dk" },
-    type: "responsible",
+    accountable: ACCOUNTABLE,
+    consulted: [{ name: "Thomas Olsen", organization: "Project Partner A/S", role: "MEP advisor" }],
+    responsibleCustomer: null,
+    responsibleContractor: { name: "Peter Koch", organization: "HD Contractor", role: "MEP lead" },
+    informedCustomer: [{ name: "Sindhu K", organization: "Customer", role: "PMO lead" }],
+    informedContractor: [{ name: "Rasmus Iversen", organization: "EQ Supplier", role: "Account manager" }],
+    description: "Electrical, mechanical and utility infrastructure.",
+    interactionSummary: "Contractor installs equipment, Customer's advisor witnesses factory acceptance tests.",
   },
   {
-    id: "rr-003",
-    workstream: "Civil Works",
-    organization: "Advisor",
-    organizationName: "WSP Denmark",
-    role: "Structural Advisor",
-    person: { name: "Anna Nielsen", email: "anna.nielsen@wsp.com" },
-    type: "responsible",
-  },
-  {
-    id: "rr-004",
+    id: "it-data-infrastructure",
     workstream: "IT/Data Infrastructure",
-    organization: "Owner",
-    organizationName: "Ørsted A/S",
-    role: "Project Director",
-    person: { name: "Lars Møller", email: "lars.moller@orsted.dk" },
-    type: "informed",
+    accountable: ACCOUNTABLE,
+    consulted: [{ name: "Anna López", organization: "Project Partner A/S", role: "Structural advisor" }],
+    responsibleCustomer: { name: "Sindhu K", organization: "Customer", role: "PMO lead" },
+    responsibleContractor: { name: "Ming Zhang", organization: "FO Sub-Contractor", role: "IT infrastructure lead" },
+    informedCustomer: [],
+    informedContractor: [
+      { name: "Jens Larsen", organization: "HD Contractor", role: "Site manager" },
+      { name: "Peter Koch", organization: "HD Contractor", role: "MEP lead" },
+      { name: "Bharat Khunti", organization: "HD Contractor", role: "QA/QC manager" },
+      { name: "Rasmus Iversen", organization: "EQ Supplier", role: "Account manager" },
+    ],
+    description: "IT fit-out, data hall racking and liquid cooling.",
+    interactionSummary: "Sub-contractor fits out racks and cooling, main contractor coordinates site access.",
   },
   {
-    id: "rr-005",
-    workstream: "MEP Infrastructure",
-    organization: "Authority",
-    organizationName: "Region Syddanmark",
-    role: "Compliance Officer",
-    person: { name: "Mette Sørensen", email: "mette.sorensen@rsyd.dk" },
-    type: "informed",
+    id: "quality",
+    workstream: "Quality",
+    accountable: ACCOUNTABLE,
+    consulted: [{ name: "Thomas Olsen", organization: "Project Partner A/S", role: "MEP advisor" }],
+    responsibleCustomer: null,
+    responsibleContractor: { name: "Bharat Khunti", organization: "HD Contractor", role: "QA/QC manager" },
+    informedCustomer: [{ name: "Sindhu K", organization: "Customer", role: "PMO lead" }],
+    informedContractor: [],
+    description: "Quality assurance, inspection and NCR management.",
+    interactionSummary: "Contractor's QA/QC manager closes non-conformances, Customer's advisor reviews evidence before sign-off.",
+  },
+  {
+    id: "hse",
+    workstream: "HSE",
+    accountable: ACCOUNTABLE,
+    consulted: [{ name: "Thomas Olsen", organization: "Project Partner A/S", role: "HSE advisor" }],
+    responsibleCustomer: { name: "Sindhu K", organization: "Customer", role: "PMO lead" },
+    responsibleContractor: { name: "Jens Lorenzen", organization: "HD Contractor", role: "HSE coordinator" },
+    informedCustomer: [],
+    informedContractor: [],
+    description: "Health, safety and environmental compliance.",
+    interactionSummary: "Contractor's HSE coordinator manages daily compliance, Customer's advisor audits monthly.",
+  },
+  {
+    id: "permit-and-authorities",
+    workstream: "Permit and Authorities",
+    accountable: ACCOUNTABLE,
+    consulted: [{ name: "Rohan Sameer", organization: "Project Partner A/S", role: "Permitting advisor" }],
+    responsibleCustomer: { name: "Sindhu K", organization: "Customer", role: "PMO lead" },
+    responsibleContractor: null,
+    informedCustomer: [],
+    informedContractor: [{ name: "Ming Zhang", organization: "FO Sub-Contractor", role: "IT infrastructure lead" }],
+    description: "Building permits, grid connection approvals and regulatory compliance.",
+    interactionSummary: "Customer's PMO lead manages authority submissions, advisor supports technical justification.",
+  },
+];
+
+export interface SeedOrganization {
+  orgId: string;
+  name: string;
+  tier: number;
+  parentOrgId: string | null;
+  roleType: string;
+}
+
+export const SEED_ORGANIZATIONS: SeedOrganization[] = [
+  { orgId: "customer", name: "Customer", tier: 0, parentOrgId: null, roleType: "Home organization" },
+  { orgId: "wsp-denmark", name: "Project Partner A/S", tier: 0, parentOrgId: "customer", roleType: "Customer Representative" },
+  { orgId: "mt-hojgaard", name: "HD Contractor", tier: 1, parentOrgId: "customer", roleType: "Main contractor" },
+  { orgId: "nordic-fitout", name: "FO Sub-Contractor", tier: 2, parentOrgId: "mt-hojgaard", roleType: "Sub-contractor" },
+  { orgId: "eq-supplier", name: "EQ Supplier", tier: 3, parentOrgId: "nordic-fitout", roleType: "Vendor" },
+];
+
+export interface SeedCorrespondence {
+  itemId: string;
+  type:
+    | "RFI"
+    | "TQ"
+    | "Meeting Minutes"
+    | "Variation Request"
+    | "Site Instruction"
+    | "Extension of Time"
+    | "Inspection Request";
+  title: string;
+  status: "registered" | "sent_accountable" | "sent_responsible" | "completed" | "obsolete";
+  priority: "low" | "medium" | "high" | "critical";
+  workstreamIds: string[];
+  notes: string;
+  checklist: { id: string; text: string; completed: boolean }[];
+  dueOffsetDays: number;
+  /** Links this Change order back to a Risk (by riskId) so the two modules read as one system. */
+  relatedRiskId?: string;
+}
+
+export const SEED_CORRESPONDENCE: SeedCorrespondence[] = [
+  {
+    itemId: "RFI-001",
+    type: "RFI",
+    title: "Clarification on foundation rebar spacing at grid line C",
+    status: "sent_responsible",
+    priority: "medium",
+    workstreamIds: ["civil-works"],
+    notes: "Drawing S-102 Rev C shows 150mm spacing but the schedule references 200mm. Need confirmation before the next pour.",
+    checklist: [
+      { id: "c1", text: "Log RFI in register", completed: true },
+      { id: "c2", text: "Attach marked-up drawing", completed: true },
+      { id: "c3", text: "Confirm response with site QA", completed: false },
+    ],
+    dueOffsetDays: 7,
+  },
+  {
+    itemId: "TQ-001",
+    type: "TQ",
+    title: "Technical query on transformer earthing configuration",
+    status: "sent_accountable",
+    priority: "high",
+    workstreamIds: ["mep-infrastructure"],
+    notes: "Vendor datasheet conflicts with the single-line diagram on earthing resistance requirements.",
+    checklist: [
+      { id: "c1", text: "Collect vendor datasheet", completed: true },
+      { id: "c2", text: "Route to design authority", completed: false },
+    ],
+    dueOffsetDays: 5,
+  },
+  {
+    itemId: "MM-001",
+    type: "Meeting Minutes",
+    title: "Weekly site coordination meeting minutes — Week 14",
+    status: "completed",
+    priority: "low",
+    workstreamIds: ["civil-works", "mep-infrastructure"],
+    notes: "Circulated to all attendees. Action items tracked separately in the risk register.",
+    checklist: [
+      { id: "c1", text: "Draft minutes", completed: true },
+      { id: "c2", text: "Circulate for review", completed: true },
+      { id: "c3", text: "File signed copy", completed: true },
+    ],
+    dueOffsetDays: 0,
+  },
+  {
+    itemId: "VR-001",
+    type: "Variation Request",
+    title: "Variation request for additional fire-rated cable tray",
+    status: "registered",
+    priority: "high",
+    workstreamIds: ["mep-infrastructure"],
+    notes: "Scope addition following updated fire strategy review. Cost and schedule impact pending contractor quotation.",
+    checklist: [
+      { id: "c1", text: "Attach updated fire strategy drawing", completed: true },
+      { id: "c2", text: "Request contractor quotation", completed: false },
+    ],
+    dueOffsetDays: 10,
+  },
+  {
+    itemId: "VR-002",
+    type: "Variation Request",
+    title: "Temporary transformer rental to protect energisation milestone",
+    status: "sent_accountable",
+    priority: "critical",
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
+    notes:
+      "Mitigation for the 60MVA transformer lead-time exposure (see linked risk RK-004): rent a temporary unit to hold the energisation date while the permanent transformer is manufactured. Cost and connection-scope impact under review.",
+    checklist: [
+      { id: "c1", text: "Obtain temporary transformer rental quotation", completed: true },
+      { id: "c2", text: "Confirm temporary connection scope with DSO", completed: false },
+      { id: "c3", text: "Price permanent-to-temporary changeover works", completed: false },
+    ],
+    dueOffsetDays: 12,
+    relatedRiskId: "RK-004",
+  },
+  {
+    itemId: "VR-003",
+    type: "Variation Request",
+    title: "Alternative piling subcontractor mobilisation to recover programme",
+    status: "registered",
+    priority: "high",
+    workstreamIds: ["civil-works"],
+    notes:
+      "Mitigation for the piling crew shortage (see linked risk RK-010): mobilise a second piling subcontractor to recover the 4–6 week foundation delay. Additional mobilisation and rate differential under review.",
+    checklist: [
+      { id: "c1", text: "Confirm availability of alternative piling subcontractor", completed: true },
+      { id: "c2", text: "Price mobilisation and rate differential", completed: false },
+    ],
+    dueOffsetDays: 8,
+    relatedRiskId: "RK-010",
+  },
+  {
+    itemId: "SI-001",
+    type: "Site Instruction",
+    title: "Site instruction to halt piling near existing utility trench",
+    status: "completed",
+    priority: "critical",
+    workstreamIds: ["civil-works"],
+    notes: "Issued after utility strike near-miss during piling works. Works resumed after trial pit confirmation.",
+    checklist: [
+      { id: "c1", text: "Issue stop-work instruction", completed: true },
+      { id: "c2", text: "Trial pit to confirm utility location", completed: true },
+      { id: "c3", text: "Authorize resumption of works", completed: true },
+    ],
+    dueOffsetDays: 0,
+  },
+  {
+    itemId: "EOT-001",
+    type: "Extension of Time",
+    title: "Extension of time claim for weather-related delay",
+    status: "sent_accountable",
+    priority: "high",
+    workstreamIds: ["civil-works"],
+    notes: "Claim supported by site diary records showing 9 lost working days due to sustained sub-zero temperatures.",
+    checklist: [
+      { id: "c1", text: "Compile weather records", completed: true },
+      { id: "c2", text: "Prepare delay analysis", completed: false },
+    ],
+    dueOffsetDays: 21,
+  },
+  {
+    itemId: "IR-001",
+    type: "Inspection Request",
+    title: "Inspection request for IT room raised floor installation",
+    status: "sent_responsible",
+    priority: "medium",
+    workstreamIds: ["it-data-infrastructure"],
+    notes: "Ready for inspection ahead of rack installation. Access coordinated with site security.",
+    checklist: [
+      { id: "c1", text: "Confirm work complete on site", completed: true },
+      { id: "c2", text: "Schedule inspection slot", completed: false },
+    ],
+    dueOffsetDays: 4,
+  },
+  {
+    itemId: "RFI-002",
+    type: "RFI",
+    title: "RFI on HSE requirement for confined space entry",
+    status: "obsolete",
+    priority: "low",
+    workstreamIds: ["hse"],
+    notes: "Superseded by the revised HSE plan Rev D, which already answers this question directly.",
+    checklist: [],
+    dueOffsetDays: 3,
   },
 ];
 
@@ -82,7 +315,7 @@ export interface SeedRisk {
   workstreamIds: string[];
   notes: string;
   checklist: { id: string; text: string; completed: boolean }[];
-  dueOffsetDays: number; // days from seeding date
+  dueOffsetDays: number;
 }
 
 export const SEED_RISKS: SeedRisk[] = [
@@ -92,9 +325,8 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "assessed",
     priority: "high",
     recurrence: "weekly",
-    workstreamIds: ["rr-001", "rr-003"],
-    notes:
-      "High water table observed during trial pits in the north-east plot. Risk of flooding the foundation excavation and delaying the concrete pour.",
+    workstreamIds: ["civil-works"],
+    notes: "High water table observed during trial pits in the north-east plot. Risk of flooding the foundation excavation and delaying the concrete pour.",
     checklist: [
       { id: "c1", text: "Commission geotechnical survey", completed: true },
       { id: "c2", text: "Design dewatering plan", completed: false },
@@ -108,11 +340,10 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "identified",
     priority: "critical",
     recurrence: "none",
-    workstreamIds: ["rr-002", "rr-004"],
-    notes:
-      "Utility has not yet confirmed the 60kV grid connection capacity required for the Phase 1 IT load. Could block energization milestone.",
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
+    notes: "Energinet has not confirmed the 60kV grid connection capacity required for Phase 1 IT load. Could block energisation milestone.",
     checklist: [
-      { id: "c1", text: "Submit grid capacity request to TSO", completed: true },
+      { id: "c1", text: "Submit grid capacity request to Energinet", completed: true },
       { id: "c2", text: "Confirm transformer lead times", completed: false },
     ],
     dueOffsetDays: 30,
@@ -123,9 +354,8 @@ export const SEED_RISKS: SeedRisk[] = [
     status: "mitigated",
     priority: "medium",
     recurrence: "monthly",
-    workstreamIds: ["rr-001"],
-    notes:
-      "Primary cement supplier flagged a 3-week delay. Secondary supplier engaged as backup to protect the slab pour schedule.",
+    workstreamIds: ["civil-works"],
+    notes: "Primary cement supplier flagged a 3-week delay. Secondary supplier engaged as backup to protect the slab pour schedule.",
     checklist: [
       { id: "c1", text: "Qualify secondary supplier", completed: true },
       { id: "c2", text: "Update procurement schedule", completed: true },
@@ -133,4 +363,274 @@ export const SEED_RISKS: SeedRisk[] = [
     ],
     dueOffsetDays: 7,
   },
+  {
+    riskId: "RK-004",
+    title: "HV Transformer delivery - 110 week lead time",
+    status: "assessed",
+    priority: "critical",
+    recurrence: "weekly",
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
+    notes: "Main 60MVA power transformer lead time extended to 110 weeks. Current forecast delivery is 6 weeks behind Baseline ROS Date. Energisation milestone at risk.",
+    checklist: [
+      { id: "c1", text: "Issue PO within 60 days of NTP", completed: true },
+      { id: "c2", text: "Expedite vendor manufacturing progress", completed: false },
+      { id: "c3", text: "Evaluate temporary transformer rental", completed: false },
+    ],
+    dueOffsetDays: 21,
+  },
+  {
+    riskId: "RK-005",
+    title: "MV Switchgear FAT failure - NCR raised",
+    status: "mitigated",
+    priority: "high",
+    recurrence: "weekly",
+    workstreamIds: ["mep-infrastructure"],
+    notes: "Protection relay injection test failed on first witness. NCR raised. Cure period active - 18 days remaining before contractor installation window opens.",
+    checklist: [
+      { id: "c1", text: "NCR resolution plan accepted by vendor", completed: true },
+      { id: "c2", text: "Re-test scheduled with QM witness", completed: false },
+      { id: "c3", text: "Level 1 green tag sign-off pending", completed: false },
+    ],
+    dueOffsetDays: 18,
+  },
+  {
+    riskId: "RK-006",
+    title: "Energinet grid connection maturation phase delay",
+    status: "identified",
+    priority: "critical",
+    recurrence: "none",
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
+    notes: "Energinet maturation phase approval running 8 weeks behind programme. Hard constraint on utility energisation milestone. Zero float available.",
+    checklist: [
+      { id: "c1", text: "Escalate to Energinet senior liaison", completed: false },
+      { id: "c2", text: "Submit supplementary project maturity documentation", completed: false },
+    ],
+    dueOffsetDays: 10,
+  },
+  {
+    riskId: "RK-007",
+    title: "MEP / OFCI interface scope gap - HV cable termination",
+    status: "identified",
+    priority: "medium",
+    recurrence: "none",
+    workstreamIds: ["civil-works", "mep-infrastructure"],
+    notes: "Scope boundary dispute between MEP contractor and OFCI installation team on HV cable termination. Neither party has accepted responsibility. Level 3 pre-commissioning at risk.",
+    checklist: [
+      { id: "c1", text: "Issue Interface Control Document", completed: false },
+      { id: "c2", text: "Chair joint scope resolution meeting", completed: false },
+    ],
+    dueOffsetDays: 20,
+  },
+  {
+    riskId: "RK-008",
+    title: "Generator set delivery - port congestion Hamburg",
+    status: "assessed",
+    priority: "medium",
+    recurrence: "weekly",
+    workstreamIds: ["mep-infrastructure"],
+    notes: "2.5MW diesel generator vessel delayed at Hamburg due to port congestion. Oversize transport permit for onward road delivery not yet approved by Vejdirektoratet.",
+    checklist: [
+      { id: "c1", text: "Expedite permit application", completed: false },
+      { id: "c2", text: "Evaluate alternative route via Fredericia port", completed: false },
+    ],
+    dueOffsetDays: 25,
+  },
+  {
+    riskId: "RK-009",
+    title: "Level 4 commissioning sequence conflict - UPS delay",
+    status: "resolved",
+    priority: "high",
+    recurrence: "none",
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
+    notes: "UPS installation was 3 weeks behind schedule. Level 4 integrated systems test could not commence without full UPS energisation. CxA confirmed zero residual impact after recovery plan executed.",
+    checklist: [
+      { id: "c1", text: "Recovery plan approved", completed: true },
+      { id: "c2", text: "CxA Level 4 sign-off complete", completed: true },
+    ],
+    dueOffsetDays: 0,
+  },
+  {
+    riskId: "RK-010",
+    title: "Piling contractor resource shortage",
+    status: "identified",
+    priority: "high",
+    recurrence: "weekly",
+    workstreamIds: ["civil-works"],
+    notes: "Main piling contractor reports 40% crew shortage due to competing projects in the region. Risk to foundation programme of 4-6 weeks.",
+    checklist: [
+      { id: "c1", text: "Request resource recovery plan from contractor", completed: false },
+      { id: "c2", text: "Identify alternative piling subcontractor", completed: false },
+    ],
+    dueOffsetDays: 15,
+  },
+  {
+    riskId: "RK-011",
+    title: "Building permit amendment required - data hall height increase",
+    status: "assessed",
+    priority: "high",
+    recurrence: "none",
+    workstreamIds: ["civil-works", "it-data-infrastructure"],
+    notes: "Design change increases data hall clear height by 800mm. Building permit amendment required from Vejle Kommune. Estimated 8-12 week processing time.",
+    checklist: [
+      { id: "c1", text: "Submit permit amendment application", completed: true },
+      { id: "c2", text: "Confirm no work stoppage required during review", completed: false },
+    ],
+    dueOffsetDays: 60,
+  },
+  {
+    riskId: "RK-012",
+    title: "Chilled water plant delivery delay - custom manifolds",
+    status: "identified",
+    priority: "high",
+    recurrence: "weekly",
+    workstreamIds: ["mep-infrastructure"],
+    notes: "Custom chilled water distribution manifolds have 48-week lead time. Current schedule assumes 35 weeks. Risk of 13-week delay to Level 3 mechanical commissioning.",
+    checklist: [
+      { id: "c1", text: "Review design for standard component substitution", completed: false },
+      { id: "c2", text: "Explore alternative vendor", completed: false },
+    ],
+    dueOffsetDays: 35,
+  },
+  {
+    riskId: "RK-013",
+    title: "IT infrastructure scope change - liquid cooling upgrade",
+    status: "assessed",
+    priority: "medium",
+    recurrence: "none",
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
+    notes: "Client has requested upgrade from air-cooled to rear-door liquid cooling for AI rack rows. Structural and MEP impact assessment required. NEC4 compensation event likely.",
+    checklist: [
+      { id: "c1", text: "Issue Early Warning notice", completed: true },
+      { id: "c2", text: "Prepare compensation event quotation", completed: false },
+      { id: "c3", text: "Structural impact assessment", completed: false },
+    ],
+    dueOffsetDays: 28,
+  },
+  {
+    riskId: "RK-014",
+    title: "Fire suppression system design approval delayed",
+    status: "identified",
+    priority: "medium",
+    recurrence: "none",
+    workstreamIds: ["civil-works", "mep-infrastructure"],
+    notes: "Beredskabsstyrelsen (Danish Emergency Management Agency) reviewing the inert gas suppression system design. Approval required before installation can commence.",
+    checklist: [
+      { id: "c1", text: "Submit design for regulatory review", completed: true },
+      { id: "c2", text: "Prepare response to technical queries", completed: false },
+    ],
+    dueOffsetDays: 45,
+  },
+  {
+    riskId: "RK-015",
+    title: "Crane access route - weight restriction on local road",
+    status: "mitigated",
+    priority: "low",
+    recurrence: "none",
+    workstreamIds: ["civil-works"],
+    notes: "Heavy lift crane transport route crosses a municipal road with 40-tonne weight limit. Special transport permit obtained. Reinforcement of road surface agreed with Vejle Kommune.",
+    checklist: [
+      { id: "c1", text: "Special transport permit obtained", completed: true },
+      { id: "c2", text: "Road reinforcement works complete", completed: true },
+    ],
+    dueOffsetDays: 5,
+  },
+  {
+    riskId: "RK-016",
+    title: "BMS integration scope - contractor interface not defined",
+    status: "identified",
+    priority: "high",
+    recurrence: "weekly",
+    workstreamIds: ["mep-infrastructure", "it-data-infrastructure"],
+    notes: "BMS/EPMS integration scope boundary between MEP contractor and IT infrastructure team not formally defined. Risk of duplicate or missing scope at Level 4 commissioning.",
+    checklist: [
+      { id: "c1", text: "Issue BMS Interface Control Document", completed: false },
+      { id: "c2", text: "Joint scope alignment workshop", completed: false },
+    ],
+    dueOffsetDays: 22,
+  },
+  {
+    riskId: "RK-017",
+    title: "Concrete pour quality - cold weather risk",
+    status: "mitigated",
+    priority: "medium",
+    recurrence: "none",
+    workstreamIds: ["civil-works"],
+    notes: "Foundation slab pour scheduled for January. Risk of concrete quality issues if temperature drops below -5°C. Cold weather concreting plan prepared and approved.",
+    checklist: [
+      { id: "c1", text: "Cold weather concreting plan approved", completed: true },
+      { id: "c2", text: "Heated enclosure procurement confirmed", completed: true },
+      { id: "c3", text: "Temperature monitoring protocol in place", completed: true },
+    ],
+    dueOffsetDays: 3,
+  },
+  {
+    riskId: "RK-018",
+    title: "Substation land title - boundary dispute with adjacent owner",
+    status: "assessed",
+    priority: "high",
+    recurrence: "none",
+    workstreamIds: ["it-data-infrastructure"],
+    notes: "Legal dispute with adjacent landowner over 12m strip required for substation access road. Title transfer blocked pending court mediation.",
+    checklist: [
+      { id: "c1", text: "Legal counsel appointed", completed: true },
+      { id: "c2", text: "Mediation session scheduled", completed: false },
+      { id: "c3", text: "Alternative access route assessed", completed: false },
+    ],
+    dueOffsetDays: 40,
+  },
+  {
+    riskId: "RK-019",
+    title: "EIA environmental monitoring - protected species survey",
+    status: "resolved",
+    priority: "medium",
+    recurrence: "none",
+    workstreamIds: ["civil-works", "it-data-infrastructure"],
+    notes: "Environmental Impact Assessment required protected species survey before ground clearance. Survey completed - no protected species found. Clearance to proceed issued.",
+    checklist: [
+      { id: "c1", text: "Protected species survey completed", completed: true },
+      { id: "c2", text: "Environmental clearance issued", completed: true },
+    ],
+    dueOffsetDays: 0,
+  },
+  {
+    riskId: "RK-020",
+    title: "Workforce HSE - contractor safety culture audit failed",
+    status: "assessed",
+    priority: "high",
+    recurrence: "weekly",
+    workstreamIds: ["civil-works", "mep-infrastructure"],
+    notes: "Independent HSE audit identified 7 critical non-conformances with the main contractor safety management system. Stop-work authority exercised on 2 work fronts.",
+    checklist: [
+      { id: "c1", text: "Corrective action plan submitted by contractor", completed: true },
+      { id: "c2", text: "Re-audit scheduled in 4 weeks", completed: false },
+      { id: "c3", text: "Safety stand-down completed", completed: true },
+    ],
+    dueOffsetDays: 28,
+  },
+];
+
+export interface SeedTimeEntry {
+  entryId: string;
+  dateOffsetDays: number; // negative = past days
+  personName: string;
+  personOrg: string;
+  workstreamId: string;
+  activity: string;
+  category: "Labour" | "Supervision" | "Plant & Equipment" | "Engineering" | "Travel" | "Other";
+  hours: number;
+  billable: boolean;
+  status: "draft" | "submitted" | "approved";
+  notes: string;
+}
+
+export const SEED_TIME_ENTRIES: SeedTimeEntry[] = [
+  { entryId: "TL-001", dateOffsetDays: 0, personName: "Jens Larsen", personOrg: "HD Contractor", workstreamId: "civil-works", activity: "Rebar fixing to Grid C foundation", category: "Labour", hours: 8, billable: true, status: "approved", notes: "Gang of 4 on the north-east pour prep." },
+  { entryId: "TL-002", dateOffsetDays: -1, personName: "Bharat Khunti", personOrg: "HD Contractor", workstreamId: "quality", activity: "ITP witness — concrete cover checks", category: "Supervision", hours: 4, billable: true, status: "submitted", notes: "" },
+  { entryId: "TL-003", dateOffsetDays: -1, personName: "Peter Koch", personOrg: "HD Contractor", workstreamId: "mep-infrastructure", activity: "MEP coordination review with design authority", category: "Engineering", hours: 6, billable: true, status: "approved", notes: "" },
+  { entryId: "TL-004", dateOffsetDays: -2, personName: "Ming Zhang", personOrg: "FO Sub-Contractor", workstreamId: "it-data-infrastructure", activity: "Raised floor installation — IT room", category: "Labour", hours: 9, billable: true, status: "approved", notes: "Ahead of rack delivery." },
+  { entryId: "TL-005", dateOffsetDays: -2, personName: "Anna López", personOrg: "NT Advisor", workstreamId: "civil-works", activity: "Foundation inspection and reporting", category: "Supervision", hours: 3, billable: false, status: "approved", notes: "Advisor inspection before pour." },
+  { entryId: "TL-006", dateOffsetDays: -3, personName: "Jens Lorenzen", personOrg: "HD Contractor", workstreamId: "hse", activity: "Weekly HSE walk and toolbox talk", category: "Supervision", hours: 2.5, billable: false, status: "submitted", notes: "" },
+  { entryId: "TL-007", dateOffsetDays: -3, personName: "Jens Larsen", personOrg: "HD Contractor", workstreamId: "civil-works", activity: "Crane operation — structural steel lifts", category: "Plant & Equipment", hours: 7, billable: true, status: "draft", notes: "Weather window used for calm lifts." },
+  { entryId: "TL-008", dateOffsetDays: -4, personName: "Sindhu K", personOrg: "Customer", workstreamId: "permit-and-authorities", activity: "Permit amendment submission coordination", category: "Engineering", hours: 5, billable: false, status: "approved", notes: "" },
+  { entryId: "TL-009", dateOffsetDays: -4, personName: "Thomas Olsen", personOrg: "NT Advisor", workstreamId: "mep-infrastructure", activity: "Travel to vendor FAT witness — Germany", category: "Travel", hours: 4, billable: true, status: "submitted", notes: "" },
 ];

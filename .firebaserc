@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "risk-manager-app"
+    "default": "rtpm--v2",
+    "old-suspended": "rtpm-cf560"
   }
 }

@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { ClipboardList, Paperclip, MessageSquare } from "lucide-react";
-import type { Risk, RiskStatus, RoleResponsibility } from "../../types";
+import { ClipboardList, Paperclip } from "lucide-react";
+import type { Risk, RiskKind, RiskStatus, RoleResponsibility } from "../../types";
 import { useChatStore } from "../../store/chatStore";
 import RiskHeader from "./RiskHeader";
 import RiskStatusBar from "./RiskStatusBar";
 import RiskMetadata from "./RiskMetadata";
+import RiskMitigationPlan from "./RiskMitigationPlan";
+import RelatedChangeCard from "./RelatedChangeCard";
 import InvolvedPartiesCard from "./InvolvedPartiesCard";
 import RiskChecklist from "./RiskChecklist";
 import RiskNotes from "./RiskNotes";
@@ -17,6 +19,7 @@ interface Props {
   authorName: string;
   onPatch: (patch: Partial<Risk>) => void;
   onChangeStatus: (to: RiskStatus) => void;
+  onChangeKind: (kind: RiskKind) => void;
 }
 
 type Tab = "details" | "attachments";
@@ -27,15 +30,10 @@ export default function RiskPanel({
   authorName,
   onPatch,
   onChangeStatus,
+  onChangeKind,
 }: Props) {
   const [tab, setTab] = useState<Tab>("details");
-  const { open, setOpen, toggleOpen } = useChatStore();
-
-  function assign(roleId: string) {
-    if (!risk.workstreamIds.includes(roleId)) {
-      onPatch({ workstreamIds: [...risk.workstreamIds, roleId] });
-    }
-  }
+  const { open, toggleOpen } = useChatStore();
 
   const tabBase =
     "flex items-center gap-2 rounded-btn px-3 py-1.5 text-sm font-medium transition-colors";
@@ -49,27 +47,17 @@ export default function RiskPanel({
         }`}
       >
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
-          <div className="flex items-start gap-3">
-            <div className="flex-1">
-              <RiskHeader
-                risk={risk}
-                roles={roles}
-                onTitleChange={(title) => onPatch({ title })}
-                onAssign={assign}
-              />
-            </div>
-            {!open && (
-              <button
-                onClick={() => setOpen(true)}
-                title="Open chat"
-                className="mt-1 flex h-10 w-10 items-center justify-center rounded-card bg-white text-indigo shadow-card hover:bg-indigo/5"
-              >
-                <MessageSquare size={18} />
-              </button>
-            )}
-          </div>
+          <RiskHeader
+            risk={risk}
+            onTitleChange={(title) => onPatch({ title })}
+            onChangeKind={onChangeKind}
+          />
 
-          <RiskStatusBar risk={risk} onChangeStatus={onChangeStatus} />
+          <RiskStatusBar
+            risk={risk}
+            onChangeStatus={onChangeStatus}
+            onCycleTrend={(trend) => onPatch({ trend })}
+          />
 
           {/* Tabs */}
           <div className="flex gap-2">
@@ -81,7 +69,7 @@ export default function RiskPanel({
                   : "border border-bordergray bg-white text-gray-600 hover:bg-gray-50"
               }`}
             >
-              <ClipboardList size={15} /> Opgaveoplysninger
+              <ClipboardList size={15} /> Task details
             </button>
             <button
               onClick={() => setTab("attachments")}
@@ -91,7 +79,7 @@ export default function RiskPanel({
                   : "border border-bordergray bg-white text-gray-600 hover:bg-gray-50"
               }`}
             >
-              <Paperclip size={15} /> Vedhæftede filer (
+              <Paperclip size={15} /> Attachments (
               {risk.attachments?.length || 0})
             </button>
           </div>
@@ -99,6 +87,8 @@ export default function RiskPanel({
           {tab === "details" ? (
             <>
               <RiskMetadata risk={risk} roles={roles} onPatch={onPatch} />
+              <RiskMitigationPlan risk={risk} onPatch={onPatch} />
+              <RelatedChangeCard riskId={risk.riskId} />
               <InvolvedPartiesCard
                 roles={roles}
                 selectedIds={risk.workstreamIds}

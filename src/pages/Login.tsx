@@ -38,10 +38,8 @@ export default function Login() {
             <ShieldAlert size={24} />
           </div>
           <div className="text-center">
-            <h1 className="text-lg font-bold text-ink">Risk Manager</h1>
-            <p className="text-xs text-gray-400">
-              Data center construction risk management
-            </p>
+            <h1 className="text-lg font-bold text-ink">Viking Project</h1>
+            <p className="text-xs text-gray-400">Sign in to RTPM Platform</p>
           </div>
         </div>
 

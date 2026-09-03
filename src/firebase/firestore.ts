@@ -3,6 +3,7 @@ import {
   doc,
   addDoc,
   updateDoc,
+  deleteDoc,
   setDoc,
   getDoc,
   getDocs,
@@ -19,12 +20,26 @@ import { db } from "./config";
 import type {
   Project,
   Risk,
+  RiskKind,
   RiskMessage,
   RoleResponsibility,
+  Organization,
   ChatMode,
   RiskStatus,
   StatusHistoryEntry,
+  CorrespondenceItem,
+  CorrespondenceMessage,
+  CorrespondenceStatus,
+  CorrespondenceType,
+  DocumentItem,
+  DocumentMessage,
+  DocumentStatus,
+  DocumentAnnotation,
+  DocumentComment,
+  TimeEntry,
 } from "../types";
+import { computeRiskScore, priorityFromScore } from "../lib/riskScoring";
+import type { HseWeek, CommercialWeek, QualityWeek, ScheduleWeek } from "../lib/dashboardMetrics";
 
 // ---------------------------------------------------------------------------
 // Collection references
@@ -33,6 +48,21 @@ const projectsCol = collection(db, "projects");
 const rolesCol = collection(db, "roles_and_responsibilities");
 const risksCol = collection(db, "risks");
 const messagesCol = collection(db, "risk_messages");
+const organizationsCol = collection(db, "organizations");
+const correspondenceCol = collection(db, "correspondence");
+const correspondenceMessagesCol = collection(db, "correspondence_messages");
+const documentsCol = collection(db, "documents");
+const documentMessagesCol = collection(db, "document_messages");
+const documentAnnotationsCol = collection(db, "document_annotations");
+const documentCommentsCol = collection(db, "document_comments");
+const timeEntriesCol = collection(db, "time_entries");
+// Dashboard Tier-2 seeded metric collections (spec Section 4). Queried by
+// projectId only and sorted client-side by `week`, so — like
+// document_annotations/document_comments — they need no composite index.
+const hseEntriesCol = collection(db, "hse_entries");
+const commercialSummaryCol = collection(db, "commercial_summary");
+const qualitySummaryCol = collection(db, "quality_summary");
+const scheduleEvmCol = collection(db, "schedule_evm_weekly");
 
 function mapDoc<T>(id: string, data: DocumentData): T {
   return { id, ...data } as T;
@@ -76,6 +106,25 @@ export async function upsertRole(role: Partial<RoleResponsibility>): Promise<str
 }
 
 // ---------------------------------------------------------------------------
+// Organizations (Org Chart)
+// ---------------------------------------------------------------------------
+export function watchOrganizations(
+  projectId: string,
+  cb: (organizations: Organization[]) => void
+) {
+  const q = query(organizationsCol, where("projectId", "==", projectId));
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => mapDoc<Organization>(d.id, d.data())));
+  });
+}
+
+export async function listOrganizations(projectId: string): Promise<Organization[]> {
+  const q = query(organizationsCol, where("projectId", "==", projectId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => mapDoc<Organization>(d.id, d.data()));
+}
+
+// ---------------------------------------------------------------------------
 // Risks
 // ---------------------------------------------------------------------------
 export function watchRisks(projectId: string, cb: (risks: Risk[]) => void) {
@@ -100,17 +149,24 @@ export async function getRisk(riskId: string): Promise<Risk | null> {
   return snap.exists() ? mapDoc<Risk>(snap.id, snap.data()) : null;
 }
 
-/** Generate the next sequential human-readable risk id e.g. RK-007. */
-export async function nextRiskCode(projectId: string): Promise<string> {
+const RISK_KIND_PREFIX: Record<RiskKind, string> = {
+  risk: "RK-",
+  opportunity: "OP-",
+};
+
+/** Generate the next sequential human-readable id e.g. RK-007 or OP-003 — each kind has its own counter. */
+export async function nextRiskCode(projectId: string, kind: RiskKind = "risk"): Promise<string> {
+  const prefix = RISK_KIND_PREFIX[kind];
   const q = query(risksCol, where("projectId", "==", projectId));
   const snap = await getDocs(q);
   let max = 0;
   snap.docs.forEach((d) => {
     const code: string = d.data().riskId || "";
-    const n = parseInt(code.replace(/^RK-/, ""), 10);
+    if (!code.startsWith(prefix)) return;
+    const n = parseInt(code.slice(prefix.length), 10);
     if (!Number.isNaN(n) && n > max) max = n;
   });
-  return `RK-${String(max + 1).padStart(3, "0")}`;
+  return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
 
 export async function createRisk(
@@ -118,19 +174,32 @@ export async function createRisk(
   createdBy: string,
   partial: Partial<Risk> = {}
 ): Promise<string> {
-  const code = await nextRiskCode(projectId);
+  const kind = partial.kind || "risk";
+  const code = await nextRiskCode(projectId, kind);
+  // Priority is ALWAYS derived from likelihood x impact — never accept a
+  // manually-passed priority, even if one sneaks into `partial`.
+  const likelihood = partial.likelihood || 3;
+  const impactScore = partial.impactScore || 3;
+  const score = computeRiskScore(likelihood, impactScore);
   const payload: DocumentData = {
     projectId,
     riskId: code,
+    kind,
     title: partial.title || "Untitled risk",
     status: partial.status || "identified",
-    priority: partial.priority || "medium",
+    likelihood,
+    impactScore,
+    riskScore: score,
+    priority: priorityFromScore(score),
+    impactDriver: partial.impactDriver || "Schedule",
+    trend: partial.trend || "flat",
     startDate: partial.startDate ?? null,
     dueDate: partial.dueDate ?? null,
     recurrence: partial.recurrence || "none",
     collection: partial.collection || "",
     workstreamIds: partial.workstreamIds || [],
     checklist: partial.checklist || [],
+    mitigationPlan: partial.mitigationPlan || "",
     notes: partial.notes || "",
     attachments: partial.attachments || [],
     statusHistory: partial.statusHistory || [],
@@ -140,6 +209,10 @@ export async function createRisk(
   };
   const ref = await addDoc(risksCol, payload);
   return ref.id;
+}
+
+export async function deleteRisk(riskId: string): Promise<void> {
+  await deleteDoc(doc(risksCol, riskId));
 }
 
 export async function updateRisk(riskId: string, patch: Partial<Risk>): Promise<void> {
@@ -172,6 +245,26 @@ export async function changeRiskStatus(
     status: to,
     statusHistory: history,
     updatedAt: serverTimestamp(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Risk update emails (Send Update modal)
+// ---------------------------------------------------------------------------
+export async function sendRiskUpdate(payload: {
+  riskId: string;
+  projectId: string;
+  sender: string;
+  senderId: string;
+  subject: string;
+  message: string;
+  recipients: string[];
+  cc: string[];
+}): Promise<void> {
+  await addDoc(messagesCol, {
+    ...payload,
+    timestamp: serverTimestamp(),
+    type: "update",
   });
 }
 
@@ -218,6 +311,535 @@ export async function toggleReaction(
   if (list.length) reactions[emoji] = list;
   else delete reactions[emoji];
   await updateDoc(doc(messagesCol, messageId), { reactions });
+}
+
+// ---------------------------------------------------------------------------
+// Correspondence
+// ---------------------------------------------------------------------------
+export function watchCorrespondence(
+  projectId: string,
+  cb: (items: CorrespondenceItem[]) => void
+) {
+  const q = query(
+    correspondenceCol,
+    where("projectId", "==", projectId),
+    orderBy("createdAt", "desc")
+  );
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => mapDoc<CorrespondenceItem>(d.id, d.data())));
+  });
+}
+
+export function watchCorrespondenceItem(
+  itemId: string,
+  cb: (item: CorrespondenceItem | null) => void
+) {
+  return onSnapshot(doc(correspondenceCol, itemId), (snap) => {
+    cb(snap.exists() ? mapDoc<CorrespondenceItem>(snap.id, snap.data()) : null);
+  });
+}
+
+export async function getCorrespondenceItem(itemId: string): Promise<CorrespondenceItem | null> {
+  const snap = await getDoc(doc(correspondenceCol, itemId));
+  return snap.exists() ? mapDoc<CorrespondenceItem>(snap.id, snap.data()) : null;
+}
+
+const CORRESPONDENCE_TYPE_PREFIX: Record<CorrespondenceType, string> = {
+  RFI: "RFI-",
+  TQ: "TQ-",
+  "Meeting Minutes": "MM-",
+  "Variation Request": "VR-",
+  "Site Instruction": "SI-",
+  "Extension of Time": "EOT-",
+  "Inspection Request": "IR-",
+};
+
+/** Generate the next sequential id e.g. RFI-007 — each correspondence type has its own counter. */
+export async function nextCorrespondenceCode(
+  projectId: string,
+  type: CorrespondenceType
+): Promise<string> {
+  const prefix = CORRESPONDENCE_TYPE_PREFIX[type];
+  const q = query(correspondenceCol, where("projectId", "==", projectId));
+  const snap = await getDocs(q);
+  let max = 0;
+  snap.docs.forEach((d) => {
+    const code: string = d.data().itemId || "";
+    if (!code.startsWith(prefix)) return;
+    const n = parseInt(code.slice(prefix.length), 10);
+    if (!Number.isNaN(n) && n > max) max = n;
+  });
+  return `${prefix}${String(max + 1).padStart(3, "0")}`;
+}
+
+export async function createCorrespondence(
+  projectId: string,
+  createdBy: string,
+  partial: Partial<CorrespondenceItem> = {}
+): Promise<string> {
+  const type = partial.type || "RFI";
+  const code = await nextCorrespondenceCode(projectId, type);
+  const payload: DocumentData = {
+    projectId,
+    itemId: code,
+    type,
+    title: partial.title || "Untitled item",
+    status: partial.status || "registered",
+    priority: partial.priority || "medium",
+    startDate: partial.startDate ?? null,
+    dueDate: partial.dueDate ?? null,
+    workstreamIds: partial.workstreamIds || [],
+    checklist: partial.checklist || [],
+    notes: partial.notes || "",
+    attachments: partial.attachments || [],
+    statusHistory: partial.statusHistory || [],
+    createdBy,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  const ref = await addDoc(correspondenceCol, payload);
+  return ref.id;
+}
+
+export async function deleteCorrespondence(itemId: string): Promise<void> {
+  await deleteDoc(doc(correspondenceCol, itemId));
+}
+
+// ---------------------------------------------------------------------------
+// Time Log (time registration)
+// Queried by projectId only (no orderBy) so it needs no composite index —
+// sorted client-side by work date. Same approach as document_annotations.
+// ---------------------------------------------------------------------------
+export function watchTimeEntries(
+  projectId: string,
+  cb: (entries: TimeEntry[]) => void
+) {
+  const q = query(timeEntriesCol, where("projectId", "==", projectId));
+  return onSnapshot(q, (snap) => {
+    const entries = snap.docs.map((d) => mapDoc<TimeEntry>(d.id, d.data()));
+    entries.sort((a, b) => (b.date?.toMillis() ?? 0) - (a.date?.toMillis() ?? 0));
+    cb(entries);
+  });
+}
+
+export async function nextTimeCode(projectId: string): Promise<string> {
+  const q = query(timeEntriesCol, where("projectId", "==", projectId));
+  const snap = await getDocs(q);
+  let max = 0;
+  snap.docs.forEach((d) => {
+    const code: string = d.data().entryId || "";
+    if (!code.startsWith("TL-")) return;
+    const n = parseInt(code.slice(3), 10);
+    if (!Number.isNaN(n) && n > max) max = n;
+  });
+  return `TL-${String(max + 1).padStart(3, "0")}`;
+}
+
+export async function createTimeEntry(
+  projectId: string,
+  createdBy: string,
+  partial: Partial<TimeEntry> = {}
+): Promise<string> {
+  const code = await nextTimeCode(projectId);
+  const payload: DocumentData = {
+    projectId,
+    entryId: code,
+    date: partial.date ?? Timestamp.now(),
+    personName: partial.personName || createdBy,
+    personOrg: partial.personOrg || "",
+    workstreamId: partial.workstreamId || "",
+    activity: partial.activity || "",
+    category: partial.category || "Labour",
+    hours: partial.hours ?? 0,
+    billable: partial.billable ?? true,
+    status: partial.status || "draft",
+    notes: partial.notes || "",
+    createdBy,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  const ref = await addDoc(timeEntriesCol, payload);
+  return ref.id;
+}
+
+export async function updateTimeEntry(
+  entryId: string,
+  patch: Partial<TimeEntry>
+): Promise<void> {
+  const { id, ...rest } = patch as DocumentData;
+  await updateDoc(doc(timeEntriesCol, entryId), {
+    ...rest,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteTimeEntry(entryId: string): Promise<void> {
+  await deleteDoc(doc(timeEntriesCol, entryId));
+}
+
+export async function updateCorrespondence(
+  itemId: string,
+  patch: Partial<CorrespondenceItem>
+): Promise<void> {
+  const { id, ...rest } = patch as DocumentData;
+  await updateDoc(doc(correspondenceCol, itemId), {
+    ...rest,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function changeCorrespondenceStatus(
+  itemId: string,
+  from: CorrespondenceStatus,
+  to: CorrespondenceStatus,
+  changedBy: string,
+  comment = ""
+): Promise<void> {
+  const item = await getCorrespondenceItem(itemId);
+  const history: StatusHistoryEntry[] = item?.statusHistory
+    ? [...item.statusHistory]
+    : [];
+  history.push({
+    from,
+    to,
+    changedBy,
+    changedAt: Timestamp.now(),
+    comment,
+  });
+  await updateDoc(doc(correspondenceCol, itemId), {
+    status: to,
+    statusHistory: history,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Correspondence messages (team chat only — no AI agent mode)
+// ---------------------------------------------------------------------------
+export function watchCorrespondenceMessages(
+  itemId: string,
+  cb: (messages: CorrespondenceMessage[]) => void
+) {
+  const q = query(
+    correspondenceMessagesCol,
+    where("itemId", "==", itemId),
+    orderBy("timestamp", "asc")
+  );
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => mapDoc<CorrespondenceMessage>(d.id, d.data())));
+  });
+}
+
+export async function sendCorrespondenceMessage(
+  message: Omit<CorrespondenceMessage, "id" | "timestamp">
+): Promise<string> {
+  const ref = await addDoc(correspondenceMessagesCol, {
+    ...message,
+    timestamp: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function toggleCorrespondenceReaction(
+  messageId: string,
+  emoji: string,
+  uid: string,
+  current: Record<string, string[]> | undefined
+): Promise<void> {
+  const reactions: Record<string, string[]> = { ...(current || {}) };
+  const list = reactions[emoji] ? [...reactions[emoji]] : [];
+  const idx = list.indexOf(uid);
+  if (idx >= 0) list.splice(idx, 1);
+  else list.push(uid);
+  if (list.length) reactions[emoji] = list;
+  else delete reactions[emoji];
+  await updateDoc(doc(correspondenceMessagesCol, messageId), { reactions });
+}
+
+// ---------------------------------------------------------------------------
+// Documents
+// ---------------------------------------------------------------------------
+export function watchDocuments(
+  projectId: string,
+  cb: (items: DocumentItem[]) => void
+) {
+  const q = query(
+    documentsCol,
+    where("projectId", "==", projectId),
+    orderBy("createdAt", "desc")
+  );
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => mapDoc<DocumentItem>(d.id, d.data())));
+  });
+}
+
+export function watchDocumentItem(
+  documentId: string,
+  cb: (item: DocumentItem | null) => void
+) {
+  return onSnapshot(doc(documentsCol, documentId), (snap) => {
+    cb(snap.exists() ? mapDoc<DocumentItem>(snap.id, snap.data()) : null);
+  });
+}
+
+export async function getDocumentItem(documentId: string): Promise<DocumentItem | null> {
+  const snap = await getDoc(doc(documentsCol, documentId));
+  return snap.exists() ? mapDoc<DocumentItem>(snap.id, snap.data()) : null;
+}
+
+const DOCUMENT_ID_PREFIX = "DOC-";
+
+/** Generate the next sequential id e.g. DOC-007 — single shared counter across all document types. */
+export async function nextDocumentCode(projectId: string): Promise<string> {
+  const q = query(documentsCol, where("projectId", "==", projectId));
+  const snap = await getDocs(q);
+  let max = 0;
+  snap.docs.forEach((d) => {
+    const code: string = d.data().docId || "";
+    if (!code.startsWith(DOCUMENT_ID_PREFIX)) return;
+    const n = parseInt(code.slice(DOCUMENT_ID_PREFIX.length), 10);
+    if (!Number.isNaN(n) && n > max) max = n;
+  });
+  return `${DOCUMENT_ID_PREFIX}${String(max + 1).padStart(3, "0")}`;
+}
+
+export async function createDocumentItem(
+  projectId: string,
+  createdBy: string,
+  partial: Partial<DocumentItem> = {}
+): Promise<string> {
+  const code = await nextDocumentCode(projectId);
+  const payload: DocumentData = {
+    projectId,
+    docId: code,
+    title: partial.title || "Untitled document",
+    type: partial.type || "Drawing",
+    status: partial.status || "registered",
+    workstreamIds: partial.workstreamIds || [],
+    fileUrl: partial.fileUrl || "",
+    fileName: partial.fileName || "",
+    fileType: partial.fileType || "",
+    notes: partial.notes || "",
+    statusHistory: partial.statusHistory || [],
+    createdBy,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  const ref = await addDoc(documentsCol, payload);
+  return ref.id;
+}
+
+export async function deleteDocumentItem(documentId: string): Promise<void> {
+  await deleteDoc(doc(documentsCol, documentId));
+}
+
+export async function updateDocumentItem(
+  documentId: string,
+  patch: Partial<DocumentItem>
+): Promise<void> {
+  const { id, ...rest } = patch as DocumentData;
+  await updateDoc(doc(documentsCol, documentId), {
+    ...rest,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function changeDocumentStatus(
+  documentId: string,
+  from: DocumentStatus,
+  to: DocumentStatus,
+  changedBy: string,
+  comment = ""
+): Promise<void> {
+  const item = await getDocumentItem(documentId);
+  const history: StatusHistoryEntry[] = item?.statusHistory
+    ? [...item.statusHistory]
+    : [];
+  history.push({
+    from,
+    to,
+    changedBy,
+    changedAt: Timestamp.now(),
+    comment,
+  });
+  await updateDoc(doc(documentsCol, documentId), {
+    status: to,
+    statusHistory: history,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Document messages (team chat only — no AI agent mode)
+// ---------------------------------------------------------------------------
+export function watchDocumentMessages(
+  documentId: string,
+  cb: (messages: DocumentMessage[]) => void
+) {
+  const q = query(
+    documentMessagesCol,
+    where("documentId", "==", documentId),
+    orderBy("timestamp", "asc")
+  );
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => mapDoc<DocumentMessage>(d.id, d.data())));
+  });
+}
+
+export async function sendDocumentMessage(
+  message: Omit<DocumentMessage, "id" | "timestamp">
+): Promise<string> {
+  const ref = await addDoc(documentMessagesCol, {
+    ...message,
+    timestamp: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function toggleDocumentMessageReaction(
+  messageId: string,
+  emoji: string,
+  uid: string,
+  current: Record<string, string[]> | undefined
+): Promise<void> {
+  const reactions: Record<string, string[]> = { ...(current || {}) };
+  const list = reactions[emoji] ? [...reactions[emoji]] : [];
+  const idx = list.indexOf(uid);
+  if (idx >= 0) list.splice(idx, 1);
+  else list.push(uid);
+  if (list.length) reactions[emoji] = list;
+  else delete reactions[emoji];
+  await updateDoc(doc(documentMessagesCol, messageId), { reactions });
+}
+
+// ---------------------------------------------------------------------------
+// Document annotations (pin-drop comments on rendered PDF/image pages)
+// ---------------------------------------------------------------------------
+export function watchDocumentAnnotations(
+  documentId: string,
+  cb: (annotations: DocumentAnnotation[]) => void
+) {
+  // Queried by documentId only (no orderBy) so no composite index is needed —
+  // sort client-side by page then createdAt instead.
+  const q = query(documentAnnotationsCol, where("documentId", "==", documentId));
+  return onSnapshot(q, (snap) => {
+    const items = snap.docs.map((d) => mapDoc<DocumentAnnotation>(d.id, d.data()));
+    items.sort((a, b) => {
+      if (a.page !== b.page) return a.page - b.page;
+      const at = a.createdAt?.toMillis() ?? 0;
+      const bt = b.createdAt?.toMillis() ?? 0;
+      return at - bt;
+    });
+    cb(items);
+  });
+}
+
+export async function addDocumentAnnotation(
+  annotation: Omit<DocumentAnnotation, "id" | "createdAt">
+): Promise<string> {
+  const ref = await addDoc(documentAnnotationsCol, {
+    ...annotation,
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function updateDocumentAnnotation(
+  annotationId: string,
+  patch: Partial<DocumentAnnotation>
+): Promise<void> {
+  const { id, ...rest } = patch as DocumentData;
+  await updateDoc(doc(documentAnnotationsCol, annotationId), rest);
+}
+
+export async function deleteDocumentAnnotation(annotationId: string): Promise<void> {
+  await deleteDoc(doc(documentAnnotationsCol, annotationId));
+}
+
+// ---------------------------------------------------------------------------
+// Document comment sheet (formal per-document review register)
+// ---------------------------------------------------------------------------
+export function watchDocumentComments(
+  documentId: string,
+  cb: (comments: DocumentComment[]) => void
+) {
+  // Queried by documentId only (no orderBy) so no composite index is needed —
+  // sort client-side by commentNo instead.
+  const q = query(documentCommentsCol, where("documentId", "==", documentId));
+  return onSnapshot(q, (snap) => {
+    const items = snap.docs.map((d) => mapDoc<DocumentComment>(d.id, d.data()));
+    items.sort((a, b) => a.commentNo - b.commentNo);
+    cb(items);
+  });
+}
+
+/** Next per-document sequential comment number (1, 2, 3…). */
+export async function nextCommentNo(documentId: string): Promise<number> {
+  const q = query(documentCommentsCol, where("documentId", "==", documentId));
+  const snap = await getDocs(q);
+  let max = 0;
+  snap.docs.forEach((d) => {
+    const n: number = d.data().commentNo || 0;
+    if (n > max) max = n;
+  });
+  return max + 1;
+}
+
+export async function addDocumentComment(
+  comment: Omit<DocumentComment, "id" | "createdAt" | "updatedAt">
+): Promise<string> {
+  const ref = await addDoc(documentCommentsCol, {
+    ...comment,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function updateDocumentComment(
+  commentId: string,
+  patch: Partial<DocumentComment>
+): Promise<void> {
+  const { id, ...rest } = patch as DocumentData;
+  await updateDoc(doc(documentCommentsCol, commentId), {
+    ...rest,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteDocumentComment(commentId: string): Promise<void> {
+  await deleteDoc(doc(documentCommentsCol, commentId));
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard Tier-2 seeded metrics — read-only weekly datasets. Each is queried
+// by projectId only and sorted client-side by `week` (ascending), so none needs
+// a composite index.
+// ---------------------------------------------------------------------------
+function watchWeeklyMetric<T extends { week: string }>(
+  col: ReturnType<typeof collection>,
+  projectId: string,
+  cb: (rows: T[]) => void
+) {
+  const q = query(col, where("projectId", "==", projectId));
+  return onSnapshot(q, (snap) => {
+    const rows = snap.docs.map((d) => mapDoc<T>(d.id, d.data()));
+    rows.sort((a, b) => a.week.localeCompare(b.week));
+    cb(rows);
+  });
+}
+
+export function watchHseEntries(projectId: string, cb: (rows: HseWeek[]) => void) {
+  return watchWeeklyMetric<HseWeek>(hseEntriesCol, projectId, cb);
+}
+export function watchCommercialSummary(projectId: string, cb: (rows: CommercialWeek[]) => void) {
+  return watchWeeklyMetric<CommercialWeek>(commercialSummaryCol, projectId, cb);
+}
+export function watchQualitySummary(projectId: string, cb: (rows: QualityWeek[]) => void) {
+  return watchWeeklyMetric<QualityWeek>(qualitySummaryCol, projectId, cb);
+}
+export function watchScheduleEvm(projectId: string, cb: (rows: ScheduleWeek[]) => void) {
+  return watchWeeklyMetric<ScheduleWeek>(scheduleEvmCol, projectId, cb);
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,15 @@
 import type { Timestamp } from "firebase/firestore";
-import type { OrgType, RiskPriority, RiskStatus } from "../types";
+import type { AnnotationKind, CommentRole, CommentStatus, CorrespondenceStatus, DocumentAnnotation, DocumentComment, DocumentStatus, Party, Risk, RiskKind, RiskPriority, RiskStatus, RoleResponsibility } from "../types";
+
+/** Pre-existing docs have no `kind` field — treat those as plain risks. */
+export function riskKind(risk: Pick<Risk, "kind">): RiskKind {
+  return risk.kind ?? "risk";
+}
+
+/** Annotations predating the kind field have none — treat those as comment pins. */
+export function effectiveKind(annotation: Pick<DocumentAnnotation, "kind">): AnnotationKind {
+  return annotation.kind ?? "comment";
+}
 
 export function tsToDate(ts: Timestamp | null | undefined): Date | null {
   return ts ? ts.toDate() : null;
@@ -21,6 +31,15 @@ export function formatDateInput(ts: Timestamp | null | undefined): string {
   return d.toISOString().slice(0, 10);
 }
 
+export function formatDateYMD(ts: Timestamp | null | undefined): string {
+  const d = tsToDate(ts);
+  if (!d) return "—";
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const dy = String(d.getDate()).padStart(2, "0");
+  return `${y}.${mo}.${dy}`;
+}
+
 export function formatEdited(ts: Timestamp | null | undefined): string {
   const d = tsToDate(ts);
   if (!d) return "just now";
@@ -38,14 +57,18 @@ export function formatTime(ts: Timestamp | null | undefined): string {
   return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
+// dot/text = small colored dot + adjacent label text-on-white, used in tables
+// and cards. Hues match the binding RAG law (KNW-038 §6.2 / lib/rag.ts);
+// `text` is a darkened variant of the same hue for readability on white —
+// for a solid colored chip/badge use lib/rag.ts's bandChip() instead.
 export const PRIORITY_META: Record<
   RiskPriority,
   { label: string; dot: string; text: string }
 > = {
-  low: { label: "Low", dot: "#10B981", text: "#047857" },
-  medium: { label: "Medium", dot: "#F59E0B", text: "#B45309" },
-  high: { label: "High", dot: "#EF4444", text: "#B91C1C" },
-  critical: { label: "Critical", dot: "#F59E0B", text: "#92400E" },
+  low: { label: "Low", dot: "#27AE60", text: "#1E7E4A" },
+  medium: { label: "Medium", dot: "#F39C12", text: "#8A5A08" },
+  high: { label: "High", dot: "#C0392B", text: "#8E2C21" },
+  critical: { label: "Critical", dot: "#962D22", text: "#6B1F17" },
 };
 
 export const STATUS_LABEL: Record<RiskStatus, string> = {
@@ -55,21 +78,110 @@ export const STATUS_LABEL: Record<RiskStatus, string> = {
   resolved: "Resolved",
 };
 
-/** Left-border accent color per organization type for the involved-parties card. */
-export function orgAccent(org: OrgType | string): string {
-  switch (org) {
-    case "Owner":
-      return "#4F46E5"; // indigo
-    case "Main Contractor":
-    case "Subcontractor":
-      return "#F59E0B"; // orange/amber
-    case "Advisor":
-      return "#14B8A6"; // teal
-    case "Authority":
-      return "#A855F7"; // purple
-    default:
-      return "#9CA3AF";
-  }
+export const CORRESPONDENCE_STATUS_LABEL: Record<CorrespondenceStatus, string> = {
+  registered: "Registered",
+  sent_accountable: "Sent to Accountable",
+  sent_responsible: "Sent to Responsible",
+  completed: "Completed",
+  obsolete: "Obsolete",
+};
+
+export const DOCUMENT_STATUS_LABEL: Record<DocumentStatus, string> = {
+  registered: "Registered",
+  sent_accountable: "Sent to Accountable",
+  sent_responsible: "Sent to Responsible",
+  completed: "Completed",
+  obsolete: "Obsolete",
+};
+
+export const COMMENT_STATUS_LABEL: Record<CommentStatus, string> = {
+  open: "Open",
+  answered: "Answered",
+  closed: "Closed",
+};
+
+/** Pill colors for comment-sheet statuses, from the brand palette. */
+export const COMMENT_STATUS_META: Record<CommentStatus, { text: string; bg: string }> = {
+  open: { text: "#cc7000", bg: "#fff3e0" }, // amber
+  answered: { text: "#0069b3", bg: "#e3f3ff" }, // info-blue
+  closed: { text: "#1b7a34", bg: "#e6f6ea" }, // green
+};
+
+/**
+ * A soft, pleasant palette so each anchored comment gets its own recognisable
+ * colour on the document — used for the pin marker and its highlight tint.
+ * Medium saturation reads clearly as a pin yet stays gentle at low fill-opacity.
+ */
+export const COMMENT_COLORS = [
+  "#6366f1", // indigo
+  "#14b8a6", // teal
+  "#f59e0b", // amber
+  "#ec4899", // pink
+  "#8b5cf6", // violet
+  "#0ea5e9", // sky
+  "#10b981", // emerald
+  "#f97316", // orange
+] as const;
+
+/** Stable colour for a comment, cycling through the palette by its number. */
+export function commentColor(commentNo: number): string {
+  const n = COMMENT_COLORS.length;
+  return COMMENT_COLORS[(((commentNo - 1) % n) + n) % n];
+}
+
+/** Whoever has the ball for a risk's current status. No entry for "resolved" — nothing left to own. */
+export const NEXT_STEP_OWNER: Record<string, string> = {
+  identified: "Package PM",
+  assessed: "Lead Scheduler",
+  mitigated: "Quality Manager",
+};
+
+/** The single "responsible" party to show where only one avatar fits (Risk Card, Risk Register table). */
+export function pickResponsible(role: RoleResponsibility): Party | null {
+  return role.responsibleContractor ?? role.responsibleCustomer;
+}
+
+/**
+ * Everyone in the RACI who could be @-tagged into a comment thread — accountable,
+ * both responsibles, consulted and informed — deduped by name. Scoped to one
+ * workstream when given, otherwise across all roles.
+ */
+export function raciPeople(roles: RoleResponsibility[], workstreamId?: string): Party[] {
+  const scoped = workstreamId ? roles.filter((r) => r.id === workstreamId) : roles;
+  const pool = scoped.length ? scoped : roles; // fall back to all if the workstream matched nothing
+  const out: Party[] = [];
+  const seen = new Set<string>();
+  const add = (p: Party | null | undefined) => {
+    if (!p?.name || seen.has(p.name)) return;
+    seen.add(p.name);
+    out.push(p);
+  };
+  pool.forEach((r) => {
+    add(r.accountable);
+    add(r.responsibleCustomer);
+    add(r.responsibleContractor);
+    r.consulted.forEach(add);
+    r.informedCustomer.forEach(add);
+    r.informedContractor.forEach(add);
+  });
+  return out;
+}
+
+/**
+ * Which side of a comment the signed-in user is on, so we never let them post as
+ * the wrong party. Commenter is matched by uid (or name); responder and tagged
+ * participants by display name. `null` means they're not a participant yet.
+ */
+export function resolveMyRole(
+  comment: Pick<DocumentComment, "commenterUid" | "commenterName" | "responderName" | "participants">,
+  currentUid: string,
+  currentName: string
+): CommentRole | null {
+  if (currentUid && currentUid === comment.commenterUid) return "commenter";
+  if (currentName && currentName === comment.commenterName) return "commenter";
+  if (currentName && currentName === comment.responderName) return "responder";
+  if ((comment.participants ?? []).some((p) => p.name === currentName)) return "participant";
+  return null;
 }
 
 export function initials(name: string): string {

@@ -14,7 +14,7 @@ interface RiskState {
 }
 
 export const useRiskStore = create<RiskState>((set, get) => ({
-  projectId: "",
+  projectId: "datacenter-vejle-phase-1",
   risks: [],
   roles: [],
   loading: true,

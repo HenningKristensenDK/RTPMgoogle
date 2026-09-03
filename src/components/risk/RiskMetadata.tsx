@@ -3,13 +3,21 @@ import { Search } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
 import type {
   Risk,
-  RiskPriority,
+  RiskImpactDriver,
   RiskStatus,
-  Recurrence,
   RoleResponsibility,
 } from "../../types";
 import { RISK_STATUSES } from "../../types";
 import { PRIORITY_META, STATUS_LABEL, formatDateInput } from "../../lib/format";
+import { bandChip } from "../../lib/rag";
+import {
+  SCORE_LEVELS,
+  LIKELIHOOD_LABELS,
+  IMPACT_LABELS,
+  IMPACT_DRIVERS,
+  computeRiskScore,
+  priorityFromScore,
+} from "../../lib/riskScoring";
 import WorkstreamLookup from "./WorkstreamLookup";
 
 interface Props {
@@ -21,9 +29,8 @@ interface Props {
 const labelCls = "mb-1 block text-[12px] font-medium text-gray-500";
 const fieldCls =
   "w-full rounded-input border border-bordergray bg-white px-2.5 py-2 text-sm text-ink outline-none focus:border-indigo focus:ring-1 focus:ring-indigo";
-
-const PRIORITIES: RiskPriority[] = ["low", "medium", "high", "critical"];
-const RECURRENCES: Recurrence[] = ["none", "daily", "weekly", "monthly"];
+const compactFieldCls =
+  "w-full rounded-input border border-bordergray bg-white px-1.5 py-2 text-[11px] text-ink outline-none focus:border-indigo focus:ring-1 focus:ring-indigo";
 
 export default function RiskMetadata({ risk, roles, onPatch }: Props) {
   const [lookupOpen, setLookupOpen] = useState(false);
@@ -31,6 +38,15 @@ export default function RiskMetadata({ risk, roles, onPatch }: Props) {
   function dateToTs(value: string): Timestamp | null {
     return value ? Timestamp.fromDate(new Date(value)) : null;
   }
+
+  // Priority is always derived — recompute riskScore + priority together
+  // whenever either scoring input changes, never set priority directly.
+  function updateScoring(likelihood: number, impactScore: number) {
+    const score = computeRiskScore(likelihood, impactScore);
+    onPatch({ likelihood, impactScore, riskScore: score, priority: priorityFromScore(score) });
+  }
+
+  const chip = bandChip(risk.priority);
 
   function toggleWorkstream(roleId: string) {
     const next = risk.workstreamIds.includes(roleId)
@@ -63,24 +79,40 @@ export default function RiskMetadata({ risk, roles, onPatch }: Props) {
           </select>
         </div>
 
-        {/* Priority */}
+        {/* Likelihood / Impact / Driver — replaces the old manual Priority picker */}
         <div>
-          <label className={labelCls}>Priority</label>
-          <div className="relative">
-            <span
-              className="pointer-events-none absolute left-2.5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full"
-              style={{ background: PRIORITY_META[risk.priority].dot }}
-            />
+          <label className={labelCls}>Likelihood · Impact · Driver</label>
+          <div className="grid grid-cols-3 gap-1.5">
             <select
-              className={`${fieldCls} pl-7`}
-              value={risk.priority}
-              onChange={(e) =>
-                onPatch({ priority: e.target.value as RiskPriority })
-              }
+              className={compactFieldCls}
+              value={risk.likelihood}
+              onChange={(e) => updateScoring(Number(e.target.value), risk.impactScore)}
             >
-              {PRIORITIES.map((p) => (
-                <option key={p} value={p}>
-                  {PRIORITY_META[p].label}
+              {SCORE_LEVELS.map((n) => (
+                <option key={n} value={n}>
+                  {n} — {LIKELIHOOD_LABELS[n]}
+                </option>
+              ))}
+            </select>
+            <select
+              className={compactFieldCls}
+              value={risk.impactScore}
+              onChange={(e) => updateScoring(risk.likelihood, Number(e.target.value))}
+            >
+              {SCORE_LEVELS.map((n) => (
+                <option key={n} value={n}>
+                  {n} — {IMPACT_LABELS[n]}
+                </option>
+              ))}
+            </select>
+            <select
+              className={compactFieldCls}
+              value={risk.impactDriver}
+              onChange={(e) => onPatch({ impactDriver: e.target.value as RiskImpactDriver })}
+            >
+              {IMPACT_DRIVERS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
                 </option>
               ))}
             </select>
@@ -109,24 +141,6 @@ export default function RiskMetadata({ risk, roles, onPatch }: Props) {
           />
         </div>
 
-        {/* Recurrence */}
-        <div>
-          <label className={labelCls}>Recurrence</label>
-          <select
-            className={fieldCls}
-            value={risk.recurrence}
-            onChange={(e) =>
-              onPatch({ recurrence: e.target.value as Recurrence })
-            }
-          >
-            {RECURRENCES.map((r) => (
-              <option key={r} value={r}>
-                {r.charAt(0).toUpperCase() + r.slice(1)}
-              </option>
-            ))}
-          </select>
-        </div>
-
         {/* Risk collection */}
         <div>
           <label className={labelCls}>Risk collection</label>
@@ -137,6 +151,18 @@ export default function RiskMetadata({ risk, roles, onPatch }: Props) {
             onChange={(e) => onPatch({ collection: e.target.value })}
           />
         </div>
+      </div>
+
+      {/* Derived priority — read-only, calculated from likelihood x impact */}
+      <div className="mt-4 flex items-center gap-2">
+        <span className="text-[12px] font-medium text-gray-500">Priority:</span>
+        <span
+          className="rounded-full px-3 py-1 text-[12px] font-bold"
+          style={{ background: chip.bg, color: chip.text }}
+        >
+          {PRIORITY_META[risk.priority].label} (score {risk.riskScore})
+        </span>
+        <span className="text-[11px] text-gray-400">calculated, not set directly</span>
       </div>
 
       {/* Workstream multi-select with lookup */}

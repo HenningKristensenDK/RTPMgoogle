@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
-import { Bot, SmilePlus } from "lucide-react";
-import type { ChatMode, RiskMessage } from "../../types";
+import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { Bot, SmilePlus, X } from "lucide-react";
+import type { BaseMessage, ChatMode } from "../../types";
 import { formatTime, initials } from "../../lib/format";
 
 interface Props {
-  messages: RiskMessage[];
+  messages: BaseMessage[];
   mode: ChatMode;
   currentUid: string;
   typing?: boolean;
@@ -21,6 +22,7 @@ export default function ChatMessages({
   onReact,
 }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -31,7 +33,7 @@ export default function ChatMessages({
       {messages.length === 0 && !typing && (
         <div className="mt-8 text-center text-xs text-gray-400">
           {mode === "agent"
-            ? "Ask Risk Manager to analyze this risk, suggest mitigations, or score probability and impact."
+            ? "Ask Risk Management Agent to analyze this risk, suggest mitigations, or score probability and impact."
             : "No messages yet. Start the conversation with your team."}
         </div>
       )}
@@ -74,27 +76,47 @@ export default function ChatMessages({
                   }`}
                 >
                   <span className="text-[11px] font-semibold text-gray-700">
-                    {isAgent ? "Risk Manager" : m.authorName}
+                    {isAgent ? "Risk Management Agent" : m.authorName}
                   </span>
                   <span className="text-[10px] text-gray-400">
                     {formatTime(m.timestamp)}
                   </span>
                 </div>
                 <div
-                  className="mt-0.5 whitespace-pre-wrap rounded-lg px-3 py-2 text-[13px] leading-relaxed"
+                  className="mt-0.5 rounded-lg px-3 py-2 text-[13px] leading-relaxed"
                   style={
                     isAgent
                       ? {
-                          background: "#FFFBEB",
-                          color: "#1F2937",
-                          borderLeft: "3px solid #F59E0B",
+                          background: "#fff8f0",
+                          color: "#15162b",
+                          borderLeft: "3px solid #ff8b00",
                         }
                       : isMine
-                      ? { background: "#4F46E5", color: "#fff" }
-                      : { background: "#F3F4F6", color: "#1F2937" }
+                      ? { background: "#5b56e8", color: "#fff" }
+                      : { background: "#f7f7fb", color: "#15162b" }
                   }
                 >
-                  {m.content}
+                  {m.images && m.images.length > 0 && (
+                    <div className={`flex flex-wrap gap-1.5 ${m.content ? "mb-2" : ""}`}>
+                      {m.images.map((src, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setLightbox(src)}
+                          className="block h-24 w-24 shrink-0 overflow-hidden rounded-btn border border-black/10"
+                        >
+                          <img src={src} alt="" className="h-full w-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {m.content && (
+                    <div
+                      className={`prose prose-sm max-w-none${isMine ? " prose-invert" : ""}`}
+                    >
+                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                    </div>
+                  )}
                 </div>
 
                 {/* Reactions (team chat only) */}
@@ -161,6 +183,26 @@ export default function ChatMessages({
         )}
       </div>
       <div ref={endRef} />
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-8"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+          >
+            <X size={18} />
+          </button>
+          <img
+            src={lightbox}
+            alt=""
+            className="max-h-full max-w-full rounded-card object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

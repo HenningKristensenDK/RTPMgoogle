@@ -1,17 +1,22 @@
-import { useNavigate } from "react-router-dom";
-import type { Risk, RoleResponsibility } from "../../types";
-import { PRIORITY_META, formatDate, initials } from "../../lib/format";
+import { useLocation, useNavigate } from "react-router-dom";
+import type { Organization, Risk, RoleResponsibility } from "../../types";
+import { PRIORITY_META, formatDate, pickResponsible } from "../../lib/format";
+import { tierColor } from "../../lib/tiers";
+import PersonAvatar from "../common/PersonAvatar";
 
 interface Props {
   risk: Risk;
   roles: RoleResponsibility[];
+  orgs: Organization[];
 }
 
-export default function RiskCard({ risk, roles }: Props) {
+export default function RiskCard({ risk, roles, orgs }: Props) {
   const navigate = useNavigate();
-  const responsible = roles.find(
-    (r) => risk.workstreamIds.includes(r.id) && r.type === "responsible"
-  );
+  const location = useLocation();
+  const responsible = roles
+    .filter((r) => risk.workstreamIds.includes(r.id))
+    .map(pickResponsible)
+    .find((p) => p !== null);
   const workstreams = [
     ...new Set(
       roles
@@ -23,7 +28,7 @@ export default function RiskCard({ risk, roles }: Props) {
 
   return (
     <button
-      onClick={() => navigate(`/risks/${risk.id}`)}
+      onClick={() => navigate(`/risks/${risk.id}`, { state: { background: location } })}
       className="flex w-full flex-col gap-2 rounded-card border border-bordergray bg-white p-3 text-left shadow-card transition-shadow hover:shadow-panel"
     >
       <div className="flex items-center justify-between">
@@ -62,12 +67,11 @@ export default function RiskCard({ risk, roles }: Props) {
           Due {formatDate(risk.dueDate)}
         </span>
         {responsible && (
-          <span
-            title={responsible.person.name}
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo/15 text-[9px] font-semibold text-indigo"
-          >
-            {initials(responsible.person.name)}
-          </span>
+          <PersonAvatar
+            name={responsible.name}
+            ringColor={tierColor(orgs, responsible.organization)}
+            size={24}
+          />
         )}
       </div>
     </button>

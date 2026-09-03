@@ -1,61 +1,41 @@
 import { Users } from "lucide-react";
-import type { RoleResponsibility } from "../../types";
-import { orgAccent } from "../../lib/format";
+import type { Party, RoleResponsibility } from "../../types";
 
 interface Props {
   roles: RoleResponsibility[];
   selectedIds: string[];
 }
 
-interface OrgGroup {
-  organizationName: string;
-  organization: string;
-  entries: RoleResponsibility[];
+interface Entry {
+  workstream: string;
+  slot: string;
+  party: Party;
 }
 
-function groupByOrg(roles: RoleResponsibility[]): OrgGroup[] {
-  const map = new Map<string, OrgGroup>();
-  for (const r of roles) {
-    const key = r.organizationName;
-    if (!map.has(key)) {
-      map.set(key, {
-        organizationName: r.organizationName,
-        organization: r.organization,
-        entries: [],
-      });
-    }
-    map.get(key)!.entries.push(r);
-  }
-  return [...map.values()];
-}
-
-function Column({ title, groups }: { title: string; groups: OrgGroup[] }) {
+function Column({ title, entries }: { title: string; entries: Entry[] }) {
   return (
     <div className="flex-1">
       <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
         {title}
       </div>
-      {groups.length === 0 && (
+      {entries.length === 0 && (
         <div className="text-[11px] text-gray-300">None</div>
       )}
       <div className="flex flex-col gap-2">
-        {groups.map((g) => (
+        {entries.map((e, i) => (
           <div
-            key={g.organizationName}
-            className="rounded-r-md bg-gray-50 py-1.5 pl-3 pr-2"
-            style={{ borderLeft: `3px solid ${orgAccent(g.organization)}` }}
+            key={i}
+            className="rounded-r-md border-l-2 border-indigo/30 bg-gray-50 py-1.5 pl-3 pr-2"
           >
             <div className="text-[12px] font-semibold text-gray-800">
-              {g.organizationName}{" "}
+              {e.party.name}{" "}
               <span className="font-normal text-gray-400">
-                ({g.organization})
+                ({e.party.organization})
               </span>
             </div>
-            {g.entries.map((e) => (
-              <div key={e.id} className="text-[11px] text-gray-500">
-                › {e.workstream}: {e.person.name} — {e.role}
-              </div>
-            ))}
+            <div className="text-[11px] text-gray-500">
+              › {e.workstream}: {e.party.role} — {e.slot}
+            </div>
           </div>
         ))}
       </div>
@@ -65,15 +45,29 @@ function Column({ title, groups }: { title: string; groups: OrgGroup[] }) {
 
 export default function InvolvedPartiesCard({ roles, selectedIds }: Props) {
   const involved = roles.filter((r) => selectedIds.includes(r.id));
-  const responsible = groupByOrg(
-    involved.filter((r) => r.type === "responsible")
-  );
-  const informed = groupByOrg(involved.filter((r) => r.type === "informed"));
+
+  const responsible: Entry[] = [];
+  const informed: Entry[] = [];
+
+  for (const r of involved) {
+    if (r.responsibleCustomer) {
+      responsible.push({ workstream: r.workstream, slot: "Customer", party: r.responsibleCustomer });
+    }
+    if (r.responsibleContractor) {
+      responsible.push({ workstream: r.workstream, slot: "Contractor", party: r.responsibleContractor });
+    }
+    for (const party of r.informedCustomer) {
+      informed.push({ workstream: r.workstream, slot: "Customer", party });
+    }
+    for (const party of r.informedContractor) {
+      informed.push({ workstream: r.workstream, slot: "Contractor", party });
+    }
+  }
 
   return (
     <div className="rounded-card border border-bordergray bg-white p-4 shadow-card">
       <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-gray-700">
-        <Users size={15} /> Involved in this risk
+        <Users size={15} /> Involved parties
       </div>
       {involved.length === 0 ? (
         <p className="text-xs text-gray-400">
@@ -81,8 +75,8 @@ export default function InvolvedPartiesCard({ roles, selectedIds }: Props) {
         </p>
       ) : (
         <div className="flex gap-6">
-          <Column title="Responsible (R)" groups={responsible} />
-          <Column title="Informed (I)" groups={informed} />
+          <Column title="Responsible (R)" entries={responsible} />
+          <Column title="Informed (I)" entries={informed} />
         </div>
       )}
     </div>

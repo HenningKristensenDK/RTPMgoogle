@@ -21,8 +21,16 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 
+# Local Firestore backups (never committed)
+backups/
+
+# Personal Claude Code notes (see CLAUDE.local.md.example for the template)
+CLAUDE.local.md
+
 # Editor / OS
 .DS_Store
+Thumbs.db
+desktop.ini
 *.log
 .vscode/
 .idea/

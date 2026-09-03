@@ -15,8 +15,11 @@ import { readFileSync, existsSync } from "node:fs";
 import {
   SEED_PROJECT,
   SEED_ROLES,
+  SEED_ORGANIZATIONS,
   SEED_RISKS,
-} from "../src/lib/seedData.js";
+  SEED_CORRESPONDENCE,
+} from "../src/lib/seedData.ts";
+import { backfillScoring } from "../src/lib/riskScoring.ts";
 
 const KEY_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS || "./serviceAccountKey.json";
 
@@ -45,30 +48,54 @@ async function main() {
     await db.collection("roles_and_responsibilities").doc(role.id).set({
       projectId: SEED_PROJECT.id,
       workstream: role.workstream,
-      organization: role.organization,
-      organizationName: role.organizationName,
-      role: role.role,
-      person: role.person,
-      type: role.type,
+      accountable: role.accountable,
+      consulted: role.consulted,
+      responsibleCustomer: role.responsibleCustomer,
+      responsibleContractor: role.responsibleContractor,
+      informedCustomer: role.informedCustomer,
+      informedContractor: role.informedContractor,
+      description: role.description,
+      interactionSummary: role.interactionSummary,
     });
   }
   console.log(`  ${SEED_ROLES.length} R&R entries written`);
 
+  // Organizations (Org Chart)
+  for (const org of SEED_ORGANIZATIONS) {
+    await db.collection("organizations").doc(org.orgId).set({
+      projectId: SEED_PROJECT.id,
+      orgId: org.orgId,
+      name: org.name,
+      tier: org.tier,
+      parentOrgId: org.parentOrgId,
+      roleType: org.roleType,
+    });
+  }
+  console.log(`  ${SEED_ORGANIZATIONS.length} organizations written`);
+
   // Risks
   const now = Date.now();
   for (const risk of SEED_RISKS) {
+    const scoring = backfillScoring(risk.priority, `${risk.title} ${risk.notes}`);
     await db.collection("risks").add({
       projectId: SEED_PROJECT.id,
       riskId: risk.riskId,
+      kind: "risk",
       title: risk.title,
       status: risk.status,
-      priority: risk.priority,
+      likelihood: scoring.likelihood,
+      impactScore: scoring.impactScore,
+      riskScore: scoring.riskScore,
+      priority: scoring.priority,
+      impactDriver: scoring.impactDriver,
+      trend: scoring.trend,
       startDate: Timestamp.fromMillis(now),
       dueDate: Timestamp.fromMillis(now + risk.dueOffsetDays * 86400000),
       recurrence: risk.recurrence,
       collection: SEED_PROJECT.name,
       workstreamIds: risk.workstreamIds,
       checklist: risk.checklist,
+      mitigationPlan: "",
       notes: risk.notes,
       attachments: [],
       statusHistory: [],
@@ -78,6 +105,29 @@ async function main() {
     });
   }
   console.log(`  ${SEED_RISKS.length} risks written`);
+
+  // Correspondence
+  for (const item of SEED_CORRESPONDENCE) {
+    await db.collection("correspondence").add({
+      projectId: SEED_PROJECT.id,
+      itemId: item.itemId,
+      type: item.type,
+      title: item.title,
+      status: item.status,
+      priority: item.priority,
+      startDate: Timestamp.fromMillis(now),
+      dueDate: Timestamp.fromMillis(now + item.dueOffsetDays * 86400000),
+      workstreamIds: item.workstreamIds,
+      checklist: item.checklist,
+      notes: item.notes,
+      attachments: [],
+      statusHistory: [],
+      createdBy: "seed-script",
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  }
+  console.log(`  ${SEED_CORRESPONDENCE.length} correspondence items written`);
   console.log("Done.");
 }
 
