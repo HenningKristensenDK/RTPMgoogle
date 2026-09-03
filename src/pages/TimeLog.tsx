@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Trash2, Clock } from "lucide-react";
+import { Plus, Trash2, Clock, CalendarDays, List } from "lucide-react";
 import {
   TIME_CATEGORIES,
   TIME_ENTRY_STATUSES,
@@ -14,6 +14,7 @@ import { createTimeEntry, deleteTimeEntry } from "../firebase/firestore";
 import { formatDate } from "../lib/format";
 import { toast } from "../lib/toast";
 import TimeSummaryDashboard from "../components/time/TimeSummaryDashboard";
+import TimesheetGrid from "../components/time/TimesheetGrid";
 import NewTimeEntryModal, { type NewTimeEntryData } from "../components/time/NewTimeEntryModal";
 
 const STATUS_META: Record<TimeEntryStatus, { label: string; text: string; bg: string }> = {
@@ -40,6 +41,7 @@ export default function TimeLog() {
   const [barWorkstream, setBarWorkstream] = useState<string | null>(null);
   const [barCategory, setBarCategory] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  const [view, setView] = useState<"week" | "list">("week");
 
   const wsName = (id: string) => roles.find((r) => r.id === id)?.workstream ?? "Unassigned";
   const workstreams = [...new Set(roles.map((r) => r.workstream))];
@@ -88,19 +90,36 @@ export default function TimeLog() {
           <div>
             <h1 className="text-lg font-bold text-ink">Time Registration</h1>
             <p className="text-xs text-gray-400">
-              {tableEntries.length} of {entries.length} entries
+              {view === "week" ? "Weekly timesheet" : `${tableEntries.length} of ${entries.length} entries`}
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setNewOpen(true)}
-          className="flex items-center gap-1.5 rounded-btn bg-indigo px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo/90"
-        >
-          <Plus size={16} /> Register time
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex overflow-hidden rounded-btn border border-bordergray">
+            <button
+              onClick={() => setView("week")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${view === "week" ? "bg-indigo text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+            >
+              <CalendarDays size={15} /> Week
+            </button>
+            <button
+              onClick={() => setView("list")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${view === "list" ? "bg-indigo text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+            >
+              <List size={15} /> List
+            </button>
+          </div>
+          <button
+            onClick={() => setNewOpen(true)}
+            className="flex items-center gap-1.5 rounded-btn bg-indigo px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo/90"
+          >
+            <Plus size={16} /> Register time
+          </button>
+        </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters (List view only) */}
+      {view === "list" && (
       <div className="flex flex-wrap items-center gap-2 border-b border-bordergray bg-white px-6 py-2.5">
         <select className={selectCls} value={fWorkstream} onChange={(e) => setFWorkstream(e.target.value)}>
           <option value="">All workstreams</option>
@@ -136,11 +155,14 @@ export default function TimeLog() {
           <option value="no">Non-billable only</option>
         </select>
       </div>
+      )}
 
       {/* Content */}
       <div className="scroll-thin flex-1 overflow-auto p-6">
         {loading ? (
           <div className="text-sm text-gray-400">Loading time entries…</div>
+        ) : view === "week" ? (
+          <TimesheetGrid entries={entries} roles={roles} projectId={projectId} currentName={me.name} />
         ) : (
           <>
             <TimeSummaryDashboard
