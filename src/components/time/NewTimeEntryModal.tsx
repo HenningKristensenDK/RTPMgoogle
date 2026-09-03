@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Timestamp } from "firebase/firestore";
+import { X } from "lucide-react";
 import { TIME_CATEGORIES, type TimeCategory, type RoleResponsibility } from "../../types";
 
 export interface NewTimeEntryData {
@@ -21,9 +22,26 @@ interface Props {
   onCancel: () => void;
 }
 
-const labelCls = "mb-1 block text-[12px] font-medium text-gray-500";
-const fieldCls =
-  "w-full rounded-input border border-bordergray bg-white px-2.5 py-2 text-sm text-ink outline-none focus:border-indigo focus:ring-1 focus:ring-indigo";
+const INK = "#15162b";
+const MUTE = "#8a8ca6";
+const INDIGO = "#0d08d2";
+const INDIGO_TINT = "#e7e6fa";
+const LINE = "#e6e6f0";
+const LINE_SOFT = "#f0f0f5";
+const GOLD = "#ffcc00";
+
+const WS_COLOR: Record<string, string> = {
+  "Civil Works": "#0d08d2",
+  "MEP Infrastructure": "#00acff",
+  "IT/Data Infrastructure": "#5652e0",
+  Quality: "#00c794",
+  HSE: "#ff8b00",
+  "Permit and Authorities": "#aa00d3",
+};
+const SERIES = ["#0d08d2", "#00c794", "#ff8b00", "#00acff", "#aa00d3", "#5652e0"];
+
+const labelCls = "mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em]";
+const fieldCls = "w-full rounded-[9px] border bg-white px-3 py-[11px] text-[13.5px] outline-none";
 
 function todayInput(): string {
   return new Date().toISOString().slice(0, 10);
@@ -38,15 +56,7 @@ export default function NewTimeEntryModal({ roles, currentName, onCreate, onCanc
       out.push({ name: currentName, org: "Customer" });
     }
     for (const r of roles) {
-      const parties = [
-        r.accountable,
-        r.responsibleCustomer,
-        r.responsibleContractor,
-        ...r.consulted,
-        ...r.informedCustomer,
-        ...r.informedContractor,
-      ];
-      for (const p of parties) {
+      for (const p of [r.accountable, r.responsibleCustomer, r.responsibleContractor, ...r.consulted, ...r.informedCustomer, ...r.informedContractor]) {
         if (p && p.name && !seen.has(p.name)) {
           seen.add(p.name);
           out.push({ name: p.name, org: p.organization });
@@ -68,6 +78,9 @@ export default function NewTimeEntryModal({ roles, currentName, onCreate, onCanc
   const hoursNum = parseFloat(hours);
   const canCreate = activity.trim() !== "" && !Number.isNaN(hoursNum) && hoursNum > 0;
 
+  const wsName = roles.find((r) => r.id === workstreamId)?.workstream ?? "";
+  const wsColor = WS_COLOR[wsName] ?? SERIES[Math.max(0, roles.findIndex((r) => r.id === workstreamId)) % SERIES.length];
+
   function handleCreate() {
     if (!canCreate) return;
     const p = people.find((x) => x.name === person);
@@ -87,28 +100,111 @@ export default function NewTimeEntryModal({ roles, currentName, onCreate, onCanc
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-6"
-      style={{ background: "rgba(7, 4, 116, 0.45)" }}
+      style={{ background: "rgba(7, 4, 116, 0.28)" }}
       onClick={(e) => e.target === e.currentTarget && onCancel()}
     >
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-        <h2 className="text-[15px] font-semibold text-ink">Register time</h2>
-        <p className="mt-1 text-[12px] text-gray-400">Log hours worked against a workstream.</p>
+      <div className="w-full max-w-[480px] overflow-hidden rounded-[16px] bg-white shadow-[0_8px_24px_rgba(21,22,43,.22)]">
+        <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: LINE_SOFT }}>
+          <h2 className="font-headline text-[19px] font-bold" style={{ color: INK }}>
+            Add time line
+          </h2>
+          <button onClick={onCancel} style={{ color: "#b9bacb" }}>
+            <X size={20} />
+          </button>
+        </div>
 
-        <div className="mt-4 flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Date</label>
-              <input type="date" className={fieldCls} value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-            <div>
-              <label className={labelCls}>Hours</label>
-              <input type="number" step="0.5" min="0" className={fieldCls} value={hours} onChange={(e) => setHours(e.target.value)} />
+        <div className="flex flex-col gap-4 px-6 py-5">
+          <div>
+            <label className={labelCls} style={{ color: MUTE }}>
+              Workstream
+            </label>
+            <div className="flex items-center gap-2.5 rounded-[9px] border px-3" style={{ borderColor: LINE }}>
+              <span className="h-[9px] w-[9px] flex-none rounded-full" style={{ background: wsColor }} />
+              <select value={workstreamId} onChange={(e) => setWorkstreamId(e.target.value)} className="w-full cursor-pointer bg-transparent py-[11px] text-[13.5px] outline-none" style={{ color: INK }}>
+                <option value="">No workstream</option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.workstream}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
           <div>
-            <label className={labelCls}>Person</label>
-            <select className={fieldCls} value={person} onChange={(e) => setPerson(e.target.value)}>
+            <label className={labelCls} style={{ color: MUTE }}>
+              Activity
+            </label>
+            <input
+              className={fieldCls}
+              style={{ borderColor: INDIGO, color: INK, boxShadow: `0 0 0 3px ${INDIGO_TINT}` }}
+              value={activity}
+              onChange={(e) => setActivity(e.target.value)}
+              placeholder="e.g. Rebar fixing to Grid C"
+              autoFocus
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3.5">
+            <div>
+              <label className={labelCls} style={{ color: MUTE }}>
+                Category
+              </label>
+              <select className={fieldCls} style={{ borderColor: LINE, color: INK }} value={category} onChange={(e) => setCategory(e.target.value as TimeCategory)}>
+                {TIME_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls} style={{ color: MUTE }}>
+                Billable
+              </label>
+              <button
+                onClick={() => setBillable((b) => !b)}
+                className="flex h-[42px] w-full items-center gap-2.5 rounded-[9px] border px-3"
+                style={{ borderColor: LINE }}
+              >
+                <span className="relative h-[19px] w-[34px] flex-none rounded-full transition-colors" style={{ background: billable ? INDIGO : "#dcdce8" }}>
+                  <span className="absolute top-0.5 h-[15px] w-[15px] rounded-full bg-white shadow transition-all" style={{ left: billable ? 17 : 2 }} />
+                </span>
+                <span className="text-[13px] font-medium" style={{ color: INK }}>
+                  {billable ? "Billable" : "Non-billable"}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls} style={{ color: MUTE }}>
+              Date &amp; hours
+            </label>
+            <div className="flex items-stretch gap-2.5">
+              <input type="date" className={`${fieldCls} flex-1 font-headline`} style={{ borderColor: LINE, color: INK }} value={date} onChange={(e) => setDate(e.target.value)} />
+              <div className="flex w-[110px] items-center rounded-[9px] border px-3" style={{ borderColor: LINE }}>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  className="w-full bg-transparent text-center font-headline text-[13.5px] font-bold outline-none"
+                  style={{ color: INK }}
+                  value={hours}
+                  onChange={(e) => setHours(e.target.value)}
+                />
+                <span className="text-[13px]" style={{ color: MUTE }}>
+                  h
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls} style={{ color: MUTE }}>
+              Person
+            </label>
+            <select className={fieldCls} style={{ borderColor: LINE, color: INK }} value={person} onChange={(e) => setPerson(e.target.value)}>
               {people.map((p) => (
                 <option key={p.name} value={p.name}>
                   {p.name} · {p.org}
@@ -118,64 +214,24 @@ export default function NewTimeEntryModal({ roles, currentName, onCreate, onCanc
           </div>
 
           <div>
-            <label className={labelCls}>Workstream</label>
-            <select className={fieldCls} value={workstreamId} onChange={(e) => setWorkstreamId(e.target.value)}>
-              <option value="">No workstream</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.workstream}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className={labelCls}>Activity</label>
-            <input
-              className={fieldCls}
-              value={activity}
-              onChange={(e) => setActivity(e.target.value)}
-              placeholder="e.g. Rebar fixing to Grid C"
-              autoFocus
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Category</label>
-              <select className={fieldCls} value={category} onChange={(e) => setCategory(e.target.value as TimeCategory)}>
-                {TIME_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Billable</label>
-              <label className="flex h-[38px] cursor-pointer items-center gap-2 rounded-input border border-bordergray px-2.5 text-sm text-gray-600">
-                <input type="checkbox" checked={billable} onChange={(e) => setBillable(e.target.checked)} className="accent-indigo" />
-                {billable ? "Billable" : "Non-billable"}
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <label className={labelCls}>Notes</label>
-            <textarea className={`${fieldCls} resize-none`} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional…" />
+            <label className={labelCls} style={{ color: MUTE }}>
+              Notes (optional)
+            </label>
+            <textarea className={`${fieldCls} resize-none`} style={{ borderColor: LINE, color: INK }} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional…" />
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onCancel} className="rounded-btn border border-bordergray px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50">
+        <div className="flex justify-end gap-2.5 border-t px-6 py-4" style={{ borderColor: LINE_SOFT }}>
+          <button onClick={onCancel} className="rounded-[9px] px-4 py-2 text-sm font-semibold" style={{ color: INDIGO }}>
             Cancel
           </button>
           <button
             onClick={handleCreate}
             disabled={!canCreate}
-            className="rounded-btn bg-indigo px-4 py-1.5 text-sm font-semibold text-white hover:bg-indigo/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-[9px] px-4 py-2 text-sm font-semibold transition-[filter] hover:brightness-[.97] disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ background: GOLD, color: INK }}
           >
-            Register
+            Add line
           </button>
         </div>
       </div>

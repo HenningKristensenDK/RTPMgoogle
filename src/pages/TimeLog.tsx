@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Trash2, Clock, CalendarDays, List } from "lucide-react";
+import { Plus, Clock, CalendarRange, List, Trash2, MoreVertical } from "lucide-react";
 import {
   TIME_CATEGORIES,
   TIME_ENTRY_STATUSES,
@@ -13,18 +13,41 @@ import { useAuthStore, currentIdentity } from "../store/authStore";
 import { createTimeEntry, deleteTimeEntry } from "../firebase/firestore";
 import { formatDate } from "../lib/format";
 import { toast } from "../lib/toast";
-import TimeSummaryDashboard from "../components/time/TimeSummaryDashboard";
 import TimesheetGrid from "../components/time/TimesheetGrid";
 import NewTimeEntryModal, { type NewTimeEntryData } from "../components/time/NewTimeEntryModal";
 
-const STATUS_META: Record<TimeEntryStatus, { label: string; text: string; bg: string }> = {
-  draft: { label: "Draft", text: "#595b78", bg: "#f0f0f5" },
-  submitted: { label: "Submitted", text: "#cc7000", bg: "#fff3e0" },
-  approved: { label: "Approved", text: "#1b7a34", bg: "#e6f6ea" },
-};
+/* RTPM brand tokens */
+const INK = "#15162b";
+const SLATE = "#595b78";
+const MUTE = "#8a8ca6";
+const INDIGO = "#0d08d2";
+const INDIGO_TINT = "#e7e6fa";
+const INDIGO_TINT_LINE = "#d6d4f5";
+const LINE = "#e6e6f0";
+const MIST = "#fafafd";
+const GREEN_TINT = "#e8f6eb";
+const GREEN_INK = "#1b7a31";
+const AMBER_TINT = "#fdf4dd";
+const AMBER_INK = "#8a6600";
+const LINE_SOFT = "#f0f0f5";
 
-const selectCls =
-  "rounded-input border border-bordergray bg-white px-2.5 py-1.5 text-xs text-gray-600 outline-none focus:border-indigo";
+const WS_COLOR: Record<string, string> = {
+  "Civil Works": "#0d08d2",
+  "MEP Infrastructure": "#00acff",
+  "IT/Data Infrastructure": "#5652e0",
+  Quality: "#00c794",
+  HSE: "#ff8b00",
+  "Permit and Authorities": "#aa00d3",
+};
+const SERIES = ["#0d08d2", "#00c794", "#ff8b00", "#00acff", "#aa00d3", "#5652e0"];
+
+function statusMeta(s: TimeEntryStatus) {
+  return s === "approved"
+    ? { label: "Approved", bg: GREEN_TINT, text: GREEN_INK }
+    : s === "submitted"
+    ? { label: "Submitted", bg: AMBER_TINT, text: AMBER_INK }
+    : { label: "Draft", bg: LINE_SOFT, text: SLATE };
+}
 
 export default function TimeLog() {
   const { entries, loading, patchEntry } = useTimeStore();
@@ -38,12 +61,14 @@ export default function TimeLog() {
   const [fStatus, setFStatus] = useState<TimeEntryStatus | "">("");
   const [fPerson, setFPerson] = useState("");
   const [fBillable, setFBillable] = useState<"" | "yes" | "no">("");
-  const [barWorkstream, setBarWorkstream] = useState<string | null>(null);
-  const [barCategory, setBarCategory] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [view, setView] = useState<"week" | "list">("week");
 
   const wsName = (id: string) => roles.find((r) => r.id === id)?.workstream ?? "Unassigned";
+  const wsColor = (id: string) => {
+    const name = wsName(id);
+    return WS_COLOR[name] ?? SERIES[Math.max(0, roles.findIndex((r) => r.id === id)) % SERIES.length];
+  };
   const workstreams = [...new Set(roles.map((r) => r.workstream))];
   const people = [...new Set(entries.map((e) => e.personName))];
 
@@ -60,15 +85,6 @@ export default function TimeLog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, roles, fWorkstream, fCategory, fStatus, fPerson, fBillable]);
 
-  const tableEntries = useMemo(() => {
-    return filtered.filter((e) => {
-      if (barWorkstream && wsName(e.workstreamId) !== barWorkstream) return false;
-      if (barCategory && e.category !== barCategory) return false;
-      return true;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, roles, barWorkstream, barCategory]);
-
   async function handleCreate(data: NewTimeEntryData) {
     if (!projectId) return;
     try {
@@ -79,117 +95,131 @@ export default function TimeLog() {
     }
   }
 
+  const segCls = (active: boolean) =>
+    `flex items-center gap-1.5 rounded-[7px] px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+      active ? "bg-white shadow-[0_1px_2px_rgba(21,22,43,.1)]" : ""
+    }`;
+
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-bordergray bg-white px-6 py-4">
+      <div className="flex items-center justify-between border-b bg-white px-6 py-4" style={{ borderColor: LINE }}>
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: "#e7e6fa" }}>
-            <Clock size={20} style={{ color: "#0d08d2" }} />
+          <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-[10px]" style={{ background: INDIGO_TINT }}>
+            <Clock size={21} style={{ color: INDIGO }} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-ink">Time Registration</h1>
-            <p className="text-xs text-gray-400">
-              {view === "week" ? "Weekly timesheet" : `${tableEntries.length} of ${entries.length} entries`}
+            <h1 className="font-headline text-[22px] font-bold leading-tight" style={{ color: INK }}>
+              Time Registration
+            </h1>
+            <p className="text-[12.5px]" style={{ color: MUTE }}>
+              {view === "week" ? "Weekly timesheet · log hours by workstream & activity" : `${filtered.length} of ${entries.length} entries · Viking Project`}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex overflow-hidden rounded-btn border border-bordergray">
-            <button
-              onClick={() => setView("week")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${view === "week" ? "bg-indigo text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
-            >
-              <CalendarDays size={15} /> Week
+        <div className="flex items-center gap-3.5">
+          <div className="flex rounded-[10px] border p-[3px]" style={{ borderColor: LINE, background: "#f7f7fb" }}>
+            <button onClick={() => setView("week")} className={segCls(view === "week")} style={{ color: view === "week" ? INDIGO : SLATE }}>
+              <CalendarRange size={15} /> Week
             </button>
-            <button
-              onClick={() => setView("list")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${view === "list" ? "bg-indigo text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
-            >
+            <button onClick={() => setView("list")} className={segCls(view === "list")} style={{ color: view === "list" ? INDIGO : SLATE }}>
               <List size={15} /> List
             </button>
           </div>
           <button
             onClick={() => setNewOpen(true)}
-            className="flex items-center gap-1.5 rounded-btn bg-indigo px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo/90"
+            className="inline-flex items-center gap-1.5 rounded-[9px] px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:brightness-110"
+            style={{ background: INDIGO }}
           >
-            <Plus size={16} /> Register time
+            <Plus size={16} /> Log time
           </button>
         </div>
       </div>
 
-      {/* Filters (List view only) */}
-      {view === "list" && (
-      <div className="flex flex-wrap items-center gap-2 border-b border-bordergray bg-white px-6 py-2.5">
-        <select className={selectCls} value={fWorkstream} onChange={(e) => setFWorkstream(e.target.value)}>
-          <option value="">All workstreams</option>
-          {workstreams.map((w) => (
-            <option key={w}>{w}</option>
-          ))}
-        </select>
-        <select className={selectCls} value={fCategory} onChange={(e) => setFCategory(e.target.value as TimeCategory | "")}>
-          <option value="">All categories</option>
-          {TIME_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        <select className={selectCls} value={fStatus} onChange={(e) => setFStatus(e.target.value as TimeEntryStatus | "")}>
-          <option value="">All statuses</option>
-          {TIME_ENTRY_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_META[s].label}
-            </option>
-          ))}
-        </select>
-        <select className={selectCls} value={fPerson} onChange={(e) => setFPerson(e.target.value)}>
-          <option value="">All people</option>
-          {people.map((p) => (
-            <option key={p}>{p}</option>
-          ))}
-        </select>
-        <select className={selectCls} value={fBillable} onChange={(e) => setFBillable(e.target.value as "" | "yes" | "no")}>
-          <option value="">Billable & non</option>
-          <option value="yes">Billable only</option>
-          <option value="no">Non-billable only</option>
-        </select>
-      </div>
-      )}
-
       {/* Content */}
-      <div className="scroll-thin flex-1 overflow-auto p-6">
+      <div className="scroll-thin flex-1 overflow-auto p-6" style={{ background: "#f7f7fb" }}>
         {loading ? (
-          <div className="text-sm text-gray-400">Loading time entries…</div>
+          <div className="text-sm" style={{ color: MUTE }}>
+            Loading time entries…
+          </div>
         ) : view === "week" ? (
           <TimesheetGrid entries={entries} roles={roles} projectId={projectId} currentName={me.name} />
         ) : (
           <>
-            <TimeSummaryDashboard
-              entries={filtered}
-              roles={roles}
-              selectedWorkstream={barWorkstream}
-              onSelectWorkstream={setBarWorkstream}
-              selectedCategory={barCategory}
-              onSelectCategory={setBarCategory}
-            />
-            <TableView
-              entries={tableEntries}
-              wsName={wsName}
-              onStatus={(id, status) => patchEntry(id, { status })}
-            />
+            {/* filter pills */}
+            <div className="mb-[18px] flex flex-wrap items-center gap-2.5">
+              <FilterPill value={fWorkstream} onChange={setFWorkstream} allLabel="All workstreams" options={workstreams} />
+              <FilterPill value={fCategory} onChange={(v) => setFCategory(v as TimeCategory | "")} allLabel="All categories" options={[...TIME_CATEGORIES]} />
+              <FilterPill value={fPerson} onChange={setFPerson} allLabel="All people" options={people} />
+              <FilterPill
+                value={fStatus}
+                onChange={(v) => setFStatus(v as TimeEntryStatus | "")}
+                allLabel="Status: All"
+                options={TIME_ENTRY_STATUSES.map((s) => statusMeta(s).label)}
+                optionValues={[...TIME_ENTRY_STATUSES]}
+                highlight
+              />
+              <FilterPill
+                value={fBillable}
+                onChange={(v) => setFBillable(v as "" | "yes" | "no")}
+                allLabel="Billable & non"
+                options={["Billable only", "Non-billable only"]}
+                optionValues={["yes", "no"]}
+              />
+            </div>
+
+            <TableView entries={filtered} wsName={wsName} wsColor={wsColor} onStatus={(id, status) => patchEntry(id, { status })} />
           </>
         )}
       </div>
 
       {newOpen && (
-        <NewTimeEntryModal
-          roles={roles}
-          currentName={me.name}
-          onCreate={handleCreate}
-          onCancel={() => setNewOpen(false)}
-        />
+        <NewTimeEntryModal roles={roles} currentName={me.name} onCreate={handleCreate} onCancel={() => setNewOpen(false)} />
       )}
+    </div>
+  );
+}
+
+function FilterPill({
+  value,
+  onChange,
+  allLabel,
+  options,
+  optionValues,
+  highlight,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  allLabel: string;
+  options: string[];
+  optionValues?: string[];
+  highlight?: boolean;
+}) {
+  const active = value !== "";
+  const on = highlight || active;
+  return (
+    <div
+      className="relative inline-flex items-center rounded-full border text-[12.5px] font-medium"
+      style={{
+        borderColor: on ? INDIGO_TINT_LINE : LINE,
+        background: on ? INDIGO_TINT : "#fff",
+        color: on ? INDIGO : INK,
+      }}
+    >
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="cursor-pointer appearance-none bg-transparent py-[7px] pl-3.5 pr-8 outline-none"
+        style={{ color: on ? INDIGO : INK }}
+      >
+        <option value="">{allLabel}</option>
+        {options.map((o, i) => (
+          <option key={o} value={optionValues ? optionValues[i] : o} style={{ color: INK }}>
+            {o}
+          </option>
+        ))}
+      </select>
+      <span className="pointer-events-none absolute right-3 text-[10px]">▾</span>
     </div>
   );
 }
@@ -197,16 +227,20 @@ export default function TimeLog() {
 function TableView({
   entries,
   wsName,
+  wsColor,
   onStatus,
 }: {
   entries: TimeEntry[];
   wsName: (id: string) => string;
+  wsColor: (id: string) => string;
   onStatus: (id: string, status: TimeEntryStatus) => void;
 }) {
   const [deleteTarget, setDeleteTarget] = useState<TimeEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
 
   const totalHours = entries.reduce((s, e) => s + (e.hours || 0), 0);
+  const cols = "78px 92px 150px 172px minmax(0,1fr) 120px 70px 100px 108px 34px";
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -222,109 +256,133 @@ function TableView({
   }
 
   return (
-    <div className="overflow-hidden rounded-card border border-bordergray bg-white shadow-card">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-400">
-          <tr>
-            <th className="px-4 py-2.5">Date</th>
-            <th className="px-4 py-2.5">ID</th>
-            <th className="px-4 py-2.5">Person</th>
-            <th className="px-4 py-2.5">Workstream</th>
-            <th className="px-4 py-2.5">Activity</th>
-            <th className="px-4 py-2.5">Category</th>
-            <th className="px-4 py-2.5 text-right">Hours</th>
-            <th className="px-4 py-2.5">Billable</th>
-            <th className="px-4 py-2.5">Status</th>
-            <th className="px-4 py-2.5"></th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="overflow-hidden rounded-[14px] border bg-white shadow-[0_2px_8px_rgba(21,22,43,.08)]" style={{ borderColor: LINE }}>
+      <div className="overflow-x-auto">
+        <div className="min-w-[980px]">
+          {/* header */}
+          <div
+            className="grid items-center border-b px-5 py-3 text-[10.5px] font-semibold uppercase tracking-[.08em]"
+            style={{ gridTemplateColumns: cols, background: MIST, borderColor: LINE, color: MUTE }}
+          >
+            <div>ID</div>
+            <div>Date</div>
+            <div>Person</div>
+            <div>Workstream</div>
+            <div>Activity</div>
+            <div>Category</div>
+            <div className="text-right">Hours</div>
+            <div className="text-center">Billable</div>
+            <div>Status</div>
+            <div />
+          </div>
           {entries.map((e) => {
-            const meta = STATUS_META[e.status];
+            const meta = statusMeta(e.status);
             return (
-              <tr key={e.id} className="border-t border-bordergray hover:bg-gray-50">
-                <td className="px-4 py-2.5 text-gray-500">{formatDate(e.date)}</td>
-                <td className="px-4 py-2.5 font-mono text-[12px] text-gray-500">{e.entryId}</td>
-                <td className="px-4 py-2.5 text-gray-700">{e.personName}</td>
-                <td className="px-4 py-2.5 text-gray-500">{e.workstreamId ? wsName(e.workstreamId) : "—"}</td>
-                <td className="max-w-[280px] truncate px-4 py-2.5 font-medium text-ink">{e.activity}</td>
-                <td className="px-4 py-2.5 text-gray-500">{e.category}</td>
-                <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-ink">{e.hours}</td>
-                <td className="px-4 py-2.5">
-                  {e.billable ? (
-                    <span className="text-[12px] font-medium text-emerald">Billable</span>
-                  ) : (
-                    <span className="text-[12px] text-gray-400">Non-billable</span>
-                  )}
-                </td>
-                <td className="px-4 py-2.5">
+              <div key={e.id} className="grid items-center border-b px-5 py-3.5 text-[13px] hover:bg-[#fafafd]" style={{ gridTemplateColumns: cols, borderColor: "#f5f5fa" }}>
+                <div className="font-headline font-semibold" style={{ color: INDIGO }}>
+                  {e.entryId}
+                </div>
+                <div className="font-headline tabular-nums" style={{ color: SLATE }}>
+                  {formatDate(e.date)}
+                </div>
+                <div className="truncate pr-2 font-medium" style={{ color: INK }}>
+                  {e.personName}
+                </div>
+                <div className="flex min-w-0 items-center gap-2 pr-2">
+                  <span className="h-2 w-2 flex-none rounded-full" style={{ background: wsColor(e.workstreamId) }} />
+                  <span className="truncate">{e.workstreamId ? wsName(e.workstreamId) : "—"}</span>
+                </div>
+                <div className="truncate pr-2.5" style={{ color: SLATE }}>
+                  {e.activity}
+                </div>
+                <div>
+                  <span className="inline-block rounded-full px-2.5 py-0.5 text-[11.5px]" style={{ background: "#efeff6", color: SLATE }}>
+                    {e.category}
+                  </span>
+                </div>
+                <div className="text-right font-headline font-bold tabular-nums" style={{ color: INK }}>
+                  {e.hours.toFixed(1)}
+                </div>
+                <div className="text-center text-[11.5px]" style={{ color: e.billable ? SLATE : MUTE }}>
+                  {e.billable ? "Billable" : "Non-bill."}
+                </div>
+                <div>
                   <select
                     value={e.status}
                     onChange={(ev) => onStatus(e.id, ev.target.value as TimeEntryStatus)}
-                    className="rounded-full border-0 px-2 py-1 text-[11px] font-semibold outline-none"
+                    className="cursor-pointer rounded-full border-0 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide outline-none"
                     style={{ color: meta.text, background: meta.bg }}
                   >
                     {TIME_ENTRY_STATUSES.map((s) => (
                       <option key={s} value={s} style={{ color: "#15162b", background: "#fff" }}>
-                        {STATUS_META[s].label}
+                        {statusMeta(s).label}
                       </option>
                     ))}
                   </select>
-                </td>
-                <td className="px-4 py-2.5 text-right">
-                  <button
-                    onClick={() => setDeleteTarget(e)}
-                    title="Delete entry"
-                    className="rounded-btn p-1.5 text-gray-400 hover:bg-red-50 hover:text-critical"
-                  >
-                    <Trash2 size={15} />
+                </div>
+                <div className="relative flex justify-center">
+                  <button onClick={() => setMenuFor(menuFor === e.id ? null : e.id)} className="rounded p-1" style={{ color: "#b9bacb" }}>
+                    <MoreVertical size={16} />
                   </button>
-                </td>
-              </tr>
+                  {menuFor === e.id && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} />
+                      <div className="absolute right-0 top-7 z-20 w-32 rounded-lg border bg-white py-1 shadow-lg" style={{ borderColor: LINE }}>
+                        <button
+                          onClick={() => {
+                            setDeleteTarget(e);
+                            setMenuFor(null);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] hover:bg-red-50"
+                          style={{ color: "#e63946" }}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             );
           })}
           {entries.length === 0 && (
-            <tr>
-              <td colSpan={10} className="px-4 py-8 text-center text-gray-300">
-                No time entries yet. Click “Register time” to log hours.
-              </td>
-            </tr>
+            <div className="px-5 py-12 text-center text-[13px]" style={{ color: "#b9bacb" }}>
+              No time entries match. Click “Log time” to register hours.
+            </div>
           )}
-        </tbody>
-        {entries.length > 0 && (
-          <tfoot>
-            <tr className="border-t border-bordergray bg-gray-50 text-[12px] font-semibold text-ink">
-              <td className="px-4 py-2.5" colSpan={6}>
-                Total
-              </td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{Math.round(totalHours * 10) / 10}</td>
-              <td colSpan={3}></td>
-            </tr>
-          </tfoot>
-        )}
-      </table>
+          {entries.length > 0 && (
+            <div className="grid items-center px-5 py-3.5" style={{ gridTemplateColumns: cols, background: MIST, borderTop: `2px solid ${LINE}` }}>
+              <div className="text-[11px] font-bold uppercase tracking-[.08em]" style={{ gridColumn: "1 / 6", color: SLATE }}>
+                Total · {entries.length} entr{entries.length === 1 ? "y" : "ies"}
+              </div>
+              <div className="text-right font-headline text-[15px] font-bold tabular-nums" style={{ color: INK }}>
+                {(Math.round(totalHours * 10) / 10).toFixed(1)}
+              </div>
+              <div />
+              <div />
+              <div />
+            </div>
+          )}
+        </div>
+      </div>
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30">
-          <div className="w-[320px] rounded-card bg-white p-5 shadow-panel">
-            <p className="text-sm font-semibold text-ink">Delete time entry?</p>
-            <p className="mt-1 text-sm text-gray-500">
-              <span className="font-medium text-ink">{deleteTarget.entryId}</span> ({deleteTarget.hours}h) will be
-              permanently deleted.
+        <div className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: "rgba(7,4,116,.28)" }}>
+          <div className="w-[320px] rounded-[14px] bg-white p-5 shadow-2xl">
+            <p className="text-sm font-semibold" style={{ color: INK }}>
+              Delete time entry?
+            </p>
+            <p className="mt-1 text-sm" style={{ color: SLATE }}>
+              <span className="font-medium" style={{ color: INK }}>
+                {deleteTarget.entryId}
+              </span>{" "}
+              ({deleteTarget.hours}h) will be permanently deleted.
             </p>
             <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleting}
-                className="rounded-btn border border-bordergray px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-              >
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="rounded-[9px] border px-3 py-1.5 text-sm disabled:opacity-50" style={{ borderColor: LINE, color: SLATE }}>
                 Cancel
               </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="rounded-btn bg-critical px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
-              >
+              <button onClick={handleDelete} disabled={deleting} className="rounded-[9px] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50" style={{ background: "#e63946" }}>
                 {deleting ? "Deleting…" : "Delete"}
               </button>
             </div>
